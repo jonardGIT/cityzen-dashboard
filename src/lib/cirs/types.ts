@@ -1,0 +1,73 @@
+export type EntityId = string | number;
+
+export interface BaseEntity {
+  id: EntityId;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface Incident extends BaseEntity {
+  title?: string;
+  description?: string;
+  statusId?: EntityId;
+  categoryId?: EntityId;
+  severityId?: EntityId;
+  locationId?: EntityId;
+  citizenId?: EntityId;
+}
+
+export interface Assignment extends BaseEntity {
+  incidentId?: EntityId;
+  responderId?: EntityId;
+  statusId?: EntityId;
+}
+
+export interface Status extends BaseEntity {
+  name?: string;
+}
+
+export interface Category extends BaseEntity {
+  name?: string;
+}
+
+export interface Severity extends BaseEntity {
+  name?: string;
+}
+
+export interface Location extends BaseEntity {
+  name?: string;
+  address?: string;
+}
+
+export interface Citizen extends BaseEntity {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}
+
+export interface Responder extends BaseEntity {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}
+
+export interface ApiValidationIssue {
+  field?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
+export interface ApiErrorPayload {
+  message?: string;
+  error?: string;
+  errors?: ApiValidationIssue[];
+  [key: string]: unknown;
+}
+
+export interface RateLimitMeta {
+  limit?: number;
+  remaining?: number;
+  reset?: number;
+  retryAfter?: number;
+}
