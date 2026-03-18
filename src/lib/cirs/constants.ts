@@ -15,6 +15,7 @@ export const CIRS_RESOURCES = [
   "locations",
   "incidents",
   "assignments",
+  "users",
 ] as const;
 
 export type CirsResource = (typeof CIRS_RESOURCES)[number];

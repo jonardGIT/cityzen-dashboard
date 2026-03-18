@@ -6,7 +6,8 @@ This dashboard integrates with the Xypes CIRS API.
 - Backend service: Xypes CIRS API
 - API style: REST
 - Base path: `/api/v1`
-- Main resources: `citizens`, `responders`, `statuses`, `categories`, `severities`, `locations`, `incidents`, `assignments`
+- Main resources: `citizens`, `responders`, `statuses`, `categories`, `severities`, `locations`, `incidents`, `assignments`, `users`
+- Persistence: Prisma + PostgreSQL (Supabase)
 
 ## API behavior
 - Protected routes require `x-api-key` when backend `API_KEYS` or `API_KEY` is configured.
@@ -15,7 +16,7 @@ This dashboard integrates with the Xypes CIRS API.
   - `/api/v1/openapi.json`
   - `/api/v1/docs`
 - Rate limiting may return `429` with `Retry-After` and `X-RateLimit-*` headers.
-- Validation failures return structured error payloads.
+- Validation failures commonly return `422` with structured error payloads.
 
 ## Architecture assumptions
 - Treat CIRS API as source of truth.

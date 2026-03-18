@@ -7,10 +7,57 @@
     linear-gradient(180deg, #f7fafc 0%, #eff4f8 100%);
 }
 
+.sider {
+  background: rgba(9, 28, 52, 0.94) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 24px 0 60px rgba(7, 20, 38, 0.18);
+}
+
+.siderInner {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  padding: 18px 14px;
+}
+
+.brandBlock {
+  margin-bottom: 20px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+  padding: 18px;
+}
+
+.brandEyebrow {
+  color: rgba(216, 233, 255, 0.72);
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.brandTitle,
+.brandMonogram {
+  margin: 8px 0 0 !important;
+  color: #f7fbff !important;
+}
+
+.brandMeta {
+  display: block;
+  margin-top: 8px;
+  color: rgba(216, 233, 255, 0.72) !important;
+}
+
+.navigation {
+  flex: 1;
+  border-inline-end: 0 !important;
+  background: transparent !important;
+}
+
+.mainLayout {
+  background: transparent !important;
+}
+
 .content {
   padding: 28px;
-  max-width: 1280px;
-  margin: 0 auto;
   width: 100%;
 }
 
@@ -19,13 +66,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0;
-  margin-bottom: 18px;
+  padding: 24px 28px 0;
   min-height: 0;
 }
 
+.headerLead {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.collapseButton {
+  border-radius: 999px;
+  border: 1px solid rgba(16, 36, 63, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  padding-inline: 14px !important;
+}
+
 .heroTitle {
-  margin: 0;
+  margin: 0 !important;
   letter-spacing: -0.02em;
 }
 
@@ -39,6 +98,20 @@
 }
 
 @media (max-width: 768px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .sider {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .siderInner {
+    min-height: auto;
+  }
+
   .content {
     padding: 16px;
   }
@@ -46,6 +119,12 @@
   .header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
+    padding: 18px 16px 0;
+  }
+
+  .headerLead {
+    flex-direction: column;
     gap: 12px;
   }
 }

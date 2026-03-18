@@ -36,3 +36,19 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+.ant-table-wrapper .ant-table {
+  border: 1px solid rgba(16, 36, 63, 0.1);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  background: #edf3f9;
+  color: #10243f;
+  font-weight: 700;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr:hover > td {
+  background: #f6fbff !important;
+}

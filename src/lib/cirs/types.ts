@@ -10,6 +10,7 @@ export interface BaseEntity {
 export interface Incident extends BaseEntity {
   title?: string;
   description?: string;
+  dateReported?: string;
   statusId?: EntityId;
   categoryId?: EntityId;
   severityId?: EntityId;
@@ -21,6 +22,8 @@ export interface Assignment extends BaseEntity {
   incidentId?: EntityId;
   responderId?: EntityId;
   statusId?: EntityId;
+  assignedDate?: string;
+  notes?: string;
 }
 
 export interface Status extends BaseEntity {
@@ -41,6 +44,9 @@ export interface Location extends BaseEntity {
 }
 
 export interface Citizen extends BaseEntity {
+  name?: string;
+  contactInfo?: string;
+  preferredChannel?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -50,6 +56,14 @@ export interface Responder extends BaseEntity {
   firstName?: string;
   lastName?: string;
   email?: string;
+  phoneNumber?: string;
+}
+
+export interface User extends BaseEntity {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
 }
 
 export interface ApiValidationIssue {

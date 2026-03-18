@@ -9,6 +9,7 @@ import type {
   Responder,
   Severity,
   Status,
+  User,
 } from "@/lib/cirs/types";
 
 export const citizensResource = {
@@ -65,4 +66,11 @@ export const assignmentsResource = {
   getById: (id: EntityId) => cirsApi.getById<Assignment>("assignments", id),
   create: (payload: Omit<Assignment, "id">) =>
     cirsApi.create<Assignment, Omit<Assignment, "id">>("assignments", payload),
+};
+
+export const usersResource = {
+  list: () => cirsApi.list<User>("users"),
+  getById: (id: EntityId) => cirsApi.getById<User>("users", id),
+  create: (payload: Omit<User, "id">) =>
+    cirsApi.create<User, Omit<User, "id">>("users", payload),
 };
