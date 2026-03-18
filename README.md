@@ -1,53 +1,13 @@
-# Xypes CIRS Dashboard
+# Xypes LGU Incident Response Dashboard
 
-Next.js dashboard that integrates with the Xypes CIRS API and uses Ant Design components for UI.
+Production-style Next.js App Router dashboard built with TypeScript, Ant Design, TanStack Query, and Axios.
 
-## Backend Integration
+## Stack
 
-- Backend base path: `/api/v1`
-- Persistence: Prisma + PostgreSQL (Supabase)
-- Main resources:
-	- `citizens`
-	- `responders`
-	- `statuses`
-	- `categories`
-	- `severities`
-	- `locations`
-	- `incidents`
-	- `assignments`
-	- `users`
-- Public endpoints:
-	- `/api/v1/health`
-	- `/api/v1/openapi.json`
-	- `/api/v1/docs`
-
-Protected routes may require `x-api-key` when backend `API_KEYS` or `API_KEY` is enabled.
-Validation failures commonly return `422` with structured payloads.
-
-## Environment Variables
-
-Create `.env.local` with values appropriate for your backend:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1
-NEXT_PUBLIC_API_KEY=local-dev-key
-```
-
-The dashboard uses a shared API helper (`src/lib/cirs/dashboard-api.ts`) that:
-
-- Builds requests as `NEXT_PUBLIC_API_URL + endpoint`
-- Attaches `Content-Type: application/json` and `x-api-key` on every request
-- Throws for non-2xx responses
-- Returns parsed JSON payloads
-
-## CORS Setup
-
-On the backend API, set `CORS_ORIGIN` to include your dashboard origin, for example:
-
-- `http://localhost:3001`
-- your deployed dashboard domain
-
-If your tooling also uses another frontend port (for example Vite), include that origin as well.
+- Next.js App Router + TypeScript (strict)
+- Ant Design UI (no Tailwind)
+- TanStack Query for server state
+- Axios API clients with interceptors
 
 ## Run Locally
 
@@ -56,37 +16,102 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3001`.
+App URL: `http://localhost:3001`
 
-## Integration Structure
+## Environment Variables
 
-- API constants: `src/lib/cirs/constants.ts`
-- Shared types: `src/lib/cirs/types.ts`
-- HTTP + error handling client: `src/lib/cirs/client.ts`
-- Resource services: `src/lib/cirs/resources.ts`
-- Error message mapping: `src/lib/cirs/errors.ts`
+Create `.env.local`:
 
-This project centralizes API access and avoids ad hoc fetch calls in UI components.
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api/v1
+NEXT_PUBLIC_API_KEY=local-dev-key
+```
 
-## Error Handling Conventions
+## API Client Architecture
 
-The integration layer is prepared to handle:
+- `publicClient`: API-key only, used for login
+- `authClient`: API-key + Bearer token
+- Both clients are in `src/lib/api/clients.ts`
+- 401 responses clear auth state and redirect to `/login`
 
-- `401` unauthorized
-- `403` forbidden
-- `404` not found
-- `422` validation failures
-- `429` rate limit responses (including `Retry-After` and `X-RateLimit-*` headers)
+## Auth and Session Behavior
 
-## Future Alignment
+- Login endpoint: `POST /auth/login`
+- Session endpoint: `GET /auth/me`
+- Access token and user are stored in local storage
+- On app boot, session restore is attempted via `/auth/me`
+- 401 redirects to `/login`
+- 403 is rendered as forbidden state/page
 
-- Generate a typed client from backend OpenAPI.
-- Add role/scope-aware UI once backend RBAC is available.
-- Introduce JWT + refresh token strategy for human clients once backend auth is ready.
-- Add CI pipeline for lint/build/test and optional deploy steps.
-- Keep dashboard logic aligned with backend as source of truth.
+## Roles
 
-## Security Note
+- `SUPER_ADMIN`
+- `ADMIN`
+- `DISPATCHER`
+- `RESPONDER`
+- `VIEWER`
 
-For production, avoid exposing sensitive API keys in browser environment variables.
-Preferred pattern: server-side dashboard calls (API route or server action) that inject private credentials.
+## Permission Matrix
+
+- Create incident: `SUPER_ADMIN`, `ADMIN`, `DISPATCHER`, `RESPONDER`
+- Create assignment: `SUPER_ADMIN`, `ADMIN`, `DISPATCHER`
+- Create/manage users: `SUPER_ADMIN`, `ADMIN`
+
+## Required Routes Implemented
+
+- `/login`
+- `/dashboard`
+- `/incidents`
+- `/assignments`
+- `/citizens`
+- `/citizens/[id]`
+- `/responders`
+- `/statuses`
+- `/categories`
+- `/severities`
+- `/locations`
+- `/users`
+- `/profile`
+- `/forbidden`
+- `not-found`
+
+## Folder Structure
+
+- `src/app`: App Router pages/layouts
+- `src/components/auth`: `AuthGate`, `RoleGuard`
+- `src/components/layout`: dashboard shell
+- `src/components/common`: shared page/table states
+- `src/context`: `AuthContext`
+- `src/providers`: root providers (Query + AntD + Auth)
+- `src/features/incidents`
+- `src/features/assignments`
+- `src/features/users`
+- `src/features/reference-data`
+- `src/lib/api`, `src/lib/auth`, `src/lib/forms`, `src/lib/query`
+- `src/types`
+
+## URL Synced Tables
+
+Data views use `useTableQueryParams` to sync:
+
+- `page`
+- `pageSize`
+- `search`
+
+with URL query parameters.
+
+## Seeded QA Accounts
+
+- `admin@xypes.local / Password123!` (`SUPER_ADMIN`)
+- `ops.lead@xypes.local / Password123!` (`ADMIN`)
+- `dispatcher@xypes.local / Password123!` (`DISPATCHER`)
+- `supervisor@xypes.local / Password123!` (`RESPONDER`)
+- `analyst@xypes.local / Password123!` (`VIEWER`)
+
+## CORS Reminder
+
+Set backend `CORS_ORIGIN` to include dashboard origins, for example:
+
+- `http://localhost:3001`
+- your LAN/dev origin when testing from another device
+- your deployed dashboard domain
