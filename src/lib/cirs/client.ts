@@ -4,6 +4,7 @@ import {
   CIRS_API_KEY,
   type CirsResource,
 } from "@/lib/cirs/constants";
+import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
 import { ApiHttpError } from "@/lib/cirs/errors";
 import type { ApiErrorPayload, BaseEntity, RateLimitMeta } from "@/lib/cirs/types";
 
@@ -90,43 +91,25 @@ async function request<T>(
   return body;
 }
 
-function normalizeListResponse<T extends BaseEntity>(data: unknown): T[] {
-  if (Array.isArray(data)) {
-    return data as T[];
-  }
-
-  if (data && typeof data === "object") {
-    const candidateKeys = ["data", "items", "results"] as const;
-
-    for (const key of candidateKeys) {
-      const value = (data as Record<string, unknown>)[key];
-      if (Array.isArray(value)) {
-        return value as T[];
-      }
-    }
-  }
-
-  return [];
-}
-
 export const cirsApi = {
   async list<T extends BaseEntity>(resource: CirsResource): Promise<T[]> {
     const response = await request<unknown>(resource, { method: "GET" });
-    return normalizeListResponse<T>(response);
+    return unwrapListResponse<T>(response);
   },
 
   async getById<T extends BaseEntity>(
     resource: CirsResource,
     id: string | number,
   ): Promise<T> {
-    return request<T>(resource, { method: "GET" }, id);
+    const response = await request<unknown>(resource, { method: "GET" }, id);
+    return unwrapEntityResponse<T>(response);
   },
 
   async create<TResponse, TPayload>(
     resource: CirsResource,
     payload: TPayload,
   ): Promise<TResponse> {
-    return request<TResponse>(
+    const response = await request<unknown>(
       resource,
       {
         method: "POST",
@@ -134,5 +117,7 @@ export const cirsApi = {
       },
       undefined,
     );
+
+    return unwrapEntityResponse<TResponse>(response);
   },
 };
