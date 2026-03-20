@@ -34,6 +34,9 @@ export default function DashboardPage() {
   const assignments = assignmentsQ.data ?? [];
   const responders = respondersQ.data ?? [];
   const statuses = statusesQ.data ?? [];
+  const statusLabels = new Map(
+    statuses.map((status) => [String(status.id), status.name?.trim() || String(status.id)]),
+  );
 
   return (
     <Space orientation="vertical" size={16} style={{ width: "100%" }}>
@@ -79,10 +82,12 @@ export default function DashboardPage() {
               render: (value: string) => value || "N/A",
             },
             {
-              title: "Status ID",
+              title: "Status",
               dataIndex: "statusId",
               key: "statusId",
-              render: (value: string | number) => <Tag color="blue">{value ?? "N/A"}</Tag>,
+              render: (value: string | number) => (
+                <Tag color="blue">{statusLabels.get(String(value)) ?? value ?? "N/A"}</Tag>
+              ),
             },
             {
               title: "Reported",
