@@ -199,7 +199,7 @@ export default function IncidentsPage() {
             <Select
               options={(severitiesQuery.data ?? []).map((item) => ({
                 value: String(item.id),
-                label: item.name ?? `Severity ${item.id}`,
+                label: item.level ?? `Severity ${item.id}`,
               }))}
               loading={severitiesQuery.isLoading}
             />

@@ -53,6 +53,8 @@ export interface Category extends BaseEntity {
 }
 
 export interface Severity extends BaseEntity {
+    level?: string;
+    definition?: string;
   name?: string;
 }
 

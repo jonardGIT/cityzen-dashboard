@@ -87,7 +87,7 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
       label: "Severity",
       type: "select",
       required: true,
-      optionSource: { resource: "severities", valueField: "id", labelField: "name" },
+      optionSource: { resource: "severities", valueField: "id", labelField: "level" },
     },
   ],
   assignments: [
