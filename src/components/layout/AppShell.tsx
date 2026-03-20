@@ -62,6 +62,49 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout, isAuthenticated } = useAuth();
 
+  const displayName = useMemo(() => {
+    if (!user) {
+      return "User";
+    }
+
+    if (typeof user.name === "string" && user.name.trim().length > 0) {
+      return user.name.trim();
+    }
+
+    const fullName = [user.firstName, user.lastName]
+      .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+      .map((part) => part.trim())
+      .join(" ");
+
+    if (fullName.length > 0) {
+      return fullName;
+    }
+
+    return user.email ?? "User";
+  }, [user]);
+
+  const identityLabel = useMemo(() => {
+    return user?.email?.trim() || displayName;
+  }, [displayName, user?.email]);
+
+  const avatarInitial = useMemo(() => {
+    const source = (identityLabel || "U").trim();
+    return source[0]?.toUpperCase() ?? "U";
+  }, [identityLabel]);
+
+  const roleLabel = useMemo(() => {
+    if (!user?.role) {
+      return "No role";
+    }
+
+    return String(user.role)
+      .toLowerCase()
+      .split("_")
+      .filter((part) => part.length > 0)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  }, [user]);
+
   const menuItems = useMemo<NonNullable<MenuProps["items"]>>(() => {
     const resources = getAllCrudResources();
 
@@ -124,12 +167,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             borderBottom: "1px solid #f0f0f0",
           }}
         >
-          <Space>
-            <Avatar>{(user?.email?.[0] ?? "U").toUpperCase()}</Avatar>
-            <div>
-              <Text strong>{user?.email}</Text>
-              <br />
-              <Text type="secondary">{user?.role}</Text>
+          <Space size={12} align="center" style={{ minWidth: 0 }}>
+            <Avatar
+              size={36}
+              style={{ backgroundColor: "#1677ff", fontWeight: 600, flexShrink: 0 }}
+            >
+              {avatarInitial}
+            </Avatar>
+            <div style={{ lineHeight: 1.2, minWidth: 0 }}>
+              <Text strong style={{ display: "block" }} ellipsis={{ tooltip: identityLabel }}>
+                {identityLabel}
+              </Text>
+              <Text type="secondary" style={{ display: "block" }}>
+                {roleLabel}
+              </Text>
             </div>
           </Space>
           <Button icon={<LogoutOutlined />} onClick={logout}>
