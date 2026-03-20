@@ -9,6 +9,24 @@ import { fetchResponders, fetchStatuses } from "@/features/reference-data/api";
 
 const { Title } = Typography;
 
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatDateTime(value: unknown): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return "N/A";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return DATE_TIME_FORMATTER.format(parsed);
+}
+
 export default function DashboardPage() {
   const results = useQueries({
     queries: [
@@ -93,7 +111,7 @@ export default function DashboardPage() {
               title: "Reported",
               dataIndex: "dateReported",
               key: "dateReported",
-              render: (value: string) => (value ? new Date(value).toLocaleString() : "N/A"),
+              render: (value: unknown) => formatDateTime(value),
             },
           ]}
           locale={{ emptyText: "No incidents available" }}

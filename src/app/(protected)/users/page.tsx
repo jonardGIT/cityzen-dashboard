@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  App,
   Alert,
   Button,
   Card,
@@ -13,7 +14,6 @@ import {
   Space,
   Table,
   Typography,
-  message,
 } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
@@ -52,6 +52,7 @@ interface EditUserFormValues {
 }
 
 export default function UsersPage() {
+  const { message } = App.useApp();
   const { hasRole, user } = useAuth();
   const canManage = hasRole(...CAN_MANAGE_USERS);
   const usersQuery = useUsersQuery(canManage);

@@ -5,6 +5,32 @@ import { useMemo } from "react";
 import { useTableQueryParams } from "@/hooks/useTableQueryParams";
 import type { BaseEntity } from "@/types/api";
 
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function formatDateLikeString(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const isDateLike =
+    /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(trimmed);
+
+  if (!isDateLike) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return DATE_TIME_FORMATTER.format(parsed);
+}
+
 function formatCellValue(value: unknown): string {
   if (value === null || value === undefined || value === "") {
     return "N/A";
@@ -42,6 +68,10 @@ function formatCellValue(value: unknown): string {
     }
 
     return JSON.stringify(value);
+  }
+
+  if (typeof value === "string") {
+    return formatDateLikeString(value) ?? value;
   }
 
   return String(value);

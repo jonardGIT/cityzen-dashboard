@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  App,
   Alert,
   Button,
   Card,
@@ -13,7 +14,6 @@ import {
   Result,
   Space,
   Typography,
-  message,
 } from "antd";
 import type { FormInstance } from "antd";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
@@ -166,6 +166,7 @@ function applyValidationErrors(
 }
 
 export function CrudResourcePage({ resourceName }: { resourceName: string }) {
+  const { message } = App.useApp();
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);

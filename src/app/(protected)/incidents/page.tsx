@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Form, Input, Modal, Select, Space, Table, Typography, message } from "antd";
+import { App, Button, Card, Form, Input, Modal, Select, Space, Table, Typography } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
@@ -31,6 +31,7 @@ interface IncidentFormValues {
 }
 
 export default function IncidentsPage() {
+  const { message } = App.useApp();
   const { hasRole } = useAuth();
   const incidentsQuery = useIncidentsQuery();
   const citizensQuery = useCitizensQuery();
