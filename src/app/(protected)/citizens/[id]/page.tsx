@@ -20,7 +20,7 @@ export default function CitizenDetailPage() {
   }
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
       <Title level={3} style={{ margin: 0 }}>
         Citizen Detail
       </Title>

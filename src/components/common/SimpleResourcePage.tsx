@@ -49,13 +49,13 @@ export function SimpleResourcePage<T extends { id: string | number; [key: string
   }
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
       <Title level={3} style={{ margin: 0 }}>
         {title}
       </Title>
 
       <Card>
-        <Space direction="vertical" style={{ width: "100%" }}>
+        <Space orientation="vertical" style={{ width: "100%" }}>
           <Input.Search
             allowClear
             placeholder={`Search ${title.toLowerCase()}`}

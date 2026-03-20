@@ -265,7 +265,7 @@ export default function UsersPage() {
   };
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
       <Space style={{ width: "100%", justifyContent: "space-between" }}>
         <Title level={3} style={{ margin: 0 }}>
           Users
@@ -276,7 +276,7 @@ export default function UsersPage() {
       </Space>
 
       <Card>
-        <Space direction="vertical" style={{ width: "100%" }}>
+        <Space orientation="vertical" style={{ width: "100%" }}>
           {capabilitiesQuery.data &&
           (!capabilitiesQuery.data.canUpdateUser || !capabilitiesQuery.data.canDeleteUser) ? (
             <Alert

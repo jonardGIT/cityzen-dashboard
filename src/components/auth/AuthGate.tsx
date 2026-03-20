@@ -22,7 +22,7 @@ export function AuthGate({ children, allowedRoles }: AuthGateProps) {
   }, [isAuthenticated, isRestoring, router]);
 
   if (isRestoring) {
-    return <Spin fullscreen tip="Restoring session..." />;
+    return <Spin fullscreen description="Restoring session..." />;
   }
 
   if (!isAuthenticated) {

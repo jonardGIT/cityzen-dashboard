@@ -18,8 +18,8 @@ import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { CAN_MANAGE_USERS } from "@/lib/auth/permissions";
-import { Role } from "@/types/auth";
+import { getAllCrudResources } from "@/features/dynamic-crud/config";
+import { hasPermission } from "@/features/dynamic-crud/permissions";
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -28,43 +28,58 @@ type AppMenuItem = {
   key: string;
   icon: React.ReactNode;
   label: string;
-  canView?: (role: Role) => boolean;
+  canView?: () => boolean;
 };
 
-const MENU_ITEMS: AppMenuItem[] = [
-  { key: "/dashboard", icon: <AppstoreOutlined />, label: "Dashboard" },
-  { key: "/incidents", icon: <ExclamationCircleOutlined />, label: "Incidents" },
-  { key: "/assignments", icon: <ApartmentOutlined />, label: "Assignments" },
-  { key: "/citizens", icon: <TeamOutlined />, label: "Citizens" },
-  { key: "/responders", icon: <UserSwitchOutlined />, label: "Responders" },
-  { key: "/statuses", icon: <SafetyOutlined />, label: "Statuses" },
-  { key: "/categories", icon: <TagsOutlined />, label: "Categories" },
-  { key: "/severities", icon: <ProfileOutlined />, label: "Severities" },
-  { key: "/locations", icon: <EnvironmentOutlined />, label: "Locations" },
-  {
-    key: "/users",
-    icon: <UserOutlined />,
-    label: "Users",
-    canView: (role) => CAN_MANAGE_USERS.includes(role),
-  },
-  { key: "/profile", icon: <UserOutlined />, label: "Profile" },
-];
+function iconForResource(resource: string) {
+  switch (resource) {
+    case "incidents":
+      return <ExclamationCircleOutlined />;
+    case "assignments":
+      return <ApartmentOutlined />;
+    case "citizens":
+      return <TeamOutlined />;
+    case "responders":
+      return <UserSwitchOutlined />;
+    case "statuses":
+      return <SafetyOutlined />;
+    case "categories":
+      return <TagsOutlined />;
+    case "severities":
+      return <ProfileOutlined />;
+    case "locations":
+      return <EnvironmentOutlined />;
+    case "users":
+      return <UserOutlined />;
+    default:
+      return <AppstoreOutlined />;
+  }
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
 
   const menuItems = useMemo<NonNullable<MenuProps["items"]>>(() => {
-    if (!user) {
-      return [];
-    }
+    const resources = getAllCrudResources();
 
-    return MENU_ITEMS
-      .filter((item) => (item.canView ? item.canView(user.role) : true))
+    const items: AppMenuItem[] = [
+      { key: "/dashboard", icon: <AppstoreOutlined />, label: "Dashboard" },
+      ...resources.map((resource) => ({
+        key: `/dashboard/${resource.resource}`,
+        icon: iconForResource(resource.resource),
+        label: resource.label,
+        canView: () => hasPermission(resource.endpoints.list, user?.role, isAuthenticated),
+      })),
+      { key: "/profile", icon: <UserOutlined />, label: "Profile" },
+    ];
+
+    return items
+      .filter((item) => (item.canView ? item.canView() : true))
       .map(({ key, icon, label }) => ({ key, icon, label }));
-  }, [user]);
+  }, [isAuthenticated, user?.role]);
 
   const selectedKey = useMemo(() => {
     const exact = menuItems.find((item) => item?.key === pathname)?.key;

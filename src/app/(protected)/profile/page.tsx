@@ -9,7 +9,7 @@ export default function ProfilePage() {
   const { user } = useAuth();
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
       <Title level={3} style={{ margin: 0 }}>
         My Profile
       </Title>
