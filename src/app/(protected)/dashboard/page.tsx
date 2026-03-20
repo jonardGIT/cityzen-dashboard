@@ -92,7 +92,6 @@ export default function DashboardPage() {
           pagination={false}
           scroll={{ x: 900 }}
           columns={[
-            { title: "ID", dataIndex: "id", key: "id", width: 100 },
             {
               title: "Description",
               dataIndex: "description",

@@ -1,8 +1,11 @@
 "use client";
 
-import { Alert, Button, Form, Input, Modal, Select } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
+import { Alert, Button, Form, Input, Modal, Select, Tooltip } from "antd";
 import type { FormInstance } from "antd";
 import type { CrudFieldConfig } from "@/features/dynamic-crud/types";
+
+type SelectFieldOption = { value: string; label: string; description?: string };
 
 interface CrudFormModalProps {
   title: string;
@@ -10,7 +13,7 @@ interface CrudFormModalProps {
   submitting?: boolean;
   fields: CrudFieldConfig[];
   form: FormInstance<Record<string, unknown>>;
-  optionsByField: Record<string, Array<{ value: string; label: string }>>;
+  optionsByField: Record<string, SelectFieldOption[]>;
   onCancel: () => void;
   onSubmit: () => void;
   isUpdate?: boolean;
@@ -100,7 +103,32 @@ export function CrudFormModal({
           if (field.type === "select") {
             return (
               <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
-                <Select options={optionsByField[field.name] ?? []} />
+                <Select
+                  options={optionsByField[field.name] ?? []}
+                  optionRender={(option) => {
+                    const description = option.data.description;
+                    if (typeof description !== "string" || description.length === 0) {
+                      return <span>{String(option.label)}</span>;
+                    }
+
+                    return (
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          width: "100%",
+                        }}
+                      >
+                        <span>{String(option.label)}</span>
+                        <Tooltip title={description}>
+                          <InfoCircleOutlined style={{ color: "#1677ff" }} />
+                        </Tooltip>
+                      </span>
+                    );
+                  }}
+                />
               </Form.Item>
             );
           }

@@ -314,10 +314,6 @@ export default function UsersPage() {
                 },
               }}
               columns={[
-                { title: "ID", dataIndex: "id", key: "id" },
-                { title: "Email", dataIndex: "email", key: "email" },
-                { title: "Name", dataIndex: "name", key: "name" },
-                { title: "Role", dataIndex: "role", key: "role" },
                 {
                   title: "Actions",
                   key: "actions",
@@ -347,6 +343,9 @@ export default function UsersPage() {
                       <Typography.Text type="secondary">No access</Typography.Text>
                     ),
                 },
+                { title: "Email", dataIndex: "email", key: "email" },
+                { title: "Name", dataIndex: "name", key: "name" },
+                { title: "Role", dataIndex: "role", key: "role" },
               ]}
             />
           )}

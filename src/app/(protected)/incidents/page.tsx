@@ -1,6 +1,19 @@
 "use client";
 
-import { App, Button, Card, Form, Input, Modal, Select, Space, Table, Typography } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
+import {
+  App,
+  Button,
+  Card,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tooltip,
+  Typography,
+} from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
@@ -62,6 +75,44 @@ export default function IncidentsPage() {
     const start = (tableState.page - 1) * tableState.pageSize;
     return allRows.slice(start, start + tableState.pageSize);
   }, [allRows, tableState.page, tableState.pageSize]);
+
+  const severityOptions = useMemo(
+    () =>
+      (severitiesQuery.data ?? []).map((item) => ({
+        value: String(item.id),
+        label: item.level ?? `Severity ${item.id}`,
+        description: item.definition,
+      })),
+    [severitiesQuery.data],
+  );
+
+  const citizenOptions = useMemo(
+    () =>
+      (citizensQuery.data ?? []).map((item) => ({
+        value: String(item.id),
+        label: item.name ?? `Citizen ${item.id}`,
+      })),
+    [citizensQuery.data],
+  );
+
+  const statusOptions = useMemo(
+    () =>
+      (statusesQuery.data ?? []).map((item) => ({
+        value: String(item.id),
+        label: item.name ?? `Status ${item.id}`,
+      })),
+    [statusesQuery.data],
+  );
+
+  const citizenLabels = useMemo(
+    () => new Map(citizenOptions.map((item) => [item.value, item.label])),
+    [citizenOptions],
+  );
+
+  const statusLabels = useMemo(
+    () => new Map(statusOptions.map((item) => [item.value, item.label])),
+    [statusOptions],
+  );
 
   if (incidentsQuery.isLoading) {
     return <LoadingState />;
@@ -133,11 +184,22 @@ export default function IncidentsPage() {
               },
             }}
             columns={[
-              { title: "ID", dataIndex: "id", key: "id", width: 100 },
               { title: "Description", dataIndex: "description", key: "description" },
-              { title: "Citizen ID", dataIndex: "citizenId", key: "citizenId" },
+              {
+                title: "Citizen",
+                dataIndex: "citizenId",
+                key: "citizenId",
+                render: (value: string | number) =>
+                  citizenLabels.get(String(value)) ?? `Citizen ${value ?? "N/A"}`,
+              },
               { title: "Location ID", dataIndex: "locationId", key: "locationId" },
-              { title: "Status ID", dataIndex: "statusId", key: "statusId" },
+              {
+                title: "Status",
+                dataIndex: "statusId",
+                key: "statusId",
+                render: (value: string | number) =>
+                  statusLabels.get(String(value)) ?? `Status ${value ?? "N/A"}`,
+              },
               {
                 title: "Reported",
                 dataIndex: "dateReported",
@@ -166,13 +228,7 @@ export default function IncidentsPage() {
           </Form.Item>
 
           <Form.Item name="citizenId" label="Citizen" rules={[{ required: true }]}>
-            <Select
-              options={(citizensQuery.data ?? []).map((item) => ({
-                value: String(item.id),
-                label: item.name ?? `Citizen ${item.id}`,
-              }))}
-              loading={citizensQuery.isLoading}
-            />
+            <Select options={citizenOptions} loading={citizensQuery.isLoading} />
           </Form.Item>
 
           <Form.Item name="locationId" label="Location" rules={[{ required: true }]}>
@@ -197,22 +253,36 @@ export default function IncidentsPage() {
 
           <Form.Item name="severityId" label="Severity" rules={[{ required: true }]}>
             <Select
-              options={(severitiesQuery.data ?? []).map((item) => ({
-                value: String(item.id),
-                label: item.level ?? `Severity ${item.id}`,
-              }))}
+              options={severityOptions}
+              optionRender={(option) => {
+                const description = option.data.description;
+                if (typeof description !== "string" || description.length === 0) {
+                  return <span>{String(option.label)}</span>;
+                }
+
+                return (
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      width: "100%",
+                    }}
+                  >
+                    <span>{String(option.label)}</span>
+                    <Tooltip title={description}>
+                      <InfoCircleOutlined style={{ color: "#1677ff" }} />
+                    </Tooltip>
+                  </span>
+                );
+              }}
               loading={severitiesQuery.isLoading}
             />
           </Form.Item>
 
           <Form.Item name="statusId" label="Status" rules={[{ required: true }]}>
-            <Select
-              options={(statusesQuery.data ?? []).map((item) => ({
-                value: String(item.id),
-                label: item.name ?? `Status ${item.id}`,
-              }))}
-              loading={statusesQuery.isLoading}
-            />
+            <Select options={statusOptions} loading={statusesQuery.isLoading} />
           </Form.Item>
         </Form>
       </Modal>

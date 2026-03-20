@@ -65,12 +65,13 @@ export default function CitizensPage() {
             }}
             columns={[
               {
-                title: "ID",
-                dataIndex: "id",
-                key: "id",
-                render: (value: string | number) => <Link href={`/citizens/${value}`}>{value}</Link>,
+                title: "Name",
+                dataIndex: "name",
+                key: "name",
+                render: (value: string | undefined, record: { id: string | number }) => (
+                  <Link href={`/citizens/${record.id}`}>{value || `Citizen ${record.id}`}</Link>
+                ),
               },
-              { title: "Name", dataIndex: "name", key: "name" },
               { title: "Contact", dataIndex: "contactInfo", key: "contactInfo" },
               { title: "Preferred Channel", dataIndex: "preferredChannel", key: "preferredChannel" },
             ]}

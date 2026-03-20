@@ -77,6 +77,14 @@ function formatDisplayValue(value: unknown): string {
   return String(value);
 }
 
+function humanizeKey(value: string): string {
+  return value
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (char) => char.toUpperCase())
+    .replace(/\bId\b/i, "ID")
+    .trim();
+}
+
 function normalizeFormValues(
   values: Record<string, unknown>,
   fields: CrudFieldConfig[],
@@ -289,7 +297,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
         const endpoint = getCrudEndpoint(resourceKey, "list");
         if (!endpoint) {
-          return [] as Array<{ value: string; label: string }>;
+          return [] as Array<{ value: string; label: string; description?: string }>;
         }
 
         const result = await requestCrudEndpoint<unknown>(endpoint);
@@ -312,13 +320,19 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         return typedItems.map((item) => ({
           value: String(item[valueField] ?? item.id ?? ""),
           label: String(item[labelField] ?? item.name ?? item.description ?? item.id ?? "Unknown"),
+          description:
+            typeof item.definition === "string"
+              ? item.definition
+              : typeof item.description === "string"
+                ? item.description
+                : undefined,
         }));
       },
     })),
   });
 
   const optionsByResource = useMemo(() => {
-    const map = new Map<string, Array<{ value: string; label: string }>>();
+    const map = new Map<string, Array<{ value: string; label: string; description?: string }>>();
 
     optionResources.forEach(({ resourceKey }, index) => {
       map.set(resourceKey, optionQueries[index]?.data ?? []);
@@ -354,7 +368,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   }, [optionQueries, optionResources]);
 
   const optionsByField = useMemo(() => {
-    const output: Record<string, Array<{ value: string; label: string }>> = {};
+    const output: Record<string, Array<{ value: string; label: string; description?: string }>> = {};
     const allFields = [...createFields, ...updateFields, ...linkMeFields, ...reportFields];
 
     for (const field of allFields) {
@@ -367,6 +381,32 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
     return output;
   }, [createFields, linkMeFields, optionsByResource, reportFields, updateFields]);
+
+  const selectLabelsByField = useMemo(() => {
+    const output: Record<string, Map<string, string>> = {};
+
+    Object.entries(optionsByField).forEach(([fieldName, options]) => {
+      output[fieldName] = new Map(options.map((option) => [option.value, option.label]));
+    });
+
+    return output;
+  }, [optionsByField]);
+
+  const fieldLabels = useMemo(() => {
+    const output = new Map<string, string>();
+    const allFields = [...createFields, ...updateFields, ...linkMeFields, ...reportFields];
+
+    allFields.forEach((field) => {
+      output.set(field.name, field.label);
+    });
+
+    return output;
+  }, [createFields, linkMeFields, reportFields, updateFields]);
+
+  const columnLabelsByField = useMemo(
+    () => Object.fromEntries(fieldLabels.entries()),
+    [fieldLabels],
+  );
 
   let createDependencyIssue: { message: string; retry: () => void } | null = null;
   for (const field of createFields) {
@@ -563,6 +603,8 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           <CrudTable
             rows={rows}
             loading={listQuery.isFetching}
+            columnLabelsByField={columnLabelsByField}
+            selectLabelsByField={selectLabelsByField}
             canViewDetails={canGet}
             canEdit={canUpdate}
             canDelete={canDelete}
@@ -684,8 +726,10 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         {detailsQuery.data ? (
           <Descriptions size="small" column={1}>
             {Object.entries(detailsQuery.data).map(([key, value]) => (
-              <Descriptions.Item key={key} label={key}>
-                {formatDisplayValue(value)}
+              <Descriptions.Item key={key} label={fieldLabels.get(key) ?? humanizeKey(key)}>
+                {formatDisplayValue(
+                  selectLabelsByField[key]?.get(String(value ?? "")) ?? value,
+                )}
               </Descriptions.Item>
             ))}
           </Descriptions>

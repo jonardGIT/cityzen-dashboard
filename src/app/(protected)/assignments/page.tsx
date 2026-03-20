@@ -158,7 +158,6 @@ export default function AssignmentsPage() {
               },
             }}
             columns={[
-              { title: "ID", dataIndex: "id", key: "id", width: 100 },
               { title: "Incident", dataIndex: "incidentId", key: "incidentId" },
               { title: "Responder", dataIndex: "responderId", key: "responderId" },
               { title: "Status", dataIndex: "statusId", key: "statusId" },

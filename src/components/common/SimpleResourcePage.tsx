@@ -40,6 +40,11 @@ export function SimpleResourcePage<T extends { id: string | number; [key: string
     return allRows.slice(start, start + tableState.pageSize);
   }, [allRows, tableState.page, tableState.pageSize]);
 
+  const visibleColumns = useMemo(
+    () => columns.filter((column) => column.dataIndex !== "id" && column.key !== "id"),
+    [columns],
+  );
+
   if (query.isLoading) {
     return <LoadingState />;
   }
@@ -74,7 +79,7 @@ export function SimpleResourcePage<T extends { id: string | number; [key: string
                 tableState.setPageSize(pageSize);
               },
             }}
-            columns={columns}
+            columns={visibleColumns}
           />
         </Space>
       </Card>
