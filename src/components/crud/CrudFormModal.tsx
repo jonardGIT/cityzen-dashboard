@@ -1,6 +1,6 @@
 "use client";
 
-import { Form, Input, Modal, Select } from "antd";
+import { Alert, Button, Form, Input, Modal, Select } from "antd";
 import type { FormInstance } from "antd";
 import type { CrudFieldConfig } from "@/features/dynamic-crud/types";
 
@@ -14,6 +14,9 @@ interface CrudFormModalProps {
   onCancel: () => void;
   onSubmit: () => void;
   isUpdate?: boolean;
+  submitDisabled?: boolean;
+  submitDisabledMessage?: string;
+  onRetrySubmitDependency?: () => void;
 }
 
 export function CrudFormModal({
@@ -26,6 +29,9 @@ export function CrudFormModal({
   onCancel,
   onSubmit,
   isUpdate,
+  submitDisabled,
+  submitDisabledMessage,
+  onRetrySubmitDependency,
 }: CrudFormModalProps) {
   return (
     <Modal
@@ -34,9 +40,25 @@ export function CrudFormModal({
       onCancel={onCancel}
       onOk={onSubmit}
       confirmLoading={submitting}
+      okButtonProps={{ disabled: submitDisabled }}
       destroyOnHidden
     >
       <Form<Record<string, unknown>> form={form} layout="vertical" requiredMark={false}>
+        {submitDisabledMessage ? (
+          <Alert
+            showIcon
+            type="error"
+            style={{ marginBottom: 16 }}
+            message={submitDisabledMessage}
+            action={
+              onRetrySubmitDependency ? (
+                <Button size="small" onClick={onRetrySubmitDependency}>
+                  Retry
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : null}
         {fields.map((field) => {
           const rules = field.required
             ? [{ required: true, message: `${field.label} is required` }]
@@ -111,6 +133,13 @@ export function toInitialFormValues(values: Record<string, unknown>, fields: Cru
   const normalized: Record<string, unknown> = { ...values };
 
   for (const field of fields) {
+    if (field.type === "select") {
+      const value = normalized[field.name];
+      if (value !== undefined && value !== null && value !== "") {
+        normalized[field.name] = String(value);
+      }
+    }
+
     if (field.type === "datetime") {
       const value = normalized[field.name];
       if (typeof value === "string" && value.length > 0) {

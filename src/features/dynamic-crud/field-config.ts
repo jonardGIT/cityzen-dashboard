@@ -22,10 +22,17 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
   ],
   responders: [
     { name: "name", label: "Name", type: "text", required: true },
-    { name: "agency", label: "Agency", type: "text" },
+    {
+      name: "agencyId",
+      label: "Agency",
+      type: "select",
+      required: true,
+      optionSource: { resource: "agencies", valueField: "id", labelField: "name" },
+    },
     { name: "role", label: "Role", type: "text" },
     { name: "contactInfo", label: "Contact Info", type: "text" },
   ],
+  agencies: [{ name: "name", label: "Name", type: "text", required: true }],
   statuses: [{ name: "name", label: "Name", type: "text", required: true }],
   categories: [
     { name: "name", label: "Name", type: "text", required: true },

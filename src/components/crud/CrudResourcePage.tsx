@@ -35,6 +35,48 @@ import { Role } from "@/types/auth";
 
 const { Title } = Typography;
 
+function formatDisplayValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "N/A";
+  }
+
+  if (Array.isArray(value)) {
+    const items = value.map((item) => formatDisplayValue(item)).filter((item) => item !== "N/A");
+    return items.length > 0 ? items.join(", ") : "N/A";
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const fullName = [record.firstName, record.lastName]
+      .filter((part): part is string => typeof part === "string" && part.length > 0)
+      .join(" ");
+
+    if (typeof record.name === "string" && record.name.length > 0) {
+      return record.name;
+    }
+
+    if (fullName.length > 0) {
+      return fullName;
+    }
+
+    if (typeof record.label === "string" && record.label.length > 0) {
+      return record.label;
+    }
+
+    if (typeof record.description === "string" && record.description.length > 0) {
+      return record.description;
+    }
+
+    if (typeof record.email === "string" && record.email.length > 0) {
+      return record.email;
+    }
+
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
 function normalizeFormValues(
   values: Record<string, unknown>,
   fields: CrudFieldConfig[],
@@ -50,6 +92,15 @@ function normalizeFormValues(
     }
 
     if (!isUpdate && raw === undefined) {
+      continue;
+    }
+
+    if (
+      field.type === "select" &&
+      typeof raw === "string" &&
+      /^-?\d+$/.test(raw)
+    ) {
+      output[field.name] = Number(raw);
       continue;
     }
 
@@ -206,7 +257,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   });
 
   const optionResources = useMemo(() => {
-    const resources = new Set<string>();
+    const resources = new Map<string, CrudFieldConfig["optionSource"]>();
     const allFieldSets = [createFields, updateFields, linkMeFields, reportFields];
 
     for (const fieldSet of allFieldSets) {
@@ -215,15 +266,20 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           continue;
         }
 
-        resources.add(field.optionSource.resource);
+        if (!resources.has(field.optionSource.resource)) {
+          resources.set(field.optionSource.resource, field.optionSource);
+        }
       }
     }
 
-    return Array.from(resources);
+    return Array.from(resources.entries()).map(([resourceKey, optionSource]) => ({
+      resourceKey,
+      optionSource,
+    }));
   }, [createFields, linkMeFields, reportFields, updateFields]);
 
   const optionQueries = useQueries({
-    queries: optionResources.map((resourceKey) => ({
+    queries: optionResources.map(({ resourceKey, optionSource }) => ({
       queryKey: ["crud", "options", resourceKey],
       queryFn: async () => {
         if (resourceKey === "roles") {
@@ -237,7 +293,11 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
         const result = await requestCrudEndpoint<unknown>(endpoint);
         if (!result.success || !result.data) {
-          return [] as Array<{ value: string; label: string }>;
+          throw new CrudRequestError(
+            result.error?.status ?? 500,
+            result.error?.message ?? `Failed to load ${resourceKey}.`,
+            result.error?.details,
+          );
         }
 
         const items = Array.isArray(result.data)
@@ -245,10 +305,12 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           : (result.data as { data?: unknown[] }).data ?? [];
 
         const typedItems = Array.isArray(items) ? (items as Record<string, unknown>[]) : [];
+        const valueField = optionSource?.valueField ?? "id";
+        const labelField = optionSource?.labelField ?? "name";
 
         return typedItems.map((item) => ({
-          value: String(item.id ?? ""),
-          label: String(item.name ?? item.description ?? item.id ?? "Unknown"),
+          value: String(item[valueField] ?? item.id ?? ""),
+          label: String(item[labelField] ?? item.name ?? item.description ?? item.id ?? "Unknown"),
         }));
       },
     })),
@@ -257,8 +319,34 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   const optionsByResource = useMemo(() => {
     const map = new Map<string, Array<{ value: string; label: string }>>();
 
-    optionResources.forEach((resourceKey, index) => {
+    optionResources.forEach(({ resourceKey }, index) => {
       map.set(resourceKey, optionQueries[index]?.data ?? []);
+    });
+
+    return map;
+  }, [optionQueries, optionResources]);
+
+  const optionQueryStateByResource = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        isError: boolean;
+        isFetching: boolean;
+        error: unknown;
+        refetch: () => void;
+      }
+    >();
+
+    optionResources.forEach(({ resourceKey }, index) => {
+      const query = optionQueries[index];
+      map.set(resourceKey, {
+        isError: Boolean(query?.isError),
+        isFetching: Boolean(query?.isFetching),
+        error: query?.error,
+        refetch: () => {
+          void query?.refetch();
+        },
+      });
     });
 
     return map;
@@ -278,6 +366,42 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
     return output;
   }, [createFields, linkMeFields, optionsByResource, reportFields, updateFields]);
+
+  let createDependencyIssue: { message: string; retry: () => void } | null = null;
+  for (const field of createFields) {
+    if (field.type !== "select" || !field.optionSource) {
+      continue;
+    }
+
+    const queryState = optionQueryStateByResource.get(field.optionSource.resource);
+    if (!queryState?.isError) {
+      continue;
+    }
+
+    createDependencyIssue = {
+      message: `Unable to load ${field.label.toLowerCase()} options. Retry before submitting.`,
+      retry: queryState.refetch,
+    };
+    break;
+  }
+
+  let updateDependencyIssue: { message: string; retry: () => void } | null = null;
+  for (const field of updateFields) {
+    if (field.type !== "select" || !field.optionSource) {
+      continue;
+    }
+
+    const queryState = optionQueryStateByResource.get(field.optionSource.resource);
+    if (!queryState?.isError) {
+      continue;
+    }
+
+    updateDependencyIssue = {
+      message: `Unable to load ${field.label.toLowerCase()} options. Retry before submitting.`,
+      retry: queryState.refetch,
+    };
+    break;
+  }
 
   if (!resource) {
     return <Result status="404" title="Unknown resource" subTitle="This dashboard resource is not configured." />;
@@ -467,6 +591,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         fields={createFields}
         form={createForm}
         optionsByField={optionsByField}
+        submitDisabled={Boolean(createDependencyIssue)}
+        submitDisabledMessage={createDependencyIssue?.message}
+        onRetrySubmitDependency={createDependencyIssue?.retry}
         onCancel={() => {
           setCreateOpen(false);
           createForm.resetFields();
@@ -482,6 +609,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         form={editForm}
         optionsByField={optionsByField}
         isUpdate
+        submitDisabled={Boolean(updateDependencyIssue)}
+        submitDisabledMessage={updateDependencyIssue?.message}
+        onRetrySubmitDependency={updateDependencyIssue?.retry}
         onCancel={() => {
           setEditOpen(false);
           editForm.resetFields();
@@ -554,11 +684,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           <Descriptions size="small" column={1}>
             {Object.entries(detailsQuery.data).map(([key, value]) => (
               <Descriptions.Item key={key} label={key}>
-                {value === null || value === undefined || value === ""
-                  ? "N/A"
-                  : typeof value === "object"
-                    ? JSON.stringify(value)
-                    : String(value)}
+                {formatDisplayValue(value)}
               </Descriptions.Item>
             ))}
           </Descriptions>

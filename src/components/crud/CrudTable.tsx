@@ -5,6 +5,48 @@ import { useMemo } from "react";
 import { useTableQueryParams } from "@/hooks/useTableQueryParams";
 import type { BaseEntity } from "@/types/api";
 
+function formatCellValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "N/A";
+  }
+
+  if (Array.isArray(value)) {
+    const items = value.map((item) => formatCellValue(item)).filter((item) => item !== "N/A");
+    return items.length > 0 ? items.join(", ") : "N/A";
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const fullName = [record.firstName, record.lastName]
+      .filter((part): part is string => typeof part === "string" && part.length > 0)
+      .join(" ");
+
+    if (typeof record.name === "string" && record.name.length > 0) {
+      return record.name;
+    }
+
+    if (fullName.length > 0) {
+      return fullName;
+    }
+
+    if (typeof record.label === "string" && record.label.length > 0) {
+      return record.label;
+    }
+
+    if (typeof record.description === "string" && record.description.length > 0) {
+      return record.description;
+    }
+
+    if (typeof record.email === "string" && record.email.length > 0) {
+      return record.email;
+    }
+
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
 interface CrudTableProps {
   rows: BaseEntity[];
   loading?: boolean;
@@ -63,15 +105,7 @@ export function CrudTable({
       dataIndex: key,
       key,
       render: (value: unknown) => {
-        if (value === null || value === undefined || value === "") {
-          return "N/A";
-        }
-
-        if (typeof value === "object") {
-          return JSON.stringify(value);
-        }
-
-        return String(value);
+        return formatCellValue(value);
       },
     })),
     {

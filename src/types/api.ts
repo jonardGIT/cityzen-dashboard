@@ -24,12 +24,23 @@ export interface Citizen extends BaseEntity {
   preferredChannel?: string;
 }
 
+export interface Agency extends BaseEntity {
+  name?: string;
+}
+
 export interface Responder extends BaseEntity {
   name?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
   phoneNumber?: string;
+  role?: string;
+  contactInfo?: string;
+  agencyId?: number;
+  agency?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface Status extends BaseEntity {
