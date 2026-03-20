@@ -26,6 +26,7 @@ export interface Citizen extends BaseEntity {
 
 export interface Agency extends BaseEntity {
   name?: string;
+  contactNumber?: string;
 }
 
 export interface Responder extends BaseEntity {

@@ -32,7 +32,10 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
     { name: "role", label: "Role", type: "text" },
     { name: "contactInfo", label: "Contact Info", type: "text" },
   ],
-  agencies: [{ name: "name", label: "Name", type: "text", required: true }],
+  agencies: [
+    { name: "name", label: "Name", type: "text", required: true },
+    { name: "contactNumber", label: "Contact Number", type: "text" },
+  ],
   statuses: [{ name: "name", label: "Name", type: "text", required: true }],
   categories: [
     { name: "name", label: "Name", type: "text", required: true },
