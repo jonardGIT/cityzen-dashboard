@@ -31,6 +31,14 @@ function formatDateLikeString(value: string): string | null {
   return DATE_TIME_FORMATTER.format(parsed);
 }
 
+function camelCaseToTitleCase(str: string): string {
+  return str
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (char) => char.toUpperCase())
+    .replace(/\bId\b/i, "ID")
+    .trim();
+}
+
 function formatCellValue(value: unknown): string {
   if (value === null || value === undefined || value === "") {
     return "N/A";
@@ -131,7 +139,7 @@ export function CrudTable({
 
   const columns = [
     ...keys.map((key) => ({
-      title: key,
+      title: camelCaseToTitleCase(key),
       dataIndex: key,
       key,
       render: (value: unknown) => {
