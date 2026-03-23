@@ -130,7 +130,7 @@ export default function DashboardPage() {
               title: "Status",
               dataIndex: "statusId",
               key: "statusId",
-              render: (value: string | number) => (
+              render: (value: string) => (
                 <Tag color="blue">{statusLabels.get(String(value)) ?? value ?? "N/A"}</Tag>
               ),
             },

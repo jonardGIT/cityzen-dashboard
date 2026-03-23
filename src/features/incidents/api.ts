@@ -13,11 +13,11 @@ import type { Incident } from "@/types/api";
 
 export interface CreateIncidentDto {
   description: string;
-  citizenId: string | number;
-  locationId: string | number;
-  categoryId: string | number;
-  severityId: string | number;
-  statusId: string | number;
+  citizenId: string;
+  locationId: string;
+  categoryId: string;
+  severityId: string;
+  statusId: string;
 }
 
 export async function fetchIncidents(

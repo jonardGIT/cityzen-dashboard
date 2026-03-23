@@ -64,7 +64,7 @@ export function useCrudResource(resourceName: string, queryState: ListQueryState
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, payload }: { id: string | number; payload: Record<string, unknown> }) => {
+    mutationFn: async ({ id, payload }: { id: string; payload: Record<string, unknown> }) => {
       if (!updateEndpoint) {
         throw new Error("Update operation is not configured for this resource.");
       }
@@ -82,7 +82,7 @@ export function useCrudResource(resourceName: string, queryState: ListQueryState
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string | number) => {
+    mutationFn: async (id: string) => {
       if (!deleteEndpoint) {
         throw new Error("Delete operation is not configured for this resource.");
       }
@@ -98,7 +98,7 @@ export function useCrudResource(resourceName: string, queryState: ListQueryState
     },
   });
 
-  const getById = async (id: string | number) => {
+  const getById = async (id: string) => {
     if (!getEndpoint) {
       throw new Error("Get operation is not configured for this resource.");
     }

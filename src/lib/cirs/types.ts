@@ -1,7 +1,8 @@
-export type EntityId = string | number;
+// Supabase generates UUIDs natively via gen_random_uuid(); all entity IDs are strings.
+export type EntityId = string;
 
 export interface BaseEntity {
-  id: EntityId;
+  id: string;
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
@@ -65,9 +66,9 @@ export interface Responder extends BaseEntity {
   phoneNumber?: string;
   role?: string;
   contactInfo?: string;
-  agencyId?: number;
+  agencyId?: string;
   agency?: {
-    id: number;
+    id: string;
     name: string;
   };
 }

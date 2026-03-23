@@ -12,9 +12,9 @@ import {
 import type { Assignment } from "@/types/api";
 
 export interface CreateAssignmentDto {
-  incidentId: string | number;
-  responderId: string | number;
-  statusId?: string | number;
+  incidentId: string;
+  responderId: string;
+  statusId?: string;
   notes?: string;
 }
 

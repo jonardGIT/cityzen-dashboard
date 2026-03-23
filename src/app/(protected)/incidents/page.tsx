@@ -206,7 +206,7 @@ export default function IncidentsPage() {
                 title: "Citizen",
                 dataIndex: "citizenId",
                 key: "citizenId",
-                render: (value: string | number) =>
+                render: (value: string) =>
                   citizenLabels.get(String(value)) ?? `Citizen ${value ?? "N/A"}`,
               },
               { title: "Location ID", dataIndex: "locationId", key: "locationId" },
@@ -214,7 +214,7 @@ export default function IncidentsPage() {
                 title: "Status",
                 dataIndex: "statusId",
                 key: "statusId",
-                render: (value: string | number) =>
+                render: (value: string) =>
                   statusLabels.get(String(value)) ?? `Status ${value ?? "N/A"}`,
               },
               {

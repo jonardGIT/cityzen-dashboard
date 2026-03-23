@@ -10,7 +10,7 @@ import type { PaginatedResponse } from "@/lib/api/pagination";
 
 const { Title } = Typography;
 
-interface SimpleResourcePageProps<T extends { id: string | number; [key: string]: unknown }> {
+interface SimpleResourcePageProps<T extends { id: string; [key: string]: unknown }> {
   title: string;
   listQueryState: ListQueryState;
   listQuerySetters: ListQuerySetters;
@@ -24,7 +24,7 @@ interface SimpleResourcePageProps<T extends { id: string | number; [key: string]
   columns: Array<{ title: string; dataIndex: string; key: string }>;
 }
 
-export function SimpleResourcePage<T extends { id: string | number; [key: string]: unknown }>({
+export function SimpleResourcePage<T extends { id: string; [key: string]: unknown }>({
   title,
   listQueryState,
   listQuerySetters,

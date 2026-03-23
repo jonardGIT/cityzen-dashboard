@@ -75,7 +75,7 @@ export default function CitizensPage() {
                 title: "Name",
                 dataIndex: "name",
                 key: "name",
-                render: (value: string | undefined, record: { id: string | number }) => (
+                render: (value: string | undefined, record: { id: string }) => (
                   <Link href={`/citizens/${record.id}`}>{value || `Citizen ${record.id}`}</Link>
                 ),
               },

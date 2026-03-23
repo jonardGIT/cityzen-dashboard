@@ -66,12 +66,12 @@ export async function createUser(payload: CreateUserDto) {
   return unwrapEntityResponse<User>(response.data);
 }
 
-export async function updateUser(userId: string | number, payload: UpdateUserDto) {
+export async function updateUser(userId: string, payload: UpdateUserDto) {
   const response = await usersApiClient.patch<unknown>(`/users/${userId}`, payload);
   return unwrapEntityResponse<User>(response.data);
 }
 
-export async function deleteUser(userId: string | number) {
+export async function deleteUser(userId: string) {
   await usersApiClient.delete(`/users/${userId}`);
 }
 
@@ -121,7 +121,7 @@ export function useCreateUserMutation() {
 export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, payload }: { userId: string | number; payload: UpdateUserDto }) =>
+    mutationFn: ({ userId, payload }: { userId: string; payload: UpdateUserDto }) =>
       updateUser(userId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
@@ -130,7 +130,7 @@ export function useUpdateUserMutation() {
 export function useDeleteUserMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (userId: string | number) => deleteUser(userId),
+    mutationFn: (userId: string) => deleteUser(userId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
 }
