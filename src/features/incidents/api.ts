@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/api/clients";
-import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
+import { unwrapEntityResponse } from "@/lib/api/normalize";
+import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
 import type { Incident } from "@/types/api";
 
 export interface CreateIncidentDto {
@@ -12,9 +13,16 @@ export interface CreateIncidentDto {
   statusId: string | number;
 }
 
-export async function fetchIncidents() {
-  const response = await authClient.get<unknown>("/incidents");
-  return unwrapListResponse<Incident>(response.data);
+export async function fetchIncidents(
+  page = 1,
+  pageSize = 10,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<Incident>> {
+  const response = await authClient.get<unknown>("/incidents", {
+    params: { page, pageSize },
+    signal,
+  });
+  return adaptPaginatedResponse<Incident>(response.data, page, pageSize);
 }
 
 export async function createIncident(payload: CreateIncidentDto) {
@@ -22,8 +30,12 @@ export async function createIncident(payload: CreateIncidentDto) {
   return unwrapEntityResponse<Incident>(response.data);
 }
 
-export function useIncidentsQuery() {
-  return useQuery({ queryKey: ["incidents"], queryFn: fetchIncidents });
+export function useIncidentsQuery(page = 1, pageSize = 10) {
+  return useQuery({
+    queryKey: ["incidents", page, pageSize],
+    queryFn: ({ signal }) => fetchIncidents(page, pageSize, signal),
+    placeholderData: (previous) => previous,
+  });
 }
 
 export function useCreateIncidentMutation() {

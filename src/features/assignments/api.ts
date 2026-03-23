@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/api/clients";
-import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
+import { unwrapEntityResponse } from "@/lib/api/normalize";
+import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
 import type { Assignment } from "@/types/api";
 
 export interface CreateAssignmentDto {
@@ -10,9 +11,16 @@ export interface CreateAssignmentDto {
   notes?: string;
 }
 
-export async function fetchAssignments() {
-  const response = await authClient.get<unknown>("/assignments");
-  return unwrapListResponse<Assignment>(response.data);
+export async function fetchAssignments(
+  page = 1,
+  pageSize = 10,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<Assignment>> {
+  const response = await authClient.get<unknown>("/assignments", {
+    params: { page, pageSize },
+    signal,
+  });
+  return adaptPaginatedResponse<Assignment>(response.data, page, pageSize);
 }
 
 export async function createAssignment(payload: CreateAssignmentDto) {
@@ -20,8 +28,12 @@ export async function createAssignment(payload: CreateAssignmentDto) {
   return unwrapEntityResponse<Assignment>(response.data);
 }
 
-export function useAssignmentsQuery() {
-  return useQuery({ queryKey: ["assignments"], queryFn: fetchAssignments });
+export function useAssignmentsQuery(page = 1, pageSize = 10) {
+  return useQuery({
+    queryKey: ["assignments", page, pageSize],
+    queryFn: ({ signal }) => fetchAssignments(page, pageSize, signal),
+    placeholderData: (previous) => previous,
+  });
 }
 
 export function useCreateAssignmentMutation() {

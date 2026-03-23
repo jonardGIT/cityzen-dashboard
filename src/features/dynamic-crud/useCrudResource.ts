@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
+import { unwrapEntityResponse } from "@/lib/api/normalize";
+import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
 import { getCrudResource } from "@/features/dynamic-crud/config";
 import {
   assertCrudSuccess,
@@ -10,7 +11,7 @@ import {
 } from "@/features/dynamic-crud/api-client";
 import type { BaseEntity } from "@/types/api";
 
-export function useCrudResource(resourceName: string) {
+export function useCrudResource(resourceName: string, page = 1, pageSize = 10) {
   const queryClient = useQueryClient();
   const config = useMemo(() => getCrudResource(resourceName), [resourceName]);
 
@@ -21,17 +22,21 @@ export function useCrudResource(resourceName: string) {
   const deleteEndpoint = config?.endpoints.delete;
 
   const listQuery = useQuery({
-    queryKey: ["crud", resourceName, "list"],
+    queryKey: ["crud", resourceName, "list", page, pageSize],
     enabled: Boolean(listEndpoint),
-    queryFn: async () => {
+    queryFn: async ({ signal }): Promise<PaginatedResponse<BaseEntity>> => {
       if (!listEndpoint) {
-        return [] as BaseEntity[];
+        return adaptPaginatedResponse<BaseEntity>([], page, pageSize);
       }
 
-      const result = await requestCrudEndpoint<unknown>(listEndpoint);
+      const result = await requestCrudEndpoint<unknown>(listEndpoint, {
+        queryParams: { page, pageSize },
+        signal,
+      });
       const payload = assertCrudSuccess(result);
-      return unwrapListResponse<BaseEntity>(payload);
+      return adaptPaginatedResponse<BaseEntity>(payload, page, pageSize);
     },
+    placeholderData: (previous) => previous,
   });
 
   const createMutation = useMutation({

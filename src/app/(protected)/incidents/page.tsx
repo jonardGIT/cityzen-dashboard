@@ -46,39 +46,24 @@ interface IncidentFormValues {
 export default function IncidentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
-  const incidentsQuery = useIncidentsQuery();
-  const citizensQuery = useCitizensQuery();
-  const locationsQuery = useLocationsQuery();
-  const categoriesQuery = useCategoriesQuery();
-  const severitiesQuery = useSeveritiesQuery();
-  const statusesQuery = useStatusesQuery();
+  const citizensQuery = useCitizensQuery(1, 200);
+  const locationsQuery = useLocationsQuery(1, 200);
+  const categoriesQuery = useCategoriesQuery(1, 200);
+  const severitiesQuery = useSeveritiesQuery(1, 200);
+  const statusesQuery = useStatusesQuery(1, 200);
   const createMutation = useCreateIncidentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<IncidentFormValues>();
 
   const tableState = useTableQueryParams(10);
 
-  const allRows = useMemo(() => {
-    const rows = incidentsQuery.data ?? [];
-    if (!tableState.search) {
-      return rows;
-    }
-
-    return rows.filter((item) =>
-      JSON.stringify(item)
-        .toLowerCase()
-        .includes(tableState.search.toLowerCase()),
-    );
-  }, [incidentsQuery.data, tableState.search]);
-
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  const listQuery = useIncidentsQuery(tableState.page, tableState.pageSize);
+  const rows = listQuery.data?.data ?? [];
+  const pagination = listQuery.data?.pagination;
 
   const severityOptions = useMemo(
     () =>
-      (severitiesQuery.data ?? []).map((item) => ({
+      (severitiesQuery.data?.data ?? []).map((item) => ({
         value: String(item.id),
         label: item.level ?? `Severity ${item.id}`,
         description: item.definition,
@@ -88,7 +73,7 @@ export default function IncidentsPage() {
 
   const citizenOptions = useMemo(
     () =>
-      (citizensQuery.data ?? []).map((item) => ({
+      (citizensQuery.data?.data ?? []).map((item) => ({
         value: String(item.id),
         label: item.name ?? `Citizen ${item.id}`,
       })),
@@ -97,7 +82,7 @@ export default function IncidentsPage() {
 
   const statusOptions = useMemo(
     () =>
-      (statusesQuery.data ?? []).map((item) => ({
+      (statusesQuery.data?.data ?? []).map((item) => ({
         value: String(item.id),
         label: item.name ?? `Status ${item.id}`,
       })),
@@ -114,12 +99,12 @@ export default function IncidentsPage() {
     [statusOptions],
   );
 
-  if (incidentsQuery.isLoading) {
+  if (listQuery.isLoading) {
     return <LoadingState />;
   }
 
-  if (incidentsQuery.error) {
-    return <ErrorState message={String(incidentsQuery.error)} />;
+  if (listQuery.error) {
+    return <ErrorState message={String(listQuery.error)} />;
   }
 
   const canCreate = hasRole(...CAN_CREATE_INCIDENT);
@@ -172,15 +157,20 @@ export default function IncidentsPage() {
           />
           <Table
             rowKey="id"
-            dataSource={pagedRows}
+            loading={listQuery.isFetching}
+            dataSource={rows}
             scroll={{ x: 980 }}
             pagination={{
               current: tableState.page,
               pageSize: tableState.pageSize,
-              total: allRows.length,
-              onChange: (page, pageSize) => {
-                tableState.setPage(page);
-                tableState.setPageSize(pageSize);
+              total: pagination?.total ?? rows.length,
+              onChange: (nextPage, nextPageSize) => {
+                if (nextPageSize !== tableState.pageSize) {
+                  tableState.setPageSize(nextPageSize);
+                  return;
+                }
+
+                tableState.setPage(nextPage);
               },
             }}
             columns={[
@@ -233,7 +223,7 @@ export default function IncidentsPage() {
 
           <Form.Item name="locationId" label="Location" rules={[{ required: true }]}>
             <Select
-              options={(locationsQuery.data ?? []).map((item) => ({
+              options={(locationsQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label: item.name ?? `Location ${item.id}`,
               }))}
@@ -243,7 +233,7 @@ export default function IncidentsPage() {
 
           <Form.Item name="categoryId" label="Category" rules={[{ required: true }]}>
             <Select
-              options={(categoriesQuery.data ?? []).map((item) => ({
+              options={(categoriesQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label: item.name ?? `Category ${item.id}`,
               }))}

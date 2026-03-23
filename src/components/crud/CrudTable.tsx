@@ -1,9 +1,9 @@
 "use client";
 
 import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
-import { Button, Input, Space, Table, Tooltip } from "antd";
+import { Button, Input, Skeleton, Space, Table, Tooltip } from "antd";
 import { useMemo } from "react";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import type { PaginationMeta } from "@/lib/api/pagination";
 import type { BaseEntity } from "@/types/api";
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -105,6 +105,13 @@ function formatCellValue(value: unknown, optionLabels?: Map<string, string>): st
 interface CrudTableProps {
   rows: BaseEntity[];
   loading?: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
+  page: number;
+  pageSize: number;
+  onPageChange: (value: number) => void;
+  onPageSizeChange: (value: number) => void;
+  paginationMeta?: PaginationMeta;
   columnLabelsByField?: Record<string, string>;
   selectLabelsByField?: Record<string, Map<string, string>>;
   onView: (row: BaseEntity) => void;
@@ -118,6 +125,13 @@ interface CrudTableProps {
 export function CrudTable({
   rows,
   loading,
+  search,
+  onSearchChange,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  paginationMeta,
   columnLabelsByField,
   selectLabelsByField,
   onView,
@@ -127,24 +141,17 @@ export function CrudTable({
   canEdit,
   canDelete,
 }: CrudTableProps) {
-  const tableState = useTableQueryParams(10);
-
-  const allRows = useMemo(() => {
-    if (!tableState.search) {
+  const filteredRows = useMemo(() => {
+    if (!search) {
       return rows;
     }
 
     return rows.filter((row) =>
       JSON.stringify(row)
         .toLowerCase()
-        .includes(tableState.search.toLowerCase()),
+        .includes(search.toLowerCase()),
     );
-  }, [rows, tableState.search]);
-
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  }, [rows, search]);
 
   const keys = useMemo(() => {
     const keySet = new Set<string>();
@@ -220,24 +227,29 @@ export function CrudTable({
     <Space orientation="vertical" style={{ width: "100%" }}>
       <Input.Search
         allowClear
-        value={tableState.search}
+        value={search}
         placeholder="Search records"
-        onChange={(event) => tableState.setSearch(event.target.value)}
+        onChange={(event) => onSearchChange(event.target.value)}
       />
+      {loading ? <Skeleton active paragraph={{ rows: 3 }} title={false} /> : null}
       <Table
         rowKey="id"
         loading={loading}
-        dataSource={pagedRows}
+        dataSource={filteredRows}
         scroll={{ x: 1024 }}
         columns={columns}
         locale={{ emptyText: "No records found" }}
         pagination={{
-          current: tableState.page,
-          pageSize: tableState.pageSize,
-          total: allRows.length,
-          onChange: (page, pageSize) => {
-            tableState.setPage(page);
-            tableState.setPageSize(pageSize);
+          current: page,
+          pageSize,
+          total: paginationMeta?.total ?? filteredRows.length,
+          onChange: (nextPage, nextPageSize) => {
+            if (nextPageSize !== pageSize) {
+              onPageSizeChange(nextPageSize);
+              return;
+            }
+
+            onPageChange(nextPage);
           },
         }}
       />

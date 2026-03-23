@@ -70,30 +70,26 @@ function formatRelativeTime(value: unknown): string | null {
 export default function AssignmentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
-  const assignmentsQuery = useAssignmentsQuery();
-  const incidentsQuery = useIncidentsQuery();
-  const respondersQuery = useRespondersQuery();
-  const statusesQuery = useStatusesQuery();
+  const tableState = useTableQueryParams(10);
+  const assignmentsQuery = useAssignmentsQuery(tableState.page, tableState.pageSize);
+  const incidentsQuery = useIncidentsQuery(1, 200);
+  const respondersQuery = useRespondersQuery(1, 200);
+  const statusesQuery = useStatusesQuery(1, 200);
   const createMutation = useCreateAssignmentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<AssignmentFormValues>();
-  const tableState = useTableQueryParams(10);
-
-  const allRows = useMemo(() => {
-    const rows = assignmentsQuery.data ?? [];
+  const rows = useMemo(() => {
+    const items = assignmentsQuery.data?.data ?? [];
     if (!tableState.search) {
-      return rows;
+      return items;
     }
 
-    return rows.filter((item) =>
+    return items.filter((item) =>
       JSON.stringify(item).toLowerCase().includes(tableState.search.toLowerCase()),
     );
   }, [assignmentsQuery.data, tableState.search]);
 
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  const pagination = assignmentsQuery.data?.pagination;
 
   if (assignmentsQuery.isLoading) {
     return <LoadingState />;
@@ -146,15 +142,20 @@ export default function AssignmentsPage() {
           />
           <Table
             rowKey="id"
-            dataSource={pagedRows}
+            loading={assignmentsQuery.isFetching}
+            dataSource={rows}
             scroll={{ x: 920 }}
             pagination={{
               current: tableState.page,
               pageSize: tableState.pageSize,
-              total: allRows.length,
-              onChange: (page, pageSize) => {
-                tableState.setPage(page);
-                tableState.setPageSize(pageSize);
+              total: pagination?.total ?? rows.length,
+              onChange: (nextPage, nextPageSize) => {
+                if (nextPageSize !== tableState.pageSize) {
+                  tableState.setPageSize(nextPageSize);
+                  return;
+                }
+
+                tableState.setPage(nextPage);
               },
             }}
             columns={[
@@ -209,7 +210,7 @@ export default function AssignmentsPage() {
         <Form<AssignmentFormValues> form={form} layout="vertical" requiredMark={false}>
           <Form.Item name="incidentId" label="Incident" rules={[{ required: true }]}>
             <Select
-              options={(incidentsQuery.data ?? []).map((item) => ({
+              options={(incidentsQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label: item.description ?? `Incident ${item.id}`,
               }))}
@@ -218,7 +219,7 @@ export default function AssignmentsPage() {
 
           <Form.Item name="responderId" label="Responder" rules={[{ required: true }]}>
             <Select
-              options={(respondersQuery.data ?? []).map((item) => ({
+              options={(respondersQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label:
                   item.name ??
@@ -231,7 +232,7 @@ export default function AssignmentsPage() {
           <Form.Item name="statusId" label="Status">
             <Select
               allowClear
-              options={(statusesQuery.data ?? []).map((item) => ({
+              options={(statusesQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label: item.name ?? `Status ${item.id}`,
               }))}

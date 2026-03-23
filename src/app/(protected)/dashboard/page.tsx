@@ -30,10 +30,22 @@ function formatDateTime(value: unknown): string {
 export default function DashboardPage() {
   const results = useQueries({
     queries: [
-      { queryKey: ["incidents"], queryFn: fetchIncidents },
-      { queryKey: ["assignments"], queryFn: fetchAssignments },
-      { queryKey: ["responders"], queryFn: fetchResponders },
-      { queryKey: ["statuses"], queryFn: fetchStatuses },
+      {
+        queryKey: ["incidents", 1, 10],
+        queryFn: ({ signal }) => fetchIncidents(1, 10, signal),
+      },
+      {
+        queryKey: ["assignments", 1, 10],
+        queryFn: ({ signal }) => fetchAssignments(1, 10, signal),
+      },
+      {
+        queryKey: ["responders", 1, 10],
+        queryFn: ({ signal }) => fetchResponders(1, 10, signal),
+      },
+      {
+        queryKey: ["statuses", 1, 10],
+        queryFn: ({ signal }) => fetchStatuses(1, 10, signal),
+      },
     ],
   });
 
@@ -48,10 +60,14 @@ export default function DashboardPage() {
     return <ErrorState message={String(firstError)} />;
   }
 
-  const incidents = incidentsQ.data ?? [];
-  const assignments = assignmentsQ.data ?? [];
-  const responders = respondersQ.data ?? [];
-  const statuses = statusesQ.data ?? [];
+  const incidents = incidentsQ.data?.data ?? [];
+  const assignments = assignmentsQ.data?.data ?? [];
+  const responders = respondersQ.data?.data ?? [];
+  const statuses = statusesQ.data?.data ?? [];
+  const incidentsTotal = incidentsQ.data?.pagination.total ?? incidents.length;
+  const assignmentsTotal = assignmentsQ.data?.pagination.total ?? assignments.length;
+  const respondersTotal = respondersQ.data?.pagination.total ?? responders.length;
+  const statusesTotal = statusesQ.data?.pagination.total ?? statuses.length;
   const statusLabels = new Map(
     statuses.map((status) => [String(status.id), status.name?.trim() || String(status.id)]),
   );
@@ -65,22 +81,22 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12} xl={6}>
           <Card>
-            <Statistic title="Incidents" value={incidents.length} />
+            <Statistic title="Incidents" value={incidentsTotal} />
           </Card>
         </Col>
         <Col xs={24} md={12} xl={6}>
           <Card>
-            <Statistic title="Assignments" value={assignments.length} />
+            <Statistic title="Assignments" value={assignmentsTotal} />
           </Card>
         </Col>
         <Col xs={24} md={12} xl={6}>
           <Card>
-            <Statistic title="Responders" value={responders.length} />
+            <Statistic title="Responders" value={respondersTotal} />
           </Card>
         </Col>
         <Col xs={24} md={12} xl={6}>
           <Card>
-            <Statistic title="Statuses" value={statuses.length} />
+            <Statistic title="Statuses" value={statusesTotal} />
           </Card>
         </Col>
       </Row>

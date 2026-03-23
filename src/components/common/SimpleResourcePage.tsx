@@ -1,44 +1,53 @@
 "use client";
 
-import { Card, Input, Space, Table, Typography } from "antd";
+import { Card, Input, Skeleton, Space, Table, Typography } from "antd";
 import { useMemo } from "react";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
+import type { PaginatedResponse } from "@/lib/api/pagination";
 
 const { Title } = Typography;
 
 interface SimpleResourcePageProps<T extends { id: string | number; [key: string]: unknown }> {
   title: string;
+  page: number;
+  pageSize: number;
+  search: string;
+  setPage: (value: number) => void;
+  setPageSize: (value: number) => void;
+  setSearch: (value: string) => void;
   query: {
     isLoading: boolean;
+    isFetching?: boolean;
     error: unknown;
-    data: T[] | undefined;
+    refetch?: () => void;
+    data: PaginatedResponse<T> | undefined;
   };
   columns: Array<{ title: string; dataIndex: string; key: string }>;
 }
 
 export function SimpleResourcePage<T extends { id: string | number; [key: string]: unknown }>({
   title,
+  page,
+  pageSize,
+  search,
+  setPage,
+  setPageSize,
+  setSearch,
   query,
   columns,
 }: SimpleResourcePageProps<T>) {
-  const tableState = useTableQueryParams(10);
-
-  const allRows = useMemo(() => {
-    const rows = query.data ?? [];
-    if (!tableState.search) {
-      return rows;
+  const rows = useMemo(() => {
+    const items = query.data?.data ?? [];
+    if (!search) {
+      return items;
     }
 
-    return rows.filter((item) =>
-      JSON.stringify(item).toLowerCase().includes(tableState.search.toLowerCase()),
+    return items.filter((item) =>
+      JSON.stringify(item).toLowerCase().includes(search.toLowerCase()),
     );
-  }, [query.data, tableState.search]);
+  }, [query.data, search]);
 
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  const pagination = query.data?.pagination;
 
   const visibleColumns = useMemo(
     () => columns.filter((column) => column.dataIndex !== "id" && column.key !== "id"),
@@ -64,19 +73,25 @@ export function SimpleResourcePage<T extends { id: string | number; [key: string
           <Input.Search
             allowClear
             placeholder={`Search ${title.toLowerCase()}`}
-            value={tableState.search}
-            onChange={(event) => tableState.setSearch(event.target.value)}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
           />
+          {query.isFetching ? <Skeleton active paragraph={{ rows: 3 }} title={false} /> : null}
           <Table
             rowKey="id"
-            dataSource={pagedRows}
+            loading={Boolean(query.isFetching)}
+            dataSource={rows}
             pagination={{
-              current: tableState.page,
-              pageSize: tableState.pageSize,
-              total: allRows.length,
-              onChange: (page, pageSize) => {
-                tableState.setPage(page);
-                tableState.setPageSize(pageSize);
+              current: page,
+              pageSize,
+              total: pagination?.total ?? rows.length,
+              onChange: (nextPage, nextPageSize) => {
+                if (nextPageSize !== pageSize) {
+                  setPageSize(nextPageSize);
+                  return;
+                }
+
+                setPage(nextPage);
               },
             }}
             columns={visibleColumns}

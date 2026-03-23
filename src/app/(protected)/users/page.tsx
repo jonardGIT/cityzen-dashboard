@@ -55,7 +55,8 @@ export default function UsersPage() {
   const { message } = App.useApp();
   const { hasRole, user } = useAuth();
   const canManage = hasRole(...CAN_MANAGE_USERS);
-  const usersQuery = useUsersQuery(canManage);
+  const tableState = useTableQueryParams(10);
+  const usersQuery = useUsersQuery(tableState.page, tableState.pageSize, canManage);
   const capabilitiesQuery = useUsersCapabilitiesQuery(canManage);
   const createMutation = useCreateUserMutation();
   const updateMutation = useUpdateUserMutation();
@@ -65,7 +66,6 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [createForm] = Form.useForm<CreateUserFormValues>();
   const [editForm] = Form.useForm<EditUserFormValues>();
-  const tableState = useTableQueryParams(10);
 
   const assignableRoles = useMemo(() => {
     if (!user) {
@@ -111,21 +111,17 @@ export default function UsersPage() {
     return canManageRole(user.role, row.role as Role);
   };
 
-  const allRows = useMemo(() => {
-    const rows = usersQuery.data ?? [];
+  const rows = useMemo(() => {
+    const items = usersQuery.data?.data ?? [];
     if (!tableState.search) {
-      return rows;
+      return items;
     }
 
-    return rows.filter((item) =>
+    return items.filter((item) =>
       JSON.stringify(item).toLowerCase().includes(tableState.search.toLowerCase()),
     );
   }, [usersQuery.data, tableState.search]);
-
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  const paginationMeta = usersQuery.data?.pagination;
 
   if (!canManage) {
     return (
@@ -298,19 +294,24 @@ export default function UsersPage() {
             value={tableState.search}
             onChange={(event) => tableState.setSearch(event.target.value)}
           />
-          {allRows.length === 0 ? (
+          {rows.length === 0 ? (
             <EmptyState description="No users found" />
           ) : (
             <Table
               rowKey="id"
-              dataSource={pagedRows}
+              loading={usersQuery.isFetching}
+              dataSource={rows}
               pagination={{
                 current: tableState.page,
                 pageSize: tableState.pageSize,
-                total: allRows.length,
-                onChange: (page, pageSize) => {
-                  tableState.setPage(page);
-                  tableState.setPageSize(pageSize);
+                total: paginationMeta?.total ?? rows.length,
+                onChange: (nextPage, nextPageSize) => {
+                  if (nextPageSize !== tableState.pageSize) {
+                    tableState.setPageSize(nextPageSize);
+                    return;
+                  }
+
+                  tableState.setPage(nextPage);
                 },
               }}
               columns={[

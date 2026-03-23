@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   App,
@@ -20,6 +20,7 @@ import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { CrudFormModal, toInitialFormValues } from "@/components/crud/CrudFormModal";
 import { CrudTable } from "@/components/crud/CrudTable";
 import { DeleteConfirmModal } from "@/components/crud/DeleteConfirmModal";
+import { adaptPaginatedResponse } from "@/lib/api/pagination";
 import { CrudRequestError, requestCrudEndpoint } from "@/features/dynamic-crud/api-client";
 import { getCrudEndpoint, getCrudResource } from "@/features/dynamic-crud/config";
 import {
@@ -30,6 +31,7 @@ import { hasPermission } from "@/features/dynamic-crud/permissions";
 import { useCrudResource } from "@/features/dynamic-crud/useCrudResource";
 import type { CrudFieldConfig, CrudOperation } from "@/features/dynamic-crud/types";
 import { useAuth } from "@/context/AuthContext";
+import { useTableQueryParams } from "@/hooks/useTableQueryParams";
 import type { ApiErrorPayload, BaseEntity } from "@/types/api";
 import { Role } from "@/types/auth";
 
@@ -189,8 +191,13 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   const [linkMeForm] = Form.useForm<Record<string, unknown>>();
   const [reportForm] = Form.useForm<Record<string, unknown>>();
   const [editForm] = Form.useForm<Record<string, unknown>>();
+  const tableState = useTableQueryParams(10);
 
   const resource = getCrudResource(resourceName);
+  const resourceLabelPlural = resource?.label ?? "Records";
+  const resourceLabelSingular = resourceLabelPlural.endsWith("s")
+    ? resourceLabelPlural.slice(0, -1)
+    : resourceLabelPlural;
   const createFields = useMemo(
     () => getResourceFieldsForOperation(resourceName, "create"),
     [resourceName],
@@ -214,7 +221,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     createMutation,
     updateMutation,
     deleteMutation,
-  } = useCrudResource(resourceName);
+  } = useCrudResource(resourceName, tableState.page, tableState.pageSize);
 
   const canList = hasPermission(resource?.endpoints.list, user?.role, isAuthenticated);
   const canGet = hasPermission(resource?.endpoints.get, user?.role, isAuthenticated);
@@ -300,7 +307,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           return [] as Array<{ value: string; label: string; description?: string }>;
         }
 
-        const result = await requestCrudEndpoint<unknown>(endpoint);
+        const result = await requestCrudEndpoint<unknown>(endpoint, {
+          queryParams: { page: 1, pageSize: 200 },
+        });
         if (!result.success || !result.data) {
           throw new CrudRequestError(
             result.error?.status ?? 500,
@@ -444,21 +453,8 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     break;
   }
 
-  if (!resource) {
-    return <Result status="404" title="Unknown resource" subTitle="This dashboard resource is not configured." />;
-  }
-
-  if (!canList) {
-    return (
-      <Result
-        status="403"
-        title="Not Authorized"
-        subTitle="You do not have permission to view this resource list."
-      />
-    );
-  }
-
-  const sourceRows = listQuery.data ?? [];
+  const paginationMeta = listQuery.data?.pagination;
+  const sourceRows = listQuery.data?.data ?? [];
   const ownershipFields = ["userId", "reportedById", "ownerId", "citizenUserId"];
   const hasOwnershipField = sourceRows.some((row) =>
     ownershipFields.some((field) => row[field] !== undefined && row[field] !== null),
@@ -470,12 +466,39 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         )
       : sourceRows;
 
+  useEffect(() => {
+    const listEndpoint = resource?.endpoints.list;
+    if (!listEndpoint || !paginationMeta?.hasNextPage) {
+      return;
+    }
+
+    const nextPage = tableState.page + 1;
+
+    void queryClient.prefetchQuery({
+      queryKey: ["crud", resourceName, "list", nextPage, tableState.pageSize],
+      queryFn: async () => {
+        const result = await requestCrudEndpoint<unknown>(listEndpoint, {
+          queryParams: { page: nextPage, pageSize: tableState.pageSize },
+        });
+        if (!result.success) {
+          throw new CrudRequestError(
+            result.error?.status ?? 500,
+            result.error?.message ?? "Request failed",
+            result.error?.details,
+          );
+        }
+        return adaptPaginatedResponse(result.data, nextPage, tableState.pageSize);
+      },
+    });
+  }, [paginationMeta?.hasNextPage, queryClient, resource?.endpoints.list, resourceName, tableState.page, tableState.pageSize]);
+
   const handleCreate = async () => {
     try {
       const values = await createForm.validateFields();
+
       const payload = normalizeFormValues(values, createFields, false);
       await createMutation.mutateAsync(payload);
-      message.success(`${resource.label} created successfully.`);
+      message.success(`${resourceLabelSingular} created successfully.`);
       createForm.resetFields();
       setCreateOpen(false);
     } catch (error) {
@@ -499,7 +522,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       const values = await editForm.validateFields();
       const payload = normalizeFormValues(values, updateFields, true);
       await updateMutation.mutateAsync({ id: selected.id, payload });
-      message.success(`${resource.label} updated successfully.`);
+      message.success(`${resourceLabelPlural} updated successfully.`);
       editForm.resetFields();
       setEditOpen(false);
     } catch (error) {
@@ -521,7 +544,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
     try {
       await deleteMutation.mutateAsync(selected.id);
-      message.success(`${resource.label} deleted successfully.`);
+      message.success(`${resourceLabelPlural} deleted successfully.`);
       setDeleteOpen(false);
       setSelected(null);
     } catch (error) {
@@ -555,6 +578,20 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       message.error(messageForStatus(parsed.status, parsed.message));
     }
   };
+
+  if (!resource) {
+    return <Result status="404" title="Unknown resource" subTitle="This dashboard resource is not configured." />;
+  }
+
+  if (!canList) {
+    return (
+      <Result
+        status="403"
+        title="Not Authorized"
+        subTitle="You do not have permission to view this resource list."
+      />
+    );
+  }
 
   return (
     <Space orientation="vertical" size={16} style={{ width: "100%" }}>
@@ -603,6 +640,13 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           <CrudTable
             rows={rows}
             loading={listQuery.isFetching}
+            search={tableState.search}
+            onSearchChange={tableState.setSearch}
+            page={tableState.page}
+            pageSize={tableState.pageSize}
+            onPageChange={tableState.setPage}
+            onPageSizeChange={tableState.setPageSize}
+            paginationMeta={paginationMeta}
             columnLabelsByField={columnLabelsByField}
             selectLabelsByField={selectLabelsByField}
             canViewDetails={canGet}

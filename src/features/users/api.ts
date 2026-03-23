@@ -1,7 +1,8 @@
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "@/lib/auth/token-storage";
-import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
+import { unwrapEntityResponse } from "@/lib/api/normalize";
+import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
 import type { User } from "@/types/api";
 import type { Role } from "@/types/auth";
 
@@ -42,9 +43,16 @@ usersApiClient.interceptors.request.use((config) => {
   return config;
 });
 
-export async function fetchUsers() {
-  const response = await usersApiClient.get<unknown>("/users");
-  return unwrapListResponse<User>(response.data);
+export async function fetchUsers(
+  page = 1,
+  pageSize = 10,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<User>> {
+  const response = await usersApiClient.get<unknown>("/users", {
+    params: { page, pageSize },
+    signal,
+  });
+  return adaptPaginatedResponse<User>(response.data, page, pageSize);
 }
 
 export async function createUser(payload: CreateUserDto) {
@@ -66,8 +74,13 @@ export async function fetchUsersCapabilities() {
   return response.data;
 }
 
-export function useUsersQuery(enabled = true) {
-  return useQuery({ queryKey: ["users"], queryFn: fetchUsers, enabled });
+export function useUsersQuery(page = 1, pageSize = 10, enabled = true) {
+  return useQuery({
+    queryKey: ["users", page, pageSize],
+    queryFn: ({ signal }) => fetchUsers(page, pageSize, signal),
+    enabled,
+    placeholderData: (previous) => previous,
+  });
 }
 
 export function useUsersCapabilitiesQuery(enabled = true) {

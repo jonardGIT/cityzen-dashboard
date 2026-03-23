@@ -10,24 +10,20 @@ import { useTableQueryParams } from "@/hooks/useTableQueryParams";
 const { Title } = Typography;
 
 export default function CitizensPage() {
-  const citizensQuery = useCitizensQuery();
   const tableState = useTableQueryParams(10);
+  const citizensQuery = useCitizensQuery(tableState.page, tableState.pageSize);
 
-  const allRows = useMemo(() => {
-    const rows = citizensQuery.data ?? [];
+  const rows = useMemo(() => {
+    const items = citizensQuery.data?.data ?? [];
     if (!tableState.search) {
-      return rows;
+      return items;
     }
 
-    return rows.filter((item) =>
+    return items.filter((item) =>
       JSON.stringify(item).toLowerCase().includes(tableState.search.toLowerCase()),
     );
   }, [citizensQuery.data, tableState.search]);
-
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  const paginationMeta = citizensQuery.data?.pagination;
 
   if (citizensQuery.isLoading) {
     return <LoadingState />;
@@ -53,14 +49,19 @@ export default function CitizensPage() {
           />
           <Table
             rowKey="id"
-            dataSource={pagedRows}
+            loading={citizensQuery.isFetching}
+            dataSource={rows}
             pagination={{
               current: tableState.page,
               pageSize: tableState.pageSize,
-              total: allRows.length,
-              onChange: (page, pageSize) => {
-                tableState.setPage(page);
-                tableState.setPageSize(pageSize);
+              total: paginationMeta?.total ?? rows.length,
+              onChange: (nextPage, nextPageSize) => {
+                if (nextPageSize !== tableState.pageSize) {
+                  tableState.setPageSize(nextPageSize);
+                  return;
+                }
+
+                tableState.setPage(nextPage);
               },
             }}
             columns={[
