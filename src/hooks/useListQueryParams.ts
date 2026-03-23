@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   DEFAULT_PAGE,
@@ -49,6 +49,25 @@ export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQue
   const updatedFrom = searchParams.get("updatedFrom") ?? undefined;
   const updatedTo = searchParams.get("updatedTo") ?? undefined;
 
+  const replaceIfChanged = useCallback(
+    (params: URLSearchParams) => {
+      const current = searchParams.toString();
+      const next = params.toString();
+
+      if (current === next) {
+        return;
+      }
+
+      if (!next) {
+        router.replace(pathname);
+        return;
+      }
+
+      router.replace(`${pathname}?${next}`);
+    },
+    [pathname, router, searchParams],
+  );
+
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
     let changed = false;
@@ -77,8 +96,8 @@ export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQue
       return;
     }
 
-    router.replace(`${pathname}?${params.toString()}`);
-  }, [defaultPageSize, pathname, router, searchParams]);
+    replaceIfChanged(params);
+  }, [defaultPageSize, replaceIfChanged, searchParams]);
 
   const setParam = (key: string, value: string | undefined) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -92,7 +111,7 @@ export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQue
       params.set("page", "1");
     }
 
-    router.replace(`${pathname}?${params.toString()}`);
+    replaceIfChanged(params);
   };
 
   const setParamBatch = (updates: Record<string, string | undefined>) => {
@@ -107,7 +126,7 @@ export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQue
     }
 
     params.set("page", "1");
-    router.replace(`${pathname}?${params.toString()}`);
+    replaceIfChanged(params);
   };
 
   const setParamBatchDebounced = (

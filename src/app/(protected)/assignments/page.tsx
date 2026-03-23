@@ -177,6 +177,7 @@ export default function AssignmentsPage() {
               { title: "Incident", dataIndex: "incidentId", key: "incidentId" },
               { title: "Responder", dataIndex: "responderId", key: "responderId" },
               { title: "Status", dataIndex: "statusId", key: "statusId" },
+              { title: "Notes", dataIndex: "notes", key: "notes" },
               {
                 title: "Assigned",
                 dataIndex: "assignedDate",
@@ -209,7 +210,6 @@ export default function AssignmentsPage() {
                   );
                 },
               },
-              { title: "Notes", dataIndex: "notes", key: "notes" },
             ]}
           />
         </Space>

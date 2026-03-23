@@ -60,6 +60,7 @@ export function FilterToolbar({ state, setters, loading }: FilterToolbarProps) {
 
       <RangePicker
         size="small"
+        allowEmpty={[true, true]}
         placeholder={["Created from", "Created to"]}
         value={createdRange}
         disabled={loading}
@@ -73,6 +74,7 @@ export function FilterToolbar({ state, setters, loading }: FilterToolbarProps) {
 
       <RangePicker
         size="small"
+        allowEmpty={[true, true]}
         placeholder={["Updated from", "Updated to"]}
         value={updatedRange}
         disabled={loading}

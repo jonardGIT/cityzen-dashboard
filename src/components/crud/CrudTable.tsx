@@ -46,6 +46,10 @@ function camelCaseToTitleCase(str: string): string {
     .trim();
 }
 
+function isDateLikeFieldName(key: string): boolean {
+  return /(^date|date$|At$|_at$|timestamp|time$)/i.test(key);
+}
+
 function formatCellValue(value: unknown, optionLabels?: Map<string, string>): string {
   if (value === null || value === undefined || value === "") {
     return "N/A";
@@ -166,7 +170,18 @@ export function CrudTable({
       }
     }
 
-    return Array.from(keySet).slice(0, 6);
+    return Array.from(keySet)
+      .sort((a, b) => {
+        const aIsDate = isDateLikeFieldName(a);
+        const bIsDate = isDateLikeFieldName(b);
+
+        if (aIsDate === bIsDate) {
+          return 0;
+        }
+
+        return aIsDate ? 1 : -1;
+      })
+      .slice(0, 6);
   }, [rows]);
 
   const columns = [
