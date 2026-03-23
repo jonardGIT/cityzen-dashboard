@@ -160,28 +160,29 @@ export function CrudTable({
   }, [rows, search]);
 
   const keys = useMemo(() => {
+    const MAX_COLUMNS = 6;
+    const DATE_COLUMN_RESERVE = 2;
+    const DISCOVERY_LIMIT = 20;
+
     const keySet = new Set<string>();
     for (const row of rows) {
       Object.keys(row)
         .filter((key) => key !== "id")
         .forEach((key) => keySet.add(key));
-      if (keySet.size >= 7) {
+
+      if (keySet.size >= DISCOVERY_LIMIT) {
         break;
       }
     }
 
-    return Array.from(keySet)
-      .sort((a, b) => {
-        const aIsDate = isDateLikeFieldName(a);
-        const bIsDate = isDateLikeFieldName(b);
+    const allKeys = Array.from(keySet);
+    const dateKeys = allKeys.filter((key) => isDateLikeFieldName(key));
+    const nonDateKeys = allKeys.filter((key) => !isDateLikeFieldName(key));
 
-        if (aIsDate === bIsDate) {
-          return 0;
-        }
+    const dateSlots = Math.min(DATE_COLUMN_RESERVE, dateKeys.length);
+    const nonDateSlots = Math.max(0, MAX_COLUMNS - dateSlots);
 
-        return aIsDate ? 1 : -1;
-      })
-      .slice(0, 6);
+    return [...nonDateKeys.slice(0, nonDateSlots), ...dateKeys.slice(0, dateSlots)];
   }, [rows]);
 
   const columns = [

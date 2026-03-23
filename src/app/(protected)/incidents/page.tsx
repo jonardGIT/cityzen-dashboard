@@ -45,6 +45,19 @@ interface IncidentFormValues {
   statusId: string;
 }
 
+function formatDateTime(value: unknown): string {
+  if (!value) {
+    return "N/A";
+  }
+
+  const parsed = new Date(String(value));
+  if (Number.isNaN(parsed.getTime())) {
+    return "N/A";
+  }
+
+  return parsed.toLocaleString();
+}
+
 export default function IncidentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
@@ -208,7 +221,19 @@ export default function IncidentsPage() {
                 title: "Reported",
                 dataIndex: "dateReported",
                 key: "dateReported",
-                render: (value: string) => (value ? new Date(value).toLocaleString() : "N/A"),
+                render: (value: unknown) => formatDateTime(value),
+              },
+              {
+                title: "Created",
+                dataIndex: "createdAt",
+                key: "createdAt",
+                render: (value: unknown) => formatDateTime(value),
+              },
+              {
+                title: "Updated",
+                dataIndex: "updatedAt",
+                key: "updatedAt",
+                render: (value: unknown) => formatDateTime(value),
               },
             ]}
           />
