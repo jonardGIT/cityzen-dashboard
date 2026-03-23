@@ -2,19 +2,18 @@
 
 import { Card, Input, Skeleton, Space, Table, Typography } from "antd";
 import { useMemo } from "react";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
+import type { ListQuerySetters } from "@/hooks/useListQueryParams";
+import type { ListQueryState } from "@/lib/api/list-query-params";
 import type { PaginatedResponse } from "@/lib/api/pagination";
 
 const { Title } = Typography;
 
 interface SimpleResourcePageProps<T extends { id: string | number; [key: string]: unknown }> {
   title: string;
-  page: number;
-  pageSize: number;
-  search: string;
-  setPage: (value: number) => void;
-  setPageSize: (value: number) => void;
-  setSearch: (value: string) => void;
+  listQueryState: ListQueryState;
+  listQuerySetters: ListQuerySetters;
   query: {
     isLoading: boolean;
     isFetching?: boolean;
@@ -27,15 +26,12 @@ interface SimpleResourcePageProps<T extends { id: string | number; [key: string]
 
 export function SimpleResourcePage<T extends { id: string | number; [key: string]: unknown }>({
   title,
-  page,
-  pageSize,
-  search,
-  setPage,
-  setPageSize,
-  setSearch,
+  listQueryState,
+  listQuerySetters,
   query,
   columns,
 }: SimpleResourcePageProps<T>) {
+  const { page, pageSize, search } = listQueryState;
   const rows = useMemo(() => {
     const items = query.data?.data ?? [];
     if (!search) {
@@ -70,11 +66,16 @@ export function SimpleResourcePage<T extends { id: string | number; [key: string
 
       <Card>
         <Space orientation="vertical" style={{ width: "100%" }}>
+          <FilterToolbar
+            state={listQueryState}
+            setters={listQuerySetters}
+            loading={Boolean(query.isFetching)}
+          />
           <Input.Search
             allowClear
             placeholder={`Search ${title.toLowerCase()}`}
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => listQuerySetters.setSearch(event.target.value)}
           />
           {query.isFetching ? <Skeleton active paragraph={{ rows: 3 }} title={false} /> : null}
           <Table
@@ -87,11 +88,11 @@ export function SimpleResourcePage<T extends { id: string | number; [key: string
               total: pagination?.total ?? rows.length,
               onChange: (nextPage, nextPageSize) => {
                 if (nextPageSize !== pageSize) {
-                  setPageSize(nextPageSize);
+                  listQuerySetters.setPageSize(nextPageSize);
                   return;
                 }
 
-                setPage(nextPage);
+                listQuerySetters.setPage(nextPage);
               },
             }}
             columns={visibleColumns}

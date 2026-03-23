@@ -2,21 +2,17 @@
 
 import { useSeveritiesQuery } from "@/features/reference-data/api";
 import { SimpleResourcePage } from "@/components/common/SimpleResourcePage";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
 
 export default function SeveritiesPage() {
-  const tableState = useTableQueryParams(10);
-  const query = useSeveritiesQuery(tableState.page, tableState.pageSize);
+  const listQuery = useListQueryParams();
+  const query = useSeveritiesQuery(listQuery);
 
   return (
     <SimpleResourcePage
       title="Severities"
-      page={tableState.page}
-      pageSize={tableState.pageSize}
-      search={tableState.search}
-      setPage={tableState.setPage}
-      setPageSize={tableState.setPageSize}
-      setSearch={tableState.setSearch}
+      listQueryState={listQuery}
+      listQuerySetters={listQuery}
       query={query}
       columns={[
         { title: "ID", dataIndex: "id", key: "id" },

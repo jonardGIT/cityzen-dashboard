@@ -16,6 +16,7 @@ import {
   Typography,
 } from "antd";
 import type { FormInstance } from "antd";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { CrudFormModal, toInitialFormValues } from "@/components/crud/CrudFormModal";
 import { CrudTable } from "@/components/crud/CrudTable";
@@ -31,7 +32,8 @@ import { hasPermission } from "@/features/dynamic-crud/permissions";
 import { useCrudResource } from "@/features/dynamic-crud/useCrudResource";
 import type { CrudFieldConfig, CrudOperation } from "@/features/dynamic-crud/types";
 import { useAuth } from "@/context/AuthContext";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
+import { buildListQueryParams } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload, BaseEntity } from "@/types/api";
 import { Role } from "@/types/auth";
 
@@ -191,7 +193,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   const [linkMeForm] = Form.useForm<Record<string, unknown>>();
   const [reportForm] = Form.useForm<Record<string, unknown>>();
   const [editForm] = Form.useForm<Record<string, unknown>>();
-  const tableState = useTableQueryParams(10);
+  const tableState = useListQueryParams();
 
   const resource = getCrudResource(resourceName);
   const resourceLabelPlural = resource?.label ?? "Records";
@@ -221,7 +223,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     createMutation,
     updateMutation,
     deleteMutation,
-  } = useCrudResource(resourceName, tableState.page, tableState.pageSize);
+  } = useCrudResource(resourceName, tableState);
 
   const canList = hasPermission(resource?.endpoints.list, user?.role, isAuthenticated);
   const canGet = hasPermission(resource?.endpoints.get, user?.role, isAuthenticated);
@@ -475,10 +477,10 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     const nextPage = tableState.page + 1;
 
     void queryClient.prefetchQuery({
-      queryKey: ["crud", resourceName, "list", nextPage, tableState.pageSize],
+      queryKey: ["crud", resourceName, "list", { ...tableState, page: nextPage, search: undefined }],
       queryFn: async () => {
         const result = await requestCrudEndpoint<unknown>(listEndpoint, {
-          queryParams: { page: nextPage, pageSize: tableState.pageSize },
+          queryParams: buildListQueryParams({ ...tableState, page: nextPage }),
         });
         if (!result.success) {
           throw new CrudRequestError(
@@ -490,7 +492,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         return adaptPaginatedResponse(result.data, nextPage, tableState.pageSize);
       },
     });
-  }, [paginationMeta?.hasNextPage, queryClient, resource?.endpoints.list, resourceName, tableState.page, tableState.pageSize]);
+  }, [paginationMeta?.hasNextPage, queryClient, resource?.endpoints.list, resourceName, tableState]);
 
   const handleCreate = async () => {
     try {
@@ -652,6 +654,13 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
             canViewDetails={canGet}
             canEdit={canUpdate}
             canDelete={canDelete}
+            filterToolbar={
+              <FilterToolbar
+                state={tableState}
+                setters={tableState}
+                loading={Boolean(listQuery.isFetching)}
+              />
+            }
             onView={(row) => {
               setSelected(row);
               setDetailsOpen(true);

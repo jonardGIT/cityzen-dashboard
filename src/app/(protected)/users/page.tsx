@@ -17,6 +17,7 @@ import {
 } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common/PageStates";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -28,7 +29,7 @@ import {
 } from "@/features/users/api";
 import { CAN_MANAGE_USERS, canManageRole, getAssignableRoles } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
 import type { ApiErrorPayload, User } from "@/types/api";
 import { Role } from "@/types/auth";
 
@@ -55,8 +56,8 @@ export default function UsersPage() {
   const { message } = App.useApp();
   const { hasRole, user } = useAuth();
   const canManage = hasRole(...CAN_MANAGE_USERS);
-  const tableState = useTableQueryParams(10);
-  const usersQuery = useUsersQuery(tableState.page, tableState.pageSize, canManage);
+  const listQuery = useListQueryParams();
+  const usersQuery = useUsersQuery(listQuery, canManage);
   const capabilitiesQuery = useUsersCapabilitiesQuery(canManage);
   const createMutation = useCreateUserMutation();
   const updateMutation = useUpdateUserMutation();
@@ -113,14 +114,14 @@ export default function UsersPage() {
 
   const rows = useMemo(() => {
     const items = usersQuery.data?.data ?? [];
-    if (!tableState.search) {
+    if (!listQuery.search) {
       return items;
     }
 
     return items.filter((item) =>
-      JSON.stringify(item).toLowerCase().includes(tableState.search.toLowerCase()),
+      JSON.stringify(item).toLowerCase().includes(listQuery.search.toLowerCase()),
     );
-  }, [usersQuery.data, tableState.search]);
+  }, [listQuery.search, usersQuery.data]);
   const paginationMeta = usersQuery.data?.pagination;
 
   if (!canManage) {
@@ -291,8 +292,13 @@ export default function UsersPage() {
           <Input.Search
             allowClear
             placeholder="Search users"
-            value={tableState.search}
-            onChange={(event) => tableState.setSearch(event.target.value)}
+            value={listQuery.search}
+            onChange={(event) => listQuery.setSearch(event.target.value)}
+          />
+          <FilterToolbar
+            state={listQuery}
+            setters={listQuery}
+            loading={Boolean(usersQuery.isFetching)}
           />
           {rows.length === 0 ? (
             <EmptyState description="No users found" />
@@ -302,16 +308,16 @@ export default function UsersPage() {
               loading={usersQuery.isFetching}
               dataSource={rows}
               pagination={{
-                current: tableState.page,
-                pageSize: tableState.pageSize,
+                current: listQuery.page,
+                pageSize: listQuery.pageSize,
                 total: paginationMeta?.total ?? rows.length,
                 onChange: (nextPage, nextPageSize) => {
-                  if (nextPageSize !== tableState.pageSize) {
-                    tableState.setPageSize(nextPageSize);
+                  if (nextPageSize !== listQuery.pageSize) {
+                    listQuery.setPageSize(nextPageSize);
                     return;
                   }
 
-                  tableState.setPage(nextPage);
+                  listQuery.setPage(nextPage);
                 },
               }}
               columns={[

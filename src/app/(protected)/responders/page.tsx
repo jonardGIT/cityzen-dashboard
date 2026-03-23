@@ -2,21 +2,17 @@
 
 import { useRespondersQuery } from "@/features/reference-data/api";
 import { SimpleResourcePage } from "@/components/common/SimpleResourcePage";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
 
 export default function RespondersPage() {
-  const tableState = useTableQueryParams(10);
-  const query = useRespondersQuery(tableState.page, tableState.pageSize);
+  const listQuery = useListQueryParams();
+  const query = useRespondersQuery(listQuery);
 
   return (
     <SimpleResourcePage
       title="Responders"
-      page={tableState.page}
-      pageSize={tableState.pageSize}
-      search={tableState.search}
-      setPage={tableState.setPage}
-      setPageSize={tableState.setPageSize}
-      setSearch={tableState.setSearch}
+      listQueryState={listQuery}
+      listQuerySetters={listQuery}
       query={query}
       columns={[
         { title: "ID", dataIndex: "id", key: "id" },

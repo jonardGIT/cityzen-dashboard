@@ -2,6 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/api/clients";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
 import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  buildListQueryParams,
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+  type FetchListParams,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import type { Incident } from "@/types/api";
 
 export interface CreateIncidentDto {
@@ -14,15 +21,14 @@ export interface CreateIncidentDto {
 }
 
 export async function fetchIncidents(
-  page = 1,
-  pageSize = 10,
+  fetchParams: FetchListParams,
   signal?: AbortSignal,
 ): Promise<PaginatedResponse<Incident>> {
   const response = await authClient.get<unknown>("/incidents", {
-    params: { page, pageSize },
+    params: buildListQueryParams(fetchParams),
     signal,
   });
-  return adaptPaginatedResponse<Incident>(response.data, page, pageSize);
+  return adaptPaginatedResponse<Incident>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
 export async function createIncident(payload: CreateIncidentDto) {
@@ -30,12 +36,24 @@ export async function createIncident(payload: CreateIncidentDto) {
   return unwrapEntityResponse<Incident>(response.data);
 }
 
-export function useIncidentsQuery(page = 1, pageSize = 10) {
+export function useIncidentsQuery(state: ListQueryState) {
+  const fetchParams = state;
   return useQuery({
-    queryKey: ["incidents", page, pageSize],
-    queryFn: ({ signal }) => fetchIncidents(page, pageSize, signal),
+    queryKey: ["incidents", fetchParams],
+    queryFn: ({ signal }) => fetchIncidents(fetchParams, signal),
     placeholderData: (previous) => previous,
   });
+}
+
+export function defaultIncidentsQueryState(overrides?: Partial<ListQueryState>): ListQueryState {
+  return {
+    page: 1,
+    pageSize: 20,
+    search: "",
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+    ...overrides,
+  };
 }
 
 export function useCreateIncidentMutation() {

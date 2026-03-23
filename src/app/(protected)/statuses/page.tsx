@@ -2,21 +2,17 @@
 
 import { useStatusesQuery } from "@/features/reference-data/api";
 import { SimpleResourcePage } from "@/components/common/SimpleResourcePage";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
 
 export default function StatusesPage() {
-  const tableState = useTableQueryParams(10);
-  const query = useStatusesQuery(tableState.page, tableState.pageSize);
+  const listQuery = useListQueryParams();
+  const query = useStatusesQuery(listQuery);
 
   return (
     <SimpleResourcePage
       title="Statuses"
-      page={tableState.page}
-      pageSize={tableState.pageSize}
-      search={tableState.search}
-      setPage={tableState.setPage}
-      setPageSize={tableState.setPageSize}
-      setSearch={tableState.setSearch}
+      listQueryState={listQuery}
+      listQuerySetters={listQuery}
       query={query}
       columns={[
         { title: "ID", dataIndex: "id", key: "id" },

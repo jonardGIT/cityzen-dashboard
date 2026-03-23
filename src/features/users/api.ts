@@ -3,6 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "@/lib/auth/token-storage";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
 import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  buildListQueryParams,
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+  type FetchListParams,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import type { User } from "@/types/api";
 import type { Role } from "@/types/auth";
 
@@ -44,15 +51,14 @@ usersApiClient.interceptors.request.use((config) => {
 });
 
 export async function fetchUsers(
-  page = 1,
-  pageSize = 10,
+  fetchParams: FetchListParams,
   signal?: AbortSignal,
 ): Promise<PaginatedResponse<User>> {
   const response = await usersApiClient.get<unknown>("/users", {
-    params: { page, pageSize },
+    params: buildListQueryParams(fetchParams),
     signal,
   });
-  return adaptPaginatedResponse<User>(response.data, page, pageSize);
+  return adaptPaginatedResponse<User>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
 export async function createUser(payload: CreateUserDto) {
@@ -74,13 +80,25 @@ export async function fetchUsersCapabilities() {
   return response.data;
 }
 
-export function useUsersQuery(page = 1, pageSize = 10, enabled = true) {
+export function useUsersQuery(state: ListQueryState, enabled = true) {
+  const fetchParams = state;
   return useQuery({
-    queryKey: ["users", page, pageSize],
-    queryFn: ({ signal }) => fetchUsers(page, pageSize, signal),
+    queryKey: ["users", fetchParams],
+    queryFn: ({ signal }) => fetchUsers(fetchParams, signal),
     enabled,
     placeholderData: (previous) => previous,
   });
+}
+
+export function defaultUsersQueryState(overrides?: Partial<ListQueryState>): ListQueryState {
+  return {
+    page: 1,
+    pageSize: 20,
+    search: "",
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+    ...overrides,
+  };
 }
 
 export function useUsersCapabilitiesQuery(enabled = true) {

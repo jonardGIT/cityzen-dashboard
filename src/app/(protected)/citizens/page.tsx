@@ -3,26 +3,27 @@
 import { Card, Input, Space, Table, Typography } from "antd";
 import Link from "next/link";
 import { useMemo } from "react";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { useCitizensQuery } from "@/features/reference-data/api";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
 
 const { Title } = Typography;
 
 export default function CitizensPage() {
-  const tableState = useTableQueryParams(10);
-  const citizensQuery = useCitizensQuery(tableState.page, tableState.pageSize);
+  const listQuery = useListQueryParams();
+  const citizensQuery = useCitizensQuery(listQuery);
 
   const rows = useMemo(() => {
     const items = citizensQuery.data?.data ?? [];
-    if (!tableState.search) {
+    if (!listQuery.search) {
       return items;
     }
 
     return items.filter((item) =>
-      JSON.stringify(item).toLowerCase().includes(tableState.search.toLowerCase()),
+      JSON.stringify(item).toLowerCase().includes(listQuery.search.toLowerCase()),
     );
-  }, [citizensQuery.data, tableState.search]);
+  }, [citizensQuery.data, listQuery.search]);
   const paginationMeta = citizensQuery.data?.pagination;
 
   if (citizensQuery.isLoading) {
@@ -44,24 +45,29 @@ export default function CitizensPage() {
           <Input.Search
             allowClear
             placeholder="Search citizens"
-            value={tableState.search}
-            onChange={(event) => tableState.setSearch(event.target.value)}
+            value={listQuery.search}
+            onChange={(event) => listQuery.setSearch(event.target.value)}
+          />
+          <FilterToolbar
+            state={listQuery}
+            setters={listQuery}
+            loading={Boolean(citizensQuery.isFetching)}
           />
           <Table
             rowKey="id"
             loading={citizensQuery.isFetching}
             dataSource={rows}
             pagination={{
-              current: tableState.page,
-              pageSize: tableState.pageSize,
+              current: listQuery.page,
+              pageSize: listQuery.pageSize,
               total: paginationMeta?.total ?? rows.length,
               onChange: (nextPage, nextPageSize) => {
-                if (nextPageSize !== tableState.pageSize) {
-                  tableState.setPageSize(nextPageSize);
+                if (nextPageSize !== listQuery.pageSize) {
+                  listQuery.setPageSize(nextPageSize);
                   return;
                 }
 
-                tableState.setPage(nextPage);
+                listQuery.setPage(nextPage);
               },
             }}
             columns={[

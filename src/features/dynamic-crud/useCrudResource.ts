@@ -4,6 +4,11 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
 import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  buildListQueryParams,
+  DEFAULT_LIST_QUERY_STATE,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import { getCrudResource } from "@/features/dynamic-crud/config";
 import {
   assertCrudSuccess,
@@ -11,9 +16,13 @@ import {
 } from "@/features/dynamic-crud/api-client";
 import type { BaseEntity } from "@/types/api";
 
-export function useCrudResource(resourceName: string, page = 1, pageSize = 10) {
+const DEFAULT_STATE: ListQueryState = DEFAULT_LIST_QUERY_STATE;
+
+export function useCrudResource(resourceName: string, queryState: ListQueryState = DEFAULT_STATE) {
   const queryClient = useQueryClient();
   const config = useMemo(() => getCrudResource(resourceName), [resourceName]);
+
+  const fetchParams = queryState;
 
   const listEndpoint = config?.endpoints.list;
   const getEndpoint = config?.endpoints.get;
@@ -22,19 +31,19 @@ export function useCrudResource(resourceName: string, page = 1, pageSize = 10) {
   const deleteEndpoint = config?.endpoints.delete;
 
   const listQuery = useQuery({
-    queryKey: ["crud", resourceName, "list", page, pageSize],
+    queryKey: ["crud", resourceName, "list", fetchParams],
     enabled: Boolean(listEndpoint),
     queryFn: async ({ signal }): Promise<PaginatedResponse<BaseEntity>> => {
       if (!listEndpoint) {
-        return adaptPaginatedResponse<BaseEntity>([], page, pageSize);
+        return adaptPaginatedResponse<BaseEntity>([], fetchParams.page, fetchParams.pageSize);
       }
 
       const result = await requestCrudEndpoint<unknown>(listEndpoint, {
-        queryParams: { page, pageSize },
+        queryParams: buildListQueryParams(fetchParams),
         signal,
       });
       const payload = assertCrudSuccess(result);
-      return adaptPaginatedResponse<BaseEntity>(payload, page, pageSize);
+      return adaptPaginatedResponse<BaseEntity>(payload, fetchParams.page, fetchParams.pageSize);
     },
     placeholderData: (previous) => previous,
   });

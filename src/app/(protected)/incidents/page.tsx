@@ -16,6 +16,7 @@ import {
 } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
@@ -29,7 +30,8 @@ import {
 } from "@/features/reference-data/api";
 import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
+import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload } from "@/types/api";
 
 const { Title } = Typography;
@@ -46,20 +48,27 @@ interface IncidentFormValues {
 export default function IncidentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
-  const citizensQuery = useCitizensQuery(1, 200);
-  const locationsQuery = useLocationsQuery(1, 200);
-  const categoriesQuery = useCategoriesQuery(1, 200);
-  const severitiesQuery = useSeveritiesQuery(1, 200);
-  const statusesQuery = useStatusesQuery(1, 200);
+  const optionQueryState = {
+    page: 1,
+    pageSize: 200,
+    search: "",
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+  } as const;
+  const citizensQuery = useCitizensQuery(optionQueryState);
+  const locationsQuery = useLocationsQuery(optionQueryState);
+  const categoriesQuery = useCategoriesQuery(optionQueryState);
+  const severitiesQuery = useSeveritiesQuery(optionQueryState);
+  const statusesQuery = useStatusesQuery(optionQueryState);
   const createMutation = useCreateIncidentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<IncidentFormValues>();
 
-  const tableState = useTableQueryParams(10);
+  const listQuery = useListQueryParams();
 
-  const listQuery = useIncidentsQuery(tableState.page, tableState.pageSize);
-  const rows = listQuery.data?.data ?? [];
-  const pagination = listQuery.data?.pagination;
+  const incidentsListQuery = useIncidentsQuery(listQuery);
+  const rows = incidentsListQuery.data?.data ?? [];
+  const pagination = incidentsListQuery.data?.pagination;
 
   const severityOptions = useMemo(
     () =>
@@ -99,12 +108,12 @@ export default function IncidentsPage() {
     [statusOptions],
   );
 
-  if (listQuery.isLoading) {
+  if (incidentsListQuery.isLoading) {
     return <LoadingState />;
   }
 
-  if (listQuery.error) {
-    return <ErrorState message={String(listQuery.error)} />;
+  if (incidentsListQuery.error) {
+    return <ErrorState message={String(incidentsListQuery.error)} />;
   }
 
   const canCreate = hasRole(...CAN_CREATE_INCIDENT);
@@ -152,25 +161,30 @@ export default function IncidentsPage() {
           <Input.Search
             allowClear
             placeholder="Search incidents"
-            value={tableState.search}
-            onChange={(event) => tableState.setSearch(event.target.value)}
+            value={listQuery.search}
+            onChange={(event) => listQuery.setSearch(event.target.value)}
+          />
+          <FilterToolbar
+            state={listQuery}
+            setters={listQuery}
+            loading={Boolean(incidentsListQuery.isFetching)}
           />
           <Table
             rowKey="id"
-            loading={listQuery.isFetching}
+            loading={incidentsListQuery.isFetching}
             dataSource={rows}
             scroll={{ x: 980 }}
             pagination={{
-              current: tableState.page,
-              pageSize: tableState.pageSize,
+              current: listQuery.page,
+              pageSize: listQuery.pageSize,
               total: pagination?.total ?? rows.length,
               onChange: (nextPage, nextPageSize) => {
-                if (nextPageSize !== tableState.pageSize) {
-                  tableState.setPageSize(nextPageSize);
+                if (nextPageSize !== listQuery.pageSize) {
+                  listQuery.setPageSize(nextPageSize);
                   return;
                 }
 
-                tableState.setPage(nextPage);
+                listQuery.setPage(nextPage);
               },
             }}
             columns={[

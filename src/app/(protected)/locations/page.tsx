@@ -2,21 +2,17 @@
 
 import { useLocationsQuery } from "@/features/reference-data/api";
 import { SimpleResourcePage } from "@/components/common/SimpleResourcePage";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
 
 export default function LocationsPage() {
-  const tableState = useTableQueryParams(10);
-  const query = useLocationsQuery(tableState.page, tableState.pageSize);
+  const listQuery = useListQueryParams();
+  const query = useLocationsQuery(listQuery);
 
   return (
     <SimpleResourcePage
       title="Locations"
-      page={tableState.page}
-      pageSize={tableState.pageSize}
-      search={tableState.search}
-      setPage={tableState.setPage}
-      setPageSize={tableState.setPageSize}
-      setSearch={tableState.setSearch}
+      listQueryState={listQuery}
+      listQuerySetters={listQuery}
       query={query}
       columns={[
         { title: "ID", dataIndex: "id", key: "id" },

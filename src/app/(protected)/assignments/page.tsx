@@ -3,6 +3,7 @@
 import { App, Button, Card, Form, Input, Modal, Select, Space, Table, Typography } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
@@ -11,7 +12,8 @@ import { useIncidentsQuery } from "@/features/incidents/api";
 import { useRespondersQuery, useStatusesQuery } from "@/features/reference-data/api";
 import { CAN_CREATE_ASSIGNMENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
+import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload } from "@/types/api";
 
 const { Title, Text } = Typography;
@@ -70,24 +72,32 @@ function formatRelativeTime(value: unknown): string | null {
 export default function AssignmentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
-  const tableState = useTableQueryParams(10);
-  const assignmentsQuery = useAssignmentsQuery(tableState.page, tableState.pageSize);
-  const incidentsQuery = useIncidentsQuery(1, 200);
-  const respondersQuery = useRespondersQuery(1, 200);
-  const statusesQuery = useStatusesQuery(1, 200);
+  const listQuery = useListQueryParams();
+  const optionQueryState = {
+    page: 1,
+    pageSize: 200,
+    search: "",
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+  } as const;
+
+  const assignmentsQuery = useAssignmentsQuery(listQuery);
+  const incidentsQuery = useIncidentsQuery(optionQueryState);
+  const respondersQuery = useRespondersQuery(optionQueryState);
+  const statusesQuery = useStatusesQuery(optionQueryState);
   const createMutation = useCreateAssignmentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<AssignmentFormValues>();
   const rows = useMemo(() => {
     const items = assignmentsQuery.data?.data ?? [];
-    if (!tableState.search) {
+    if (!listQuery.search) {
       return items;
     }
 
     return items.filter((item) =>
-      JSON.stringify(item).toLowerCase().includes(tableState.search.toLowerCase()),
+      JSON.stringify(item).toLowerCase().includes(listQuery.search.toLowerCase()),
     );
-  }, [assignmentsQuery.data, tableState.search]);
+  }, [assignmentsQuery.data, listQuery.search]);
 
   const pagination = assignmentsQuery.data?.pagination;
 
@@ -137,8 +147,13 @@ export default function AssignmentsPage() {
           <Input.Search
             allowClear
             placeholder="Search assignments"
-            value={tableState.search}
-            onChange={(event) => tableState.setSearch(event.target.value)}
+            value={listQuery.search}
+            onChange={(event) => listQuery.setSearch(event.target.value)}
+          />
+          <FilterToolbar
+            state={listQuery}
+            setters={listQuery}
+            loading={Boolean(assignmentsQuery.isFetching)}
           />
           <Table
             rowKey="id"
@@ -146,16 +161,16 @@ export default function AssignmentsPage() {
             dataSource={rows}
             scroll={{ x: 920 }}
             pagination={{
-              current: tableState.page,
-              pageSize: tableState.pageSize,
+              current: listQuery.page,
+              pageSize: listQuery.pageSize,
               total: pagination?.total ?? rows.length,
               onChange: (nextPage, nextPageSize) => {
-                if (nextPageSize !== tableState.pageSize) {
-                  tableState.setPageSize(nextPageSize);
+                if (nextPageSize !== listQuery.pageSize) {
+                  listQuery.setPageSize(nextPageSize);
                   return;
                 }
 
-                tableState.setPage(nextPage);
+                listQuery.setPage(nextPage);
               },
             }}
             columns={[

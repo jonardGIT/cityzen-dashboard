@@ -2,7 +2,7 @@
 
 import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
 import { Button, Input, Skeleton, Space, Table, Tooltip } from "antd";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { PaginationMeta } from "@/lib/api/pagination";
 import type { BaseEntity } from "@/types/api";
 
@@ -120,6 +120,7 @@ interface CrudTableProps {
   canViewDetails: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  filterToolbar?: ReactNode;
 }
 
 export function CrudTable({
@@ -140,6 +141,7 @@ export function CrudTable({
   canViewDetails,
   canEdit,
   canDelete,
+  filterToolbar,
 }: CrudTableProps) {
   const filteredRows = useMemo(() => {
     if (!search) {
@@ -225,6 +227,7 @@ export function CrudTable({
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
+      {filterToolbar}
       <Input.Search
         allowClear
         value={search}

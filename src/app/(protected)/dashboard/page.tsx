@@ -6,6 +6,7 @@ import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { fetchAssignments } from "@/features/assignments/api";
 import { fetchIncidents } from "@/features/incidents/api";
 import { fetchResponders, fetchStatuses } from "@/features/reference-data/api";
+import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
 
 const { Title } = Typography;
 
@@ -28,23 +29,34 @@ function formatDateTime(value: unknown): string {
 }
 
 export default function DashboardPage() {
+  const defaultListParams = {
+    page: 1,
+    pageSize: 10,
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+    createdFrom: undefined,
+    createdTo: undefined,
+    updatedFrom: undefined,
+    updatedTo: undefined,
+  } as const;
+
   const results = useQueries({
     queries: [
       {
-        queryKey: ["incidents", 1, 10],
-        queryFn: ({ signal }) => fetchIncidents(1, 10, signal),
+        queryKey: ["incidents", defaultListParams],
+        queryFn: ({ signal }) => fetchIncidents(defaultListParams, signal),
       },
       {
-        queryKey: ["assignments", 1, 10],
-        queryFn: ({ signal }) => fetchAssignments(1, 10, signal),
+        queryKey: ["assignments", defaultListParams],
+        queryFn: ({ signal }) => fetchAssignments(defaultListParams, signal),
       },
       {
-        queryKey: ["responders", 1, 10],
-        queryFn: ({ signal }) => fetchResponders(1, 10, signal),
+        queryKey: ["responders", defaultListParams],
+        queryFn: ({ signal }) => fetchResponders(defaultListParams, signal),
       },
       {
-        queryKey: ["statuses", 1, 10],
-        queryFn: ({ signal }) => fetchStatuses(1, 10, signal),
+        queryKey: ["statuses", defaultListParams],
+        queryFn: ({ signal }) => fetchStatuses(defaultListParams, signal),
       },
     ],
   });

@@ -2,6 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/api/clients";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
 import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  buildListQueryParams,
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+  type FetchListParams,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import type { Assignment } from "@/types/api";
 
 export interface CreateAssignmentDto {
@@ -12,15 +19,14 @@ export interface CreateAssignmentDto {
 }
 
 export async function fetchAssignments(
-  page = 1,
-  pageSize = 10,
+  fetchParams: FetchListParams,
   signal?: AbortSignal,
 ): Promise<PaginatedResponse<Assignment>> {
   const response = await authClient.get<unknown>("/assignments", {
-    params: { page, pageSize },
+    params: buildListQueryParams(fetchParams),
     signal,
   });
-  return adaptPaginatedResponse<Assignment>(response.data, page, pageSize);
+  return adaptPaginatedResponse<Assignment>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
 export async function createAssignment(payload: CreateAssignmentDto) {
@@ -28,12 +34,24 @@ export async function createAssignment(payload: CreateAssignmentDto) {
   return unwrapEntityResponse<Assignment>(response.data);
 }
 
-export function useAssignmentsQuery(page = 1, pageSize = 10) {
+export function useAssignmentsQuery(state: ListQueryState) {
+  const fetchParams = state;
   return useQuery({
-    queryKey: ["assignments", page, pageSize],
-    queryFn: ({ signal }) => fetchAssignments(page, pageSize, signal),
+    queryKey: ["assignments", fetchParams],
+    queryFn: ({ signal }) => fetchAssignments(fetchParams, signal),
     placeholderData: (previous) => previous,
   });
+}
+
+export function defaultAssignmentsQueryState(overrides?: Partial<ListQueryState>): ListQueryState {
+  return {
+    page: 1,
+    pageSize: 20,
+    search: "",
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+    ...overrides,
+  };
 }
 
 export function useCreateAssignmentMutation() {
