@@ -6,8 +6,8 @@ import type { BaseEntity } from "@/types/api";
 
 function renderTable(overrides?: Partial<ComponentProps<typeof CrudTable>>) {
   const rows: BaseEntity[] = [
-    { id: 1, name: "Alpha" },
-    { id: 2, name: "Beta" },
+    { id: "1", name: "Alpha" },
+    { id: "2", name: "Beta" },
   ];
 
   const props: ComponentProps<typeof CrudTable> = {

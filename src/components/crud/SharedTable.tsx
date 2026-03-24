@@ -15,8 +15,8 @@ function getFieldType(key: string, sample: unknown): "text" | "number" | "date" 
 interface SharedTableProps {
   rows: BaseEntity[];
   columns: string[];
-              menu={{
-                items: [
+  columnLabels?: Record<string, string>;
+  selectLabelsByField?: Record<string, Map<string, string>>;
   onRowView?: (row: BaseEntity) => void;
   onRowEdit?: (row: BaseEntity) => void;
   onRowDelete?: (row: BaseEntity) => void;
@@ -62,62 +62,73 @@ export const SharedTable: React.FC<SharedTableProps> = ({
             type={sortState.key === col ? "primary" : "default"}
             onClick={() => {
               if (onSortChange) {
-                ].filter(Boolean)
-              }}
+                const nextOrder = sortState.key === col && sortState.order === "ascend" ? "descend" : "ascend";
                 onSortChange(col, nextOrder);
               }
             }}
           />
           <Dropdown
-            overlay={
-              <Menu>
-                {type === "text" && (
-                  <Menu.Item key="text">
-                    <Input
-                      placeholder="Filter..."
-                      value={filterState[col] || ""}
-                      onChange={(e) => onFilterChange && onFilterChange(col, e.target.value)}
-                      allowClear
-                    />
-                  </Menu.Item>
-                )}
-                {type === "number" && (
-                  <Menu.Item key="number">
-                    <Input
-                      type="number"
-                      placeholder="Filter..."
-                      value={filterState[col] || ""}
-                      onChange={(e) => onFilterChange && onFilterChange(col, e.target.value ? Number(e.target.value) : undefined)}
-                      allowClear
-                    />
-                  </Menu.Item>
-                )}
-                {type === "date" && (
-                  <Menu.Item key="date">
-                    <DatePicker.RangePicker
-                      onChange={(dates) => onFilterChange && onFilterChange(col, dates ? [dates[0]?.toDate(), dates[1]?.toDate()] : undefined)}
-                    />
-                  </Menu.Item>
-                )}
-                {type === "select" && selectLabelsByField?.[col] && (
-                  <Menu.Item key="select">
-                    <Select
-                      style={{ minWidth: 120 }}
-                      allowClear
-                      placeholder="Select..."
-                      value={filterState[col]}
-                      onChange={(v) => onFilterChange && onFilterChange(col, v)}
-                    >
-                      {[...selectLabelsByField[col].entries()].map(([k, v]) => (
-                        <Select.Option key={k} value={k}>
-                          {v}
-                        </Select.Option>
-                      ))}
-                    </Select>
-                  </Menu.Item>
-                )}
-              </Menu>
-            }
+            menu={{
+              items: ([
+                type === "text"
+                  ? {
+                      key: "text",
+                      label: (
+                        <Input
+                          placeholder="Filter..."
+                          value={typeof filterState[col] === "string" ? filterState[col] : ""}
+                          onChange={(e) => onFilterChange && onFilterChange(col, e.target.value)}
+                          allowClear
+                        />
+                      ),
+                    }
+                  : null,
+                type === "number"
+                  ? {
+                      key: "number",
+                      label: (
+                        <Input
+                          type="number"
+                          placeholder="Filter..."
+                          value={typeof filterState[col] === "number" ? filterState[col] : ""}
+                          onChange={(e) => onFilterChange && onFilterChange(col, e.target.value ? Number(e.target.value) : undefined)}
+                          allowClear
+                        />
+                      ),
+                    }
+                  : null,
+                type === "date"
+                  ? {
+                      key: "date",
+                      label: (
+                        <DatePicker.RangePicker
+                          onChange={(dates) => onFilterChange && onFilterChange(col, dates ? [dates[0]?.toDate(), dates[1]?.toDate()] : undefined)}
+                        />
+                      ),
+                    }
+                  : null,
+                type === "select" && selectLabelsByField?.[col]
+                  ? {
+                      key: "select",
+                      label: (
+                        <Select
+                          style={{ minWidth: 120 }}
+                          allowClear
+                          placeholder="Select..."
+                          value={filterState[col] as string | undefined}
+                          onChange={(v) => onFilterChange && onFilterChange(col, v)}
+                        >
+                          {[...selectLabelsByField[col].entries()].map(([k, v]) => (
+                            <Select.Option key={k} value={k}>
+                              {v}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      ),
+                    }
+                  : null,
+              ] as any[]).filter((item) => !!item)
+            }}
             trigger={["click"]}
           >
             <Button size="small" icon={<FilterOutlined />} />
