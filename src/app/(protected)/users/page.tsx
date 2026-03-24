@@ -12,9 +12,9 @@ import {
   Result,
   Select,
   Space,
-  Table,
   Typography,
 } from "antd";
+import { SharedTable } from "@/components/crud/SharedTable";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
@@ -136,16 +136,8 @@ export default function UsersPage() {
 
   if (usersQuery.isLoading) {
     return <LoadingState />;
-  }
-
-  if (usersQuery.error) {
-    return <ErrorState message={String(usersQuery.error)} />;
-  }
-
-  const submitCreate = async () => {
-    try {
-      const values = await createForm.validateFields();
-      await createMutation.mutateAsync(values);
+    const rows = usersQuery.data?.data ?? [];
+    const paginationMeta = usersQuery.data?.pagination;
       message.success("User created");
       createForm.resetFields();
       setIsCreateOpen(false);
