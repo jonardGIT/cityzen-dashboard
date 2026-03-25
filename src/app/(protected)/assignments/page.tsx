@@ -1,11 +1,12 @@
 "use client";
 
-import { App, Button, Card, Form, Input, Modal, Select, Space, Table, Typography } from "antd";
+import { App, Button, Form, Input, Modal, Select, Space, Typography } from "antd";
 import { AxiosError } from "axios";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
 import { useAuth } from "@/context/AuthContext";
 import { useAssignmentsQuery, useCreateAssignmentMutation } from "@/features/assignments/api";
 import { useIncidentsQuery } from "@/features/incidents/api";
@@ -14,7 +15,7 @@ import { CAN_CREATE_ASSIGNMENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
-import type { ApiErrorPayload } from "@/types/api";
+import type { ApiErrorPayload, Assignment } from "@/types/api";
 
 const { Title, Text } = Typography;
 
@@ -88,18 +89,62 @@ export default function AssignmentsPage() {
   const createMutation = useCreateAssignmentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<AssignmentFormValues>();
-  const rows = useMemo(() => {
-    const items = assignmentsQuery.data?.data ?? [];
-    if (!listQuery.search) {
-      return items;
-    }
-
-    return items.filter((item) =>
-      JSON.stringify(item).toLowerCase().includes(listQuery.search.toLowerCase()),
-    );
-  }, [assignmentsQuery.data, listQuery.search]);
+  const rows = assignmentsQuery.data?.data ?? [];
 
   const pagination = assignmentsQuery.data?.pagination;
+  const incidentLabels = new Map(
+    (incidentsQuery.data?.data ?? []).map((item) => [String(item.id), item.description ?? `Incident ${item.id}`]),
+  );
+  const responderLabels = new Map(
+    (respondersQuery.data?.data ?? []).map((item) => [
+      String(item.id),
+      item.name ??
+        (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() || `Responder ${item.id}`),
+    ]),
+  );
+  const statusLabels = new Map(
+    (statusesQuery.data?.data ?? []).map((item) => [String(item.id), item.name ?? `Status ${item.id}`]),
+  );
+
+  const columns: Array<SharedTableColumn<Assignment>> = [
+    { key: "incidentId", title: "Incident", filterKind: "select", selectOptions: incidentLabels },
+    { key: "responderId", title: "Responder", filterKind: "select", selectOptions: responderLabels },
+    { key: "statusId", title: "Status", filterKind: "select", selectOptions: statusLabels },
+    { key: "notes", title: "Notes", filterKind: "text" },
+    {
+      key: "assignedDate",
+      title: "Assigned",
+      filterKind: "date",
+      render: (value) => {
+        const formatted = formatDateTime(value);
+        const relative = formatRelativeTime(value);
+
+        return (
+          <Space direction="vertical" size={0}>
+            <Text>{formatted}</Text>
+            {relative ? <Text type="secondary">{relative}</Text> : null}
+          </Space>
+        );
+      },
+    },
+    {
+      key: "createdAt",
+      title: "Created",
+      filterKind: "date",
+      sortable: true,
+      render: (value) => {
+        const formatted = formatDateTime(value);
+        const relative = formatRelativeTime(value);
+
+        return (
+          <Space direction="vertical" size={0}>
+            <Text>{formatted}</Text>
+            {relative ? <Text type="secondary">{relative}</Text> : null}
+          </Space>
+        );
+      },
+    },
+  ];
 
   if (assignmentsQuery.isLoading) {
     return <LoadingState />;
@@ -142,78 +187,45 @@ export default function AssignmentsPage() {
         </RoleGuard>
       </Space>
 
-      <Card>
-        <Space orientation="vertical" style={{ width: "100%" }}>
-          <Input.Search
-            allowClear
-            placeholder="Search assignments"
-            value={listQuery.search}
-            onChange={(event) => listQuery.setSearch(event.target.value)}
-          />
+      <SharedTable<Assignment>
+        rows={rows}
+        columns={columns}
+        loading={assignmentsQuery.isFetching}
+        page={listQuery.page}
+        pageSize={listQuery.pageSize}
+        paginationMeta={pagination}
+        onPageChange={listQuery.setPage}
+        onPageSizeChange={listQuery.setPageSize}
+        globalSearch={listQuery.search}
+        onGlobalSearchChange={listQuery.setSearch}
+        globalSearchPlaceholder="Search assignments"
+        sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
+        onSortChange={(columnKey, order) => {
+          if (columnKey === "createdAt" || columnKey === "updatedAt") {
+            listQuery.setSort(columnKey, order);
+          }
+        }}
+        serverDateFilters={{
+          createdAt: { from: listQuery.createdFrom, to: listQuery.createdTo },
+          updatedAt: { from: listQuery.updatedFrom, to: listQuery.updatedTo },
+        }}
+        onServerDateFilterChange={(columnKey, value) => {
+          if (columnKey === "createdAt") {
+            listQuery.setCreatedRange(value.from, value.to);
+            return;
+          }
+
+          listQuery.setUpdatedRange(value.from, value.to);
+        }}
+        topToolbar={
           <FilterToolbar
             state={listQuery}
             setters={listQuery}
             loading={Boolean(assignmentsQuery.isFetching)}
           />
-          <Table
-            rowKey="id"
-            loading={assignmentsQuery.isFetching}
-            dataSource={rows}
-            scroll={{ x: 920 }}
-            pagination={{
-              current: listQuery.page,
-              pageSize: listQuery.pageSize,
-              total: pagination?.total ?? rows.length,
-              onChange: (nextPage, nextPageSize) => {
-                if (nextPageSize !== listQuery.pageSize) {
-                  listQuery.setPageSize(nextPageSize);
-                  return;
-                }
-
-                listQuery.setPage(nextPage);
-              },
-            }}
-            columns={[
-              { title: "Incident", dataIndex: "incidentId", key: "incidentId" },
-              { title: "Responder", dataIndex: "responderId", key: "responderId" },
-              { title: "Status", dataIndex: "statusId", key: "statusId" },
-              { title: "Notes", dataIndex: "notes", key: "notes" },
-              {
-                title: "Assigned",
-                dataIndex: "assignedDate",
-                key: "assignedDate",
-                render: (value: unknown) => {
-                  const formatted = formatDateTime(value);
-                  const relative = formatRelativeTime(value);
-
-                  return (
-                    <Space orientation="vertical" size={0}>
-                      <Text>{formatted}</Text>
-                      {relative ? <Text type="secondary">{relative}</Text> : null}
-                    </Space>
-                  );
-                },
-              },
-              {
-                title: "Created",
-                dataIndex: "createdAt",
-                key: "createdAt",
-                render: (value: unknown) => {
-                  const formatted = formatDateTime(value);
-                  const relative = formatRelativeTime(value);
-
-                  return (
-                    <Space orientation="vertical" size={0}>
-                      <Text>{formatted}</Text>
-                      {relative ? <Text type="secondary">{relative}</Text> : null}
-                    </Space>
-                  );
-                },
-              },
-            ]}
-          />
-        </Space>
-      </Card>
+        }
+        scrollX={920}
+      />
 
       <Modal
         title="Create Assignment"
