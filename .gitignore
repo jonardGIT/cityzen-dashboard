@@ -1,3 +1,22 @@
+# IDE/editor settings
+.vscode/
+
+# Documentation
+docs/
+
+# Scripts and QA tools
+scripts/
+
+# Test files and coverage
+**/*.test.tsx
+**/*.spec.tsx
+coverage/
+
+# Local environment and build info
+*.local
+*.log
+*.md
+
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
