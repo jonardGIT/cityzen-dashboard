@@ -1,14 +1,21 @@
 "use client";
 
-import { Button, Input, Space, Table } from "antd";
-import { useMemo } from "react";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import { Button, Input, Skeleton, Space, Table, Tooltip } from "antd";
+import { useMemo, type ReactNode } from "react";
+import type { PaginationMeta } from "@/lib/api/pagination";
 import type { BaseEntity } from "@/types/api";
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeStyle: "short",
 });
+
+const ACTION_BUTTON_STYLES = {
+  view: { backgroundColor: "#1677ff", borderColor: "#1677ff", color: "#ffffff" },
+  edit: { backgroundColor: "#faad14", borderColor: "#faad14", color: "#ffffff" },
+  delete: { backgroundColor: "#ff4d4f", borderColor: "#ff4d4f", color: "#ffffff" },
+} as const;
 
 function formatDateLikeString(value: string): string | null {
   const trimmed = value.trim();
@@ -31,13 +38,27 @@ function formatDateLikeString(value: string): string | null {
   return DATE_TIME_FORMATTER.format(parsed);
 }
 
-function formatCellValue(value: unknown): string {
+function camelCaseToTitleCase(str: string): string {
+  return str
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (char) => char.toUpperCase())
+    .replace(/\bId\b/i, "ID")
+    .trim();
+}
+
+function isDateLikeFieldName(key: string): boolean {
+  return /(^date|date$|At$|_at$|timestamp|time$)/i.test(key);
+}
+
+function formatCellValue(value: unknown, optionLabels?: Map<string, string>): string {
   if (value === null || value === undefined || value === "") {
     return "N/A";
   }
 
   if (Array.isArray(value)) {
-    const items = value.map((item) => formatCellValue(item)).filter((item) => item !== "N/A");
+    const items = value
+      .map((item) => formatCellValue(item, optionLabels))
+      .filter((item) => item !== "N/A");
     return items.length > 0 ? items.join(", ") : "N/A";
   }
 
@@ -71,7 +92,15 @@ function formatCellValue(value: unknown): string {
   }
 
   if (typeof value === "string") {
+    if (optionLabels?.has(value)) {
+      return optionLabels.get(value) ?? value;
+    }
+
     return formatDateLikeString(value) ?? value;
+  }
+
+  if (typeof value === "number" && optionLabels?.has(String(value))) {
+    return optionLabels.get(String(value)) ?? String(value);
   }
 
   return String(value);
@@ -80,112 +109,166 @@ function formatCellValue(value: unknown): string {
 interface CrudTableProps {
   rows: BaseEntity[];
   loading?: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
+  page: number;
+  pageSize: number;
+  onPageChange: (value: number) => void;
+  onPageSizeChange: (value: number) => void;
+  paginationMeta?: PaginationMeta;
+  columnLabelsByField?: Record<string, string>;
+  selectLabelsByField?: Record<string, Map<string, string>>;
   onView: (row: BaseEntity) => void;
   onEdit: (row: BaseEntity) => void;
   onDelete: (row: BaseEntity) => void;
   canViewDetails: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  filterToolbar?: ReactNode;
 }
 
 export function CrudTable({
   rows,
   loading,
+  search,
+  onSearchChange,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  paginationMeta,
+  columnLabelsByField,
+  selectLabelsByField,
   onView,
   onEdit,
   onDelete,
   canViewDetails,
   canEdit,
   canDelete,
+  filterToolbar,
 }: CrudTableProps) {
-  const tableState = useTableQueryParams(10);
-
-  const allRows = useMemo(() => {
-    if (!tableState.search) {
+  const filteredRows = useMemo(() => {
+    if (!search) {
       return rows;
     }
 
     return rows.filter((row) =>
       JSON.stringify(row)
         .toLowerCase()
-        .includes(tableState.search.toLowerCase()),
+        .includes(search.toLowerCase()),
     );
-  }, [rows, tableState.search]);
-
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  }, [rows, search]);
 
   const keys = useMemo(() => {
-    const keySet = new Set<string>(["id"]);
+    const MAX_COLUMNS = 6;
+    const DATE_COLUMN_RESERVE = 2;
+    const DISCOVERY_LIMIT = 20;
+
+    const keySet = new Set<string>();
     for (const row of rows) {
-      Object.keys(row).forEach((key) => keySet.add(key));
-      if (keySet.size >= 7) {
+      Object.keys(row)
+        .filter((key) => key !== "id")
+        .forEach((key) => keySet.add(key));
+
+      if (keySet.size >= DISCOVERY_LIMIT) {
         break;
       }
     }
 
-    return Array.from(keySet).slice(0, 6);
+    const allKeys = Array.from(keySet);
+    const dateKeys = allKeys.filter((key) => isDateLikeFieldName(key));
+    const nonDateKeys = allKeys.filter((key) => !isDateLikeFieldName(key));
+
+    const dateSlots = Math.min(DATE_COLUMN_RESERVE, dateKeys.length);
+    const nonDateSlots = Math.max(0, MAX_COLUMNS - dateSlots);
+
+    return [...nonDateKeys.slice(0, nonDateSlots), ...dateKeys.slice(0, dateSlots)];
   }, [rows]);
 
   const columns = [
-    ...keys.map((key) => ({
-      title: key,
-      dataIndex: key,
-      key,
-      render: (value: unknown) => {
-        return formatCellValue(value);
-      },
-    })),
     {
       title: "Actions",
       key: "actions",
-      width: 240,
+      width: 180,
       render: (_: unknown, row: BaseEntity) => (
         <Space>
           {canViewDetails ? (
-            <Button size="small" onClick={() => onView(row)}>
-              View
-            </Button>
+            <Tooltip title="View">
+              <Button
+                size="small"
+                shape="circle"
+                icon={<EyeOutlined />}
+                aria-label="View"
+                style={ACTION_BUTTON_STYLES.view}
+                onClick={() => onView(row)}
+              />
+            </Tooltip>
           ) : null}
           {canEdit ? (
-            <Button size="small" onClick={() => onEdit(row)}>
-              Edit
-            </Button>
+            <Tooltip title="Edit">
+              <Button
+                size="small"
+                shape="circle"
+                icon={<EditOutlined />}
+                aria-label="Edit"
+                style={ACTION_BUTTON_STYLES.edit}
+                onClick={() => onEdit(row)}
+              />
+            </Tooltip>
           ) : null}
           {canDelete ? (
-            <Button size="small" danger onClick={() => onDelete(row)}>
-              Delete
-            </Button>
+            <Tooltip title="Delete">
+              <Button
+                size="small"
+                shape="circle"
+                icon={<DeleteOutlined />}
+                aria-label="Delete"
+                style={ACTION_BUTTON_STYLES.delete}
+                onClick={() => onDelete(row)}
+              />
+            </Tooltip>
           ) : null}
         </Space>
       ),
     },
+    ...keys.map((key) => ({
+      title: columnLabelsByField?.[key] ?? camelCaseToTitleCase(key),
+      dataIndex: key,
+      key,
+      render: (value: unknown) => {
+        return formatCellValue(value, selectLabelsByField?.[key]);
+      },
+    })),
   ];
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }}>
+      {filterToolbar}
       <Input.Search
         allowClear
-        value={tableState.search}
+        value={search}
         placeholder="Search records"
-        onChange={(event) => tableState.setSearch(event.target.value)}
+        onChange={(event) => onSearchChange(event.target.value)}
       />
+      {loading ? <Skeleton active paragraph={{ rows: 3 }} title={false} /> : null}
       <Table
         rowKey="id"
         loading={loading}
-        dataSource={pagedRows}
+        dataSource={filteredRows}
         scroll={{ x: 1024 }}
         columns={columns}
         locale={{ emptyText: "No records found" }}
         pagination={{
-          current: tableState.page,
-          pageSize: tableState.pageSize,
-          total: allRows.length,
-          onChange: (page, pageSize) => {
-            tableState.setPage(page);
-            tableState.setPageSize(pageSize);
+          current: page,
+          pageSize,
+          total: paginationMeta?.total ?? filteredRows.length,
+          onChange: (nextPage, nextPageSize) => {
+            if (nextPageSize !== pageSize) {
+              onPageSizeChange(nextPageSize);
+              return;
+            }
+
+            onPageChange(nextPage);
           },
         }}
       />

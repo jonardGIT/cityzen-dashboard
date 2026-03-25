@@ -1,8 +1,22 @@
 "use client";
 
-import { App, Button, Card, Form, Input, Modal, Select, Space, Table, Typography } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
+import {
+  App,
+  Button,
+  Card,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tooltip,
+  Typography,
+} from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
@@ -16,7 +30,8 @@ import {
 } from "@/features/reference-data/api";
 import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
+import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload } from "@/types/api";
 
 const { Title } = Typography;
@@ -30,45 +45,88 @@ interface IncidentFormValues {
   statusId: string;
 }
 
+function formatDateTime(value: unknown): string {
+  if (!value) {
+    return "N/A";
+  }
+
+  const parsed = new Date(String(value));
+  if (Number.isNaN(parsed.getTime())) {
+    return "N/A";
+  }
+
+  return parsed.toLocaleString();
+}
+
 export default function IncidentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
-  const incidentsQuery = useIncidentsQuery();
-  const citizensQuery = useCitizensQuery();
-  const locationsQuery = useLocationsQuery();
-  const categoriesQuery = useCategoriesQuery();
-  const severitiesQuery = useSeveritiesQuery();
-  const statusesQuery = useStatusesQuery();
+  const optionQueryState = {
+    page: 1,
+    pageSize: 200,
+    search: "",
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+  } as const;
+  const citizensQuery = useCitizensQuery(optionQueryState);
+  const locationsQuery = useLocationsQuery(optionQueryState);
+  const categoriesQuery = useCategoriesQuery(optionQueryState);
+  const severitiesQuery = useSeveritiesQuery(optionQueryState);
+  const statusesQuery = useStatusesQuery(optionQueryState);
   const createMutation = useCreateIncidentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<IncidentFormValues>();
 
-  const tableState = useTableQueryParams(10);
+  const listQuery = useListQueryParams();
 
-  const allRows = useMemo(() => {
-    const rows = incidentsQuery.data ?? [];
-    if (!tableState.search) {
-      return rows;
-    }
+  const incidentsListQuery = useIncidentsQuery(listQuery);
+  const rows = incidentsListQuery.data?.data ?? [];
+  const pagination = incidentsListQuery.data?.pagination;
 
-    return rows.filter((item) =>
-      JSON.stringify(item)
-        .toLowerCase()
-        .includes(tableState.search.toLowerCase()),
-    );
-  }, [incidentsQuery.data, tableState.search]);
+  const severityOptions = useMemo(
+    () =>
+      (severitiesQuery.data?.data ?? []).map((item) => ({
+        value: String(item.id),
+        label: item.level ?? `Severity ${item.id}`,
+        description: item.definition,
+      })),
+    [severitiesQuery.data],
+  );
 
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  const citizenOptions = useMemo(
+    () =>
+      (citizensQuery.data?.data ?? []).map((item) => ({
+        value: String(item.id),
+        label: item.name ?? `Citizen ${item.id}`,
+      })),
+    [citizensQuery.data],
+  );
 
-  if (incidentsQuery.isLoading) {
+  const statusOptions = useMemo(
+    () =>
+      (statusesQuery.data?.data ?? []).map((item) => ({
+        value: String(item.id),
+        label: item.name ?? `Status ${item.id}`,
+      })),
+    [statusesQuery.data],
+  );
+
+  const citizenLabels = useMemo(
+    () => new Map(citizenOptions.map((item) => [item.value, item.label])),
+    [citizenOptions],
+  );
+
+  const statusLabels = useMemo(
+    () => new Map(statusOptions.map((item) => [item.value, item.label])),
+    [statusOptions],
+  );
+
+  if (incidentsListQuery.isLoading) {
     return <LoadingState />;
   }
 
-  if (incidentsQuery.error) {
-    return <ErrorState message={String(incidentsQuery.error)} />;
+  if (incidentsListQuery.error) {
+    return <ErrorState message={String(incidentsListQuery.error)} />;
   }
 
   const canCreate = hasRole(...CAN_CREATE_INCIDENT);
@@ -116,33 +174,66 @@ export default function IncidentsPage() {
           <Input.Search
             allowClear
             placeholder="Search incidents"
-            value={tableState.search}
-            onChange={(event) => tableState.setSearch(event.target.value)}
+            value={listQuery.search}
+            onChange={(event) => listQuery.setSearch(event.target.value)}
+          />
+          <FilterToolbar
+            state={listQuery}
+            setters={listQuery}
+            loading={Boolean(incidentsListQuery.isFetching)}
           />
           <Table
             rowKey="id"
-            dataSource={pagedRows}
+            loading={incidentsListQuery.isFetching}
+            dataSource={rows}
             scroll={{ x: 980 }}
             pagination={{
-              current: tableState.page,
-              pageSize: tableState.pageSize,
-              total: allRows.length,
-              onChange: (page, pageSize) => {
-                tableState.setPage(page);
-                tableState.setPageSize(pageSize);
+              current: listQuery.page,
+              pageSize: listQuery.pageSize,
+              total: pagination?.total ?? rows.length,
+              onChange: (nextPage, nextPageSize) => {
+                if (nextPageSize !== listQuery.pageSize) {
+                  listQuery.setPageSize(nextPageSize);
+                  return;
+                }
+
+                listQuery.setPage(nextPage);
               },
             }}
             columns={[
-              { title: "ID", dataIndex: "id", key: "id", width: 100 },
               { title: "Description", dataIndex: "description", key: "description" },
-              { title: "Citizen ID", dataIndex: "citizenId", key: "citizenId" },
+              {
+                title: "Citizen",
+                dataIndex: "citizenId",
+                key: "citizenId",
+                render: (value: string) =>
+                  citizenLabels.get(String(value)) ?? `Citizen ${value ?? "N/A"}`,
+              },
               { title: "Location ID", dataIndex: "locationId", key: "locationId" },
-              { title: "Status ID", dataIndex: "statusId", key: "statusId" },
+              {
+                title: "Status",
+                dataIndex: "statusId",
+                key: "statusId",
+                render: (value: string) =>
+                  statusLabels.get(String(value)) ?? `Status ${value ?? "N/A"}`,
+              },
               {
                 title: "Reported",
                 dataIndex: "dateReported",
                 key: "dateReported",
-                render: (value: string) => (value ? new Date(value).toLocaleString() : "N/A"),
+                render: (value: unknown) => formatDateTime(value),
+              },
+              {
+                title: "Created",
+                dataIndex: "createdAt",
+                key: "createdAt",
+                render: (value: unknown) => formatDateTime(value),
+              },
+              {
+                title: "Updated",
+                dataIndex: "updatedAt",
+                key: "updatedAt",
+                render: (value: unknown) => formatDateTime(value),
               },
             ]}
           />
@@ -166,18 +257,12 @@ export default function IncidentsPage() {
           </Form.Item>
 
           <Form.Item name="citizenId" label="Citizen" rules={[{ required: true }]}>
-            <Select
-              options={(citizensQuery.data ?? []).map((item) => ({
-                value: String(item.id),
-                label: item.name ?? `Citizen ${item.id}`,
-              }))}
-              loading={citizensQuery.isLoading}
-            />
+            <Select options={citizenOptions} loading={citizensQuery.isLoading} />
           </Form.Item>
 
           <Form.Item name="locationId" label="Location" rules={[{ required: true }]}>
             <Select
-              options={(locationsQuery.data ?? []).map((item) => ({
+              options={(locationsQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label: item.name ?? `Location ${item.id}`,
               }))}
@@ -187,7 +272,7 @@ export default function IncidentsPage() {
 
           <Form.Item name="categoryId" label="Category" rules={[{ required: true }]}>
             <Select
-              options={(categoriesQuery.data ?? []).map((item) => ({
+              options={(categoriesQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label: item.name ?? `Category ${item.id}`,
               }))}
@@ -197,22 +282,36 @@ export default function IncidentsPage() {
 
           <Form.Item name="severityId" label="Severity" rules={[{ required: true }]}>
             <Select
-              options={(severitiesQuery.data ?? []).map((item) => ({
-                value: String(item.id),
-                label: item.name ?? `Severity ${item.id}`,
-              }))}
+              options={severityOptions}
+              optionRender={(option) => {
+                const description = option.data.description;
+                if (typeof description !== "string" || description.length === 0) {
+                  return <span>{String(option.label)}</span>;
+                }
+
+                return (
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      width: "100%",
+                    }}
+                  >
+                    <span>{String(option.label)}</span>
+                    <Tooltip title={description}>
+                      <InfoCircleOutlined style={{ color: "#1677ff" }} />
+                    </Tooltip>
+                  </span>
+                );
+              }}
               loading={severitiesQuery.isLoading}
             />
           </Form.Item>
 
           <Form.Item name="statusId" label="Status" rules={[{ required: true }]}>
-            <Select
-              options={(statusesQuery.data ?? []).map((item) => ({
-                value: String(item.id),
-                label: item.name ?? `Status ${item.id}`,
-              }))}
-              loading={statusesQuery.isLoading}
-            />
+            <Select options={statusOptions} loading={statusesQuery.isLoading} />
           </Form.Item>
         </Form>
       </Modal>

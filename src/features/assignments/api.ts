@@ -1,18 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/api/clients";
-import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
+import { unwrapEntityResponse } from "@/lib/api/normalize";
+import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  buildListQueryParams,
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+  type FetchListParams,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import type { Assignment } from "@/types/api";
 
 export interface CreateAssignmentDto {
-  incidentId: string | number;
-  responderId: string | number;
-  statusId?: string | number;
+  incidentId: string;
+  responderId: string;
+  statusId?: string;
   notes?: string;
 }
 
-export async function fetchAssignments() {
-  const response = await authClient.get<unknown>("/assignments");
-  return unwrapListResponse<Assignment>(response.data);
+export async function fetchAssignments(
+  fetchParams: FetchListParams,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<Assignment>> {
+  const response = await authClient.get<unknown>("/assignments", {
+    params: buildListQueryParams(fetchParams),
+    signal,
+  });
+  return adaptPaginatedResponse<Assignment>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
 export async function createAssignment(payload: CreateAssignmentDto) {
@@ -20,8 +34,24 @@ export async function createAssignment(payload: CreateAssignmentDto) {
   return unwrapEntityResponse<Assignment>(response.data);
 }
 
-export function useAssignmentsQuery() {
-  return useQuery({ queryKey: ["assignments"], queryFn: fetchAssignments });
+export function useAssignmentsQuery(state: ListQueryState) {
+  const fetchParams = state;
+  return useQuery({
+    queryKey: ["assignments", fetchParams],
+    queryFn: ({ signal }) => fetchAssignments(fetchParams, signal),
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function defaultAssignmentsQueryState(overrides?: Partial<ListQueryState>): ListQueryState {
+  return {
+    page: 1,
+    pageSize: 20,
+    search: "",
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+    ...overrides,
+  };
 }
 
 export function useCreateAssignmentMutation() {

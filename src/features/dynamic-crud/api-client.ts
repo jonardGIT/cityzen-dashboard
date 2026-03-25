@@ -40,6 +40,8 @@ export async function requestCrudEndpoint<TResponse = unknown>(
   endpoint: CrudEndpoint,
   options?: {
     pathParams?: Record<string, string | number>;
+    queryParams?: Record<string, string | number | boolean | undefined>;
+    signal?: AbortSignal;
     body?: unknown;
   },
 ): Promise<NormalizedApiResult<TResponse>> {
@@ -49,6 +51,8 @@ export async function requestCrudEndpoint<TResponse = unknown>(
   const config: AxiosRequestConfig = {
     url,
     method: endpoint.method,
+    params: options?.queryParams,
+    signal: options?.signal,
     data: options?.body,
   };
 

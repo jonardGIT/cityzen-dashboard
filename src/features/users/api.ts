@@ -1,7 +1,15 @@
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "@/lib/auth/token-storage";
-import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
+import { unwrapEntityResponse } from "@/lib/api/normalize";
+import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  buildListQueryParams,
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+  type FetchListParams,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import type { User } from "@/types/api";
 import type { Role } from "@/types/auth";
 
@@ -42,9 +50,15 @@ usersApiClient.interceptors.request.use((config) => {
   return config;
 });
 
-export async function fetchUsers() {
-  const response = await usersApiClient.get<unknown>("/users");
-  return unwrapListResponse<User>(response.data);
+export async function fetchUsers(
+  fetchParams: FetchListParams,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<User>> {
+  const response = await usersApiClient.get<unknown>("/users", {
+    params: buildListQueryParams(fetchParams),
+    signal,
+  });
+  return adaptPaginatedResponse<User>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
 export async function createUser(payload: CreateUserDto) {
@@ -52,12 +66,12 @@ export async function createUser(payload: CreateUserDto) {
   return unwrapEntityResponse<User>(response.data);
 }
 
-export async function updateUser(userId: string | number, payload: UpdateUserDto) {
+export async function updateUser(userId: string, payload: UpdateUserDto) {
   const response = await usersApiClient.patch<unknown>(`/users/${userId}`, payload);
   return unwrapEntityResponse<User>(response.data);
 }
 
-export async function deleteUser(userId: string | number) {
+export async function deleteUser(userId: string) {
   await usersApiClient.delete(`/users/${userId}`);
 }
 
@@ -66,8 +80,25 @@ export async function fetchUsersCapabilities() {
   return response.data;
 }
 
-export function useUsersQuery(enabled = true) {
-  return useQuery({ queryKey: ["users"], queryFn: fetchUsers, enabled });
+export function useUsersQuery(state: ListQueryState, enabled = true) {
+  const fetchParams = state;
+  return useQuery({
+    queryKey: ["users", fetchParams],
+    queryFn: ({ signal }) => fetchUsers(fetchParams, signal),
+    enabled,
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function defaultUsersQueryState(overrides?: Partial<ListQueryState>): ListQueryState {
+  return {
+    page: 1,
+    pageSize: 20,
+    search: "",
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+    ...overrides,
+  };
 }
 
 export function useUsersCapabilitiesQuery(enabled = true) {
@@ -90,7 +121,7 @@ export function useCreateUserMutation() {
 export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, payload }: { userId: string | number; payload: UpdateUserDto }) =>
+    mutationFn: ({ userId, payload }: { userId: string; payload: UpdateUserDto }) =>
       updateUser(userId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
@@ -99,7 +130,7 @@ export function useUpdateUserMutation() {
 export function useDeleteUserMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (userId: string | number) => deleteUser(userId),
+    mutationFn: (userId: string) => deleteUser(userId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
 }

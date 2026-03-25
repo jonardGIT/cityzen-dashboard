@@ -3,6 +3,7 @@
 import { App, Button, Card, Form, Input, Modal, Select, Space, Table, Typography } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
@@ -11,7 +12,8 @@ import { useIncidentsQuery } from "@/features/incidents/api";
 import { useRespondersQuery, useStatusesQuery } from "@/features/reference-data/api";
 import { CAN_CREATE_ASSIGNMENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
+import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload } from "@/types/api";
 
 const { Title, Text } = Typography;
@@ -70,30 +72,34 @@ function formatRelativeTime(value: unknown): string | null {
 export default function AssignmentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
-  const assignmentsQuery = useAssignmentsQuery();
-  const incidentsQuery = useIncidentsQuery();
-  const respondersQuery = useRespondersQuery();
-  const statusesQuery = useStatusesQuery();
+  const listQuery = useListQueryParams();
+  const optionQueryState = {
+    page: 1,
+    pageSize: 200,
+    search: "",
+    sortBy: DEFAULT_SORT_BY,
+    sortOrder: DEFAULT_SORT_ORDER,
+  } as const;
+
+  const assignmentsQuery = useAssignmentsQuery(listQuery);
+  const incidentsQuery = useIncidentsQuery(optionQueryState);
+  const respondersQuery = useRespondersQuery(optionQueryState);
+  const statusesQuery = useStatusesQuery(optionQueryState);
   const createMutation = useCreateAssignmentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<AssignmentFormValues>();
-  const tableState = useTableQueryParams(10);
-
-  const allRows = useMemo(() => {
-    const rows = assignmentsQuery.data ?? [];
-    if (!tableState.search) {
-      return rows;
+  const rows = useMemo(() => {
+    const items = assignmentsQuery.data?.data ?? [];
+    if (!listQuery.search) {
+      return items;
     }
 
-    return rows.filter((item) =>
-      JSON.stringify(item).toLowerCase().includes(tableState.search.toLowerCase()),
+    return items.filter((item) =>
+      JSON.stringify(item).toLowerCase().includes(listQuery.search.toLowerCase()),
     );
-  }, [assignmentsQuery.data, tableState.search]);
+  }, [assignmentsQuery.data, listQuery.search]);
 
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  const pagination = assignmentsQuery.data?.pagination;
 
   if (assignmentsQuery.isLoading) {
     return <LoadingState />;
@@ -141,27 +147,37 @@ export default function AssignmentsPage() {
           <Input.Search
             allowClear
             placeholder="Search assignments"
-            value={tableState.search}
-            onChange={(event) => tableState.setSearch(event.target.value)}
+            value={listQuery.search}
+            onChange={(event) => listQuery.setSearch(event.target.value)}
+          />
+          <FilterToolbar
+            state={listQuery}
+            setters={listQuery}
+            loading={Boolean(assignmentsQuery.isFetching)}
           />
           <Table
             rowKey="id"
-            dataSource={pagedRows}
+            loading={assignmentsQuery.isFetching}
+            dataSource={rows}
             scroll={{ x: 920 }}
             pagination={{
-              current: tableState.page,
-              pageSize: tableState.pageSize,
-              total: allRows.length,
-              onChange: (page, pageSize) => {
-                tableState.setPage(page);
-                tableState.setPageSize(pageSize);
+              current: listQuery.page,
+              pageSize: listQuery.pageSize,
+              total: pagination?.total ?? rows.length,
+              onChange: (nextPage, nextPageSize) => {
+                if (nextPageSize !== listQuery.pageSize) {
+                  listQuery.setPageSize(nextPageSize);
+                  return;
+                }
+
+                listQuery.setPage(nextPage);
               },
             }}
             columns={[
-              { title: "ID", dataIndex: "id", key: "id", width: 100 },
               { title: "Incident", dataIndex: "incidentId", key: "incidentId" },
               { title: "Responder", dataIndex: "responderId", key: "responderId" },
               { title: "Status", dataIndex: "statusId", key: "statusId" },
+              { title: "Notes", dataIndex: "notes", key: "notes" },
               {
                 title: "Assigned",
                 dataIndex: "assignedDate",
@@ -194,7 +210,6 @@ export default function AssignmentsPage() {
                   );
                 },
               },
-              { title: "Notes", dataIndex: "notes", key: "notes" },
             ]}
           />
         </Space>
@@ -210,7 +225,7 @@ export default function AssignmentsPage() {
         <Form<AssignmentFormValues> form={form} layout="vertical" requiredMark={false}>
           <Form.Item name="incidentId" label="Incident" rules={[{ required: true }]}>
             <Select
-              options={(incidentsQuery.data ?? []).map((item) => ({
+              options={(incidentsQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label: item.description ?? `Incident ${item.id}`,
               }))}
@@ -219,7 +234,7 @@ export default function AssignmentsPage() {
 
           <Form.Item name="responderId" label="Responder" rules={[{ required: true }]}>
             <Select
-              options={(respondersQuery.data ?? []).map((item) => ({
+              options={(respondersQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label:
                   item.name ??
@@ -232,7 +247,7 @@ export default function AssignmentsPage() {
           <Form.Item name="statusId" label="Status">
             <Select
               allowClear
-              options={(statusesQuery.data ?? []).map((item) => ({
+              options={(statusesQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
                 label: item.name ?? `Status ${item.id}`,
               }))}

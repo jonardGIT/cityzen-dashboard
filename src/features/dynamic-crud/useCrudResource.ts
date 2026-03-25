@@ -2,7 +2,13 @@
 
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
+import { unwrapEntityResponse } from "@/lib/api/normalize";
+import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  buildListQueryParams,
+  DEFAULT_LIST_QUERY_STATE,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import { getCrudResource } from "@/features/dynamic-crud/config";
 import {
   assertCrudSuccess,
@@ -10,9 +16,13 @@ import {
 } from "@/features/dynamic-crud/api-client";
 import type { BaseEntity } from "@/types/api";
 
-export function useCrudResource(resourceName: string) {
+const DEFAULT_STATE: ListQueryState = DEFAULT_LIST_QUERY_STATE;
+
+export function useCrudResource(resourceName: string, queryState: ListQueryState = DEFAULT_STATE) {
   const queryClient = useQueryClient();
   const config = useMemo(() => getCrudResource(resourceName), [resourceName]);
+
+  const fetchParams = queryState;
 
   const listEndpoint = config?.endpoints.list;
   const getEndpoint = config?.endpoints.get;
@@ -21,17 +31,21 @@ export function useCrudResource(resourceName: string) {
   const deleteEndpoint = config?.endpoints.delete;
 
   const listQuery = useQuery({
-    queryKey: ["crud", resourceName, "list"],
+    queryKey: ["crud", resourceName, "list", fetchParams],
     enabled: Boolean(listEndpoint),
-    queryFn: async () => {
+    queryFn: async ({ signal }): Promise<PaginatedResponse<BaseEntity>> => {
       if (!listEndpoint) {
-        return [] as BaseEntity[];
+        return adaptPaginatedResponse<BaseEntity>([], fetchParams.page, fetchParams.pageSize);
       }
 
-      const result = await requestCrudEndpoint<unknown>(listEndpoint);
+      const result = await requestCrudEndpoint<unknown>(listEndpoint, {
+        queryParams: buildListQueryParams(fetchParams),
+        signal,
+      });
       const payload = assertCrudSuccess(result);
-      return unwrapListResponse<BaseEntity>(payload);
+      return adaptPaginatedResponse<BaseEntity>(payload, fetchParams.page, fetchParams.pageSize);
     },
+    placeholderData: (previous) => previous,
   });
 
   const createMutation = useMutation({
@@ -50,7 +64,7 @@ export function useCrudResource(resourceName: string) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, payload }: { id: string | number; payload: Record<string, unknown> }) => {
+    mutationFn: async ({ id, payload }: { id: string; payload: Record<string, unknown> }) => {
       if (!updateEndpoint) {
         throw new Error("Update operation is not configured for this resource.");
       }
@@ -68,7 +82,7 @@ export function useCrudResource(resourceName: string) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string | number) => {
+    mutationFn: async (id: string) => {
       if (!deleteEndpoint) {
         throw new Error("Delete operation is not configured for this resource.");
       }
@@ -84,7 +98,7 @@ export function useCrudResource(resourceName: string) {
     },
   });
 
-  const getById = async (id: string | number) => {
+  const getById = async (id: string) => {
     if (!getEndpoint) {
       throw new Error("Get operation is not configured for this resource.");
     }

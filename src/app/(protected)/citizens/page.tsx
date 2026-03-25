@@ -3,31 +3,28 @@
 import { Card, Input, Space, Table, Typography } from "antd";
 import Link from "next/link";
 import { useMemo } from "react";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { useCitizensQuery } from "@/features/reference-data/api";
-import { useTableQueryParams } from "@/hooks/useTableQueryParams";
+import { useListQueryParams } from "@/hooks/useListQueryParams";
 
 const { Title } = Typography;
 
 export default function CitizensPage() {
-  const citizensQuery = useCitizensQuery();
-  const tableState = useTableQueryParams(10);
+  const listQuery = useListQueryParams();
+  const citizensQuery = useCitizensQuery(listQuery);
 
-  const allRows = useMemo(() => {
-    const rows = citizensQuery.data ?? [];
-    if (!tableState.search) {
-      return rows;
+  const rows = useMemo(() => {
+    const items = citizensQuery.data?.data ?? [];
+    if (!listQuery.search) {
+      return items;
     }
 
-    return rows.filter((item) =>
-      JSON.stringify(item).toLowerCase().includes(tableState.search.toLowerCase()),
+    return items.filter((item) =>
+      JSON.stringify(item).toLowerCase().includes(listQuery.search.toLowerCase()),
     );
-  }, [citizensQuery.data, tableState.search]);
-
-  const pagedRows = useMemo(() => {
-    const start = (tableState.page - 1) * tableState.pageSize;
-    return allRows.slice(start, start + tableState.pageSize);
-  }, [allRows, tableState.page, tableState.pageSize]);
+  }, [citizensQuery.data, listQuery.search]);
+  const paginationMeta = citizensQuery.data?.pagination;
 
   if (citizensQuery.isLoading) {
     return <LoadingState />;
@@ -48,29 +45,40 @@ export default function CitizensPage() {
           <Input.Search
             allowClear
             placeholder="Search citizens"
-            value={tableState.search}
-            onChange={(event) => tableState.setSearch(event.target.value)}
+            value={listQuery.search}
+            onChange={(event) => listQuery.setSearch(event.target.value)}
+          />
+          <FilterToolbar
+            state={listQuery}
+            setters={listQuery}
+            loading={Boolean(citizensQuery.isFetching)}
           />
           <Table
             rowKey="id"
-            dataSource={pagedRows}
+            loading={citizensQuery.isFetching}
+            dataSource={rows}
             pagination={{
-              current: tableState.page,
-              pageSize: tableState.pageSize,
-              total: allRows.length,
-              onChange: (page, pageSize) => {
-                tableState.setPage(page);
-                tableState.setPageSize(pageSize);
+              current: listQuery.page,
+              pageSize: listQuery.pageSize,
+              total: paginationMeta?.total ?? rows.length,
+              onChange: (nextPage, nextPageSize) => {
+                if (nextPageSize !== listQuery.pageSize) {
+                  listQuery.setPageSize(nextPageSize);
+                  return;
+                }
+
+                listQuery.setPage(nextPage);
               },
             }}
             columns={[
               {
-                title: "ID",
-                dataIndex: "id",
-                key: "id",
-                render: (value: string | number) => <Link href={`/citizens/${value}`}>{value}</Link>,
+                title: "Name",
+                dataIndex: "name",
+                key: "name",
+                render: (value: string | undefined, record: { id: string }) => (
+                  <Link href={`/citizens/${record.id}`}>{value || `Citizen ${record.id}`}</Link>
+                ),
               },
-              { title: "Name", dataIndex: "name", key: "name" },
               { title: "Contact", dataIndex: "contactInfo", key: "contactInfo" },
               { title: "Preferred Channel", dataIndex: "preferredChannel", key: "preferredChannel" },
             ]}

@@ -37,7 +37,7 @@ function readRateLimitHeaders(headers: Headers): RateLimitMeta | undefined {
   return meta;
 }
 
-function buildUrl(resource: CirsResource, id?: string | number): string {
+function buildUrl(resource: CirsResource, id?: string): string {
   const base = `${CIRS_API_BASE_URL}${CIRS_API_BASE_PATH}/${resource}`;
   return id === undefined ? base : `${base}/${id}`;
 }
@@ -55,7 +55,7 @@ async function parseJsonBody<T>(response: Response): Promise<T | undefined> {
 async function request<T>(
   resource: CirsResource,
   init?: RequestInit,
-  id?: string | number,
+  id?: string,
 ): Promise<T> {
   const headers = new Headers(init?.headers ?? {});
   headers.set("Accept", "application/json");
@@ -99,7 +99,7 @@ export const cirsApi = {
 
   async getById<T extends BaseEntity>(
     resource: CirsResource,
-    id: string | number,
+    id: string,
   ): Promise<T> {
     const response = await request<unknown>(resource, { method: "GET" }, id);
     return unwrapEntityResponse<T>(response);

@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/api/clients";
-import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
+import { unwrapEntityResponse } from "@/lib/api/normalize";
+import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  buildListQueryParams,
+  type FetchListParams,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import type {
   Category,
   Citizen,
@@ -16,9 +22,15 @@ export async function fetchHealth() {
   return unwrapEntityResponse<HealthResponse>(response.data);
 }
 
-export async function fetchCitizens() {
-  const response = await authClient.get<unknown>("/citizens");
-  return unwrapListResponse<Citizen>(response.data);
+export async function fetchCitizens(
+  fetchParams: FetchListParams,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<Citizen>> {
+  const response = await authClient.get<unknown>("/citizens", {
+    params: buildListQueryParams(fetchParams),
+    signal,
+  });
+  return adaptPaginatedResponse<Citizen>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
 export async function fetchCitizenById(id: string) {
@@ -26,37 +38,72 @@ export async function fetchCitizenById(id: string) {
   return unwrapEntityResponse<Citizen>(response.data);
 }
 
-export async function fetchResponders() {
-  const response = await authClient.get<unknown>("/responders");
-  return unwrapListResponse<Responder>(response.data);
+export async function fetchResponders(
+  fetchParams: FetchListParams,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<Responder>> {
+  const response = await authClient.get<unknown>("/responders", {
+    params: buildListQueryParams(fetchParams),
+    signal,
+  });
+  return adaptPaginatedResponse<Responder>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
-export async function fetchStatuses() {
-  const response = await authClient.get<unknown>("/statuses");
-  return unwrapListResponse<Status>(response.data);
+export async function fetchStatuses(
+  fetchParams: FetchListParams,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<Status>> {
+  const response = await authClient.get<unknown>("/statuses", {
+    params: buildListQueryParams(fetchParams),
+    signal,
+  });
+  return adaptPaginatedResponse<Status>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
-export async function fetchCategories() {
-  const response = await authClient.get<unknown>("/categories");
-  return unwrapListResponse<Category>(response.data);
+export async function fetchCategories(
+  fetchParams: FetchListParams,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<Category>> {
+  const response = await authClient.get<unknown>("/categories", {
+    params: buildListQueryParams(fetchParams),
+    signal,
+  });
+  return adaptPaginatedResponse<Category>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
-export async function fetchSeverities() {
-  const response = await authClient.get<unknown>("/severities");
-  return unwrapListResponse<Severity>(response.data);
+export async function fetchSeverities(
+  fetchParams: FetchListParams,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<Severity>> {
+  const response = await authClient.get<unknown>("/severities", {
+    params: buildListQueryParams(fetchParams),
+    signal,
+  });
+  return adaptPaginatedResponse<Severity>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
-export async function fetchLocations() {
-  const response = await authClient.get<unknown>("/locations");
-  return unwrapListResponse<Location>(response.data);
+export async function fetchLocations(
+  fetchParams: FetchListParams,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<Location>> {
+  const response = await authClient.get<unknown>("/locations", {
+    params: buildListQueryParams(fetchParams),
+    signal,
+  });
+  return adaptPaginatedResponse<Location>(response.data, fetchParams.page, fetchParams.pageSize);
 }
 
 export function useHealthQuery() {
   return useQuery({ queryKey: ["health"], queryFn: fetchHealth });
 }
 
-export function useCitizensQuery() {
-  return useQuery({ queryKey: ["citizens"], queryFn: fetchCitizens });
+export function useCitizensQuery(state: ListQueryState) {
+  const fetchParams = state;
+  return useQuery({
+    queryKey: ["citizens", fetchParams],
+    queryFn: ({ signal }) => fetchCitizens(fetchParams, signal),
+    placeholderData: (previous) => previous,
+  });
 }
 
 export function useCitizenQuery(id: string) {
@@ -67,22 +114,47 @@ export function useCitizenQuery(id: string) {
   });
 }
 
-export function useRespondersQuery() {
-  return useQuery({ queryKey: ["responders"], queryFn: fetchResponders });
+export function useRespondersQuery(state: ListQueryState) {
+  const fetchParams = state;
+  return useQuery({
+    queryKey: ["responders", fetchParams],
+    queryFn: ({ signal }) => fetchResponders(fetchParams, signal),
+    placeholderData: (previous) => previous,
+  });
 }
 
-export function useStatusesQuery() {
-  return useQuery({ queryKey: ["statuses"], queryFn: fetchStatuses });
+export function useStatusesQuery(state: ListQueryState) {
+  const fetchParams = state;
+  return useQuery({
+    queryKey: ["statuses", fetchParams],
+    queryFn: ({ signal }) => fetchStatuses(fetchParams, signal),
+    placeholderData: (previous) => previous,
+  });
 }
 
-export function useCategoriesQuery() {
-  return useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
+export function useCategoriesQuery(state: ListQueryState) {
+  const fetchParams = state;
+  return useQuery({
+    queryKey: ["categories", fetchParams],
+    queryFn: ({ signal }) => fetchCategories(fetchParams, signal),
+    placeholderData: (previous) => previous,
+  });
 }
 
-export function useSeveritiesQuery() {
-  return useQuery({ queryKey: ["severities"], queryFn: fetchSeverities });
+export function useSeveritiesQuery(state: ListQueryState) {
+  const fetchParams = state;
+  return useQuery({
+    queryKey: ["severities", fetchParams],
+    queryFn: ({ signal }) => fetchSeverities(fetchParams, signal),
+    placeholderData: (previous) => previous,
+  });
 }
 
-export function useLocationsQuery() {
-  return useQuery({ queryKey: ["locations"], queryFn: fetchLocations });
+export function useLocationsQuery(state: ListQueryState) {
+  const fetchParams = state;
+  return useQuery({
+    queryKey: ["locations", fetchParams],
+    queryFn: ({ signal }) => fetchLocations(fetchParams, signal),
+    placeholderData: (previous) => previous,
+  });
 }
