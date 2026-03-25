@@ -4,13 +4,11 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 import {
   App,
   Button,
-  Card,
   Form,
   Input,
   Modal,
   Select,
   Space,
-  Table,
   Tooltip,
   Typography,
 } from "antd";
@@ -19,6 +17,7 @@ import { useMemo, useState } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
 import { useAuth } from "@/context/AuthContext";
 import { useCreateIncidentMutation, useIncidentsQuery } from "@/features/incidents/api";
 import {
@@ -32,7 +31,7 @@ import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
-import type { ApiErrorPayload } from "@/types/api";
+import type { ApiErrorPayload, Incident } from "@/types/api";
 
 const { Title } = Typography;
 
@@ -121,6 +120,32 @@ export default function IncidentsPage() {
     [statusOptions],
   );
 
+  const columns: Array<SharedTableColumn<Incident>> = [
+    { key: "description", title: "Description", filterKind: "text" },
+    { key: "citizenId", title: "Citizen", filterKind: "select", selectOptions: citizenLabels },
+    { key: "statusId", title: "Status", filterKind: "select", selectOptions: statusLabels },
+    {
+      key: "dateReported",
+      title: "Reported",
+      filterKind: "date",
+      render: (value) => formatDateTime(value),
+    },
+    {
+      key: "createdAt",
+      title: "Created",
+      filterKind: "date",
+      sortable: true,
+      render: (value) => formatDateTime(value),
+    },
+    {
+      key: "updatedAt",
+      title: "Updated",
+      filterKind: "date",
+      sortable: true,
+      render: (value) => formatDateTime(value),
+    },
+  ];
+
   if (incidentsListQuery.isLoading) {
     return <LoadingState />;
   }
@@ -169,76 +194,45 @@ export default function IncidentsPage() {
         </RoleGuard>
       </Space>
 
-      <Card>
-        <Space orientation="vertical" style={{ width: "100%" }}>
-          <Input.Search
-            allowClear
-            placeholder="Search incidents"
-            value={listQuery.search}
-            onChange={(event) => listQuery.setSearch(event.target.value)}
-          />
+      <SharedTable<Incident>
+        rows={rows}
+        columns={columns}
+        loading={incidentsListQuery.isFetching}
+        page={listQuery.page}
+        pageSize={listQuery.pageSize}
+        paginationMeta={pagination}
+        onPageChange={listQuery.setPage}
+        onPageSizeChange={listQuery.setPageSize}
+        globalSearch={listQuery.search}
+        onGlobalSearchChange={listQuery.setSearch}
+        globalSearchPlaceholder="Search incidents"
+        sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
+        onSortChange={(columnKey, order) => {
+          if (columnKey === "createdAt" || columnKey === "updatedAt") {
+            listQuery.setSort(columnKey, order);
+          }
+        }}
+        serverDateFilters={{
+          createdAt: { from: listQuery.createdFrom, to: listQuery.createdTo },
+          updatedAt: { from: listQuery.updatedFrom, to: listQuery.updatedTo },
+        }}
+        onServerDateFilterChange={(columnKey, value) => {
+          if (columnKey === "createdAt") {
+            listQuery.setCreatedRange(value.from, value.to);
+            return;
+          }
+
+          listQuery.setUpdatedRange(value.from, value.to);
+        }}
+        topToolbar={
           <FilterToolbar
             state={listQuery}
             setters={listQuery}
             loading={Boolean(incidentsListQuery.isFetching)}
           />
-          <Table
-            rowKey="id"
-            loading={incidentsListQuery.isFetching}
-            dataSource={rows}
-            scroll={{ x: 980 }}
-            pagination={{
-              current: listQuery.page,
-              pageSize: listQuery.pageSize,
-              total: pagination?.total ?? rows.length,
-              onChange: (nextPage, nextPageSize) => {
-                if (nextPageSize !== listQuery.pageSize) {
-                  listQuery.setPageSize(nextPageSize);
-                  return;
-                }
-
-                listQuery.setPage(nextPage);
-              },
-            }}
-            columns={[
-              { title: "Description", dataIndex: "description", key: "description" },
-              {
-                title: "Citizen",
-                dataIndex: "citizenId",
-                key: "citizenId",
-                render: (value: string) =>
-                  citizenLabels.get(String(value)) ?? `Citizen ${value ?? "N/A"}`,
-              },
-              { title: "Location ID", dataIndex: "locationId", key: "locationId" },
-              {
-                title: "Status",
-                dataIndex: "statusId",
-                key: "statusId",
-                render: (value: string) =>
-                  statusLabels.get(String(value)) ?? `Status ${value ?? "N/A"}`,
-              },
-              {
-                title: "Reported",
-                dataIndex: "dateReported",
-                key: "dateReported",
-                render: (value: unknown) => formatDateTime(value),
-              },
-              {
-                title: "Created",
-                dataIndex: "createdAt",
-                key: "createdAt",
-                render: (value: unknown) => formatDateTime(value),
-              },
-              {
-                title: "Updated",
-                dataIndex: "updatedAt",
-                key: "updatedAt",
-                render: (value: unknown) => formatDateTime(value),
-              },
-            ]}
-          />
-        </Space>
-      </Card>
+        }
+        scrollX={980}
+      />
 
       <Modal
         title="Create Incident"

@@ -1,5 +1,6 @@
 "use client";
 
+import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -8,19 +9,19 @@ import {
   Button,
   Card,
   Descriptions,
-  Empty,
   Form,
   Modal,
   Result,
   Space,
+  Tooltip,
   Typography,
 } from "antd";
 import type { FormInstance } from "antd";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { CrudFormModal, toInitialFormValues } from "@/components/crud/CrudFormModal";
-import { CrudTable } from "@/components/crud/CrudTable";
 import { DeleteConfirmModal } from "@/components/crud/DeleteConfirmModal";
+import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
 import { adaptPaginatedResponse } from "@/lib/api/pagination";
 import { CrudRequestError, requestCrudEndpoint } from "@/features/dynamic-crud/api-client";
 import { getCrudEndpoint, getCrudResource } from "@/features/dynamic-crud/config";
@@ -38,6 +39,12 @@ import type { ApiErrorPayload, BaseEntity } from "@/types/api";
 import { Role } from "@/types/auth";
 
 const { Title } = Typography;
+
+const ACTION_BUTTON_STYLES = {
+  view: { backgroundColor: "#1677ff", borderColor: "#1677ff", color: "#ffffff" },
+  edit: { backgroundColor: "#faad14", borderColor: "#faad14", color: "#ffffff" },
+  delete: { backgroundColor: "#ff4d4f", borderColor: "#ff4d4f", color: "#ffffff" },
+} as const;
 
 function formatDisplayValue(value: unknown): string {
   if (value === null || value === undefined || value === "") {
@@ -87,6 +94,35 @@ function humanizeKey(value: string): string {
     .replace(/^./, (char) => char.toUpperCase())
     .replace(/\bId\b/i, "ID")
     .trim();
+}
+
+function isDateLikeFieldName(key: string): boolean {
+  return /(^date|date$|At$|_at$|timestamp|time$)/i.test(key);
+}
+
+function discoverTableKeys(rows: BaseEntity[]): string[] {
+  const maxColumns = 6;
+  const dateColumnReserve = 2;
+  const discoveryLimit = 20;
+  const keySet = new Set<string>();
+
+  for (const row of rows) {
+    Object.keys(row)
+      .filter((key) => key !== "id")
+      .forEach((key) => keySet.add(key));
+
+    if (keySet.size >= discoveryLimit) {
+      break;
+    }
+  }
+
+  const allKeys = Array.from(keySet);
+  const dateKeys = allKeys.filter((key) => isDateLikeFieldName(key));
+  const nonDateKeys = allKeys.filter((key) => !isDateLikeFieldName(key));
+  const dateSlots = Math.min(dateColumnReserve, dateKeys.length);
+  const nonDateSlots = Math.max(0, maxColumns - dateSlots);
+
+  return [...nonDateKeys.slice(0, nonDateSlots), ...dateKeys.slice(0, dateSlots)];
 }
 
 function normalizeFormValues(
@@ -467,6 +503,23 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           ownershipFields.some((field) => String(row[field] ?? "") === String(user.id)),
         )
       : sourceRows;
+  const visibleKeys = useMemo(() => discoverTableKeys(rows), [rows]);
+  const tableColumns = useMemo<Array<SharedTableColumn<BaseEntity>>>(
+    () =>
+      visibleKeys.map((key) => ({
+        key,
+        title: columnLabelsByField[key] ?? humanizeKey(key),
+        filterKind: selectLabelsByField[key]
+          ? "select"
+          : isDateLikeFieldName(key)
+            ? "date"
+            : "text",
+        sortable: key === "createdAt" || key === "updatedAt",
+        selectOptions: selectLabelsByField[key],
+        render: (value) => formatDisplayValue(value),
+      })),
+    [columnLabelsByField, selectLabelsByField, visibleKeys],
+  );
 
   useEffect(() => {
     const listEndpoint = resource?.endpoints.list;
@@ -637,44 +690,97 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
             </Button>
           </Space>
         ) : null}
-        {!listQuery.isLoading && !listQuery.error && rows.length === 0 ? <Empty description="No records found" /> : null}
-        {!listQuery.isLoading && !listQuery.error && rows.length > 0 ? (
-          <CrudTable
+        {!listQuery.isLoading && !listQuery.error ? (
+          <SharedTable<BaseEntity>
             rows={rows}
+            columns={tableColumns}
             loading={listQuery.isFetching}
-            search={tableState.search}
-            onSearchChange={tableState.setSearch}
             page={tableState.page}
             pageSize={tableState.pageSize}
+            paginationMeta={paginationMeta}
             onPageChange={tableState.setPage}
             onPageSizeChange={tableState.setPageSize}
-            paginationMeta={paginationMeta}
-            columnLabelsByField={columnLabelsByField}
-            selectLabelsByField={selectLabelsByField}
-            canViewDetails={canGet}
-            canEdit={canUpdate}
-            canDelete={canDelete}
-            filterToolbar={
+            globalSearch={tableState.search}
+            onGlobalSearchChange={tableState.setSearch}
+            globalSearchPlaceholder="Search records"
+            sortState={{ key: tableState.sortBy, order: tableState.sortOrder }}
+            onSortChange={(columnKey, order) => {
+              if (columnKey === "createdAt" || columnKey === "updatedAt") {
+                tableState.setSort(columnKey, order);
+              }
+            }}
+            serverDateFilters={{
+              createdAt: { from: tableState.createdFrom, to: tableState.createdTo },
+              updatedAt: { from: tableState.updatedFrom, to: tableState.updatedTo },
+            }}
+            onServerDateFilterChange={(columnKey, value) => {
+              if (columnKey === "createdAt") {
+                tableState.setCreatedRange(value.from, value.to);
+                return;
+              }
+
+              tableState.setUpdatedRange(value.from, value.to);
+            }}
+            topToolbar={
               <FilterToolbar
                 state={tableState}
                 setters={tableState}
                 loading={Boolean(listQuery.isFetching)}
               />
             }
-            onView={(row) => {
-              setSelected(row);
-              setDetailsOpen(true);
-            }}
-            onEdit={(row) => {
-              setSelected(row);
-              editForm.setFieldsValue(
-                toInitialFormValues(row as Record<string, unknown>, updateFields) as never,
-              );
-              setEditOpen(true);
-            }}
-            onDelete={(row) => {
-              setSelected(row);
-              setDeleteOpen(true);
+            actionColumn={{
+              render: (row) => (
+                <Space>
+                  {canGet ? (
+                    <Tooltip title="View">
+                      <Button
+                        size="small"
+                        shape="circle"
+                        icon={<EyeOutlined />}
+                        aria-label="View"
+                        style={ACTION_BUTTON_STYLES.view}
+                        onClick={() => {
+                          setSelected(row);
+                          setDetailsOpen(true);
+                        }}
+                      />
+                    </Tooltip>
+                  ) : null}
+                  {canUpdate ? (
+                    <Tooltip title="Edit">
+                      <Button
+                        size="small"
+                        shape="circle"
+                        icon={<EditOutlined />}
+                        aria-label="Edit"
+                        style={ACTION_BUTTON_STYLES.edit}
+                        onClick={() => {
+                          setSelected(row);
+                          editForm.setFieldsValue(
+                            toInitialFormValues(row as Record<string, unknown>, updateFields) as never,
+                          );
+                          setEditOpen(true);
+                        }}
+                      />
+                    </Tooltip>
+                  ) : null}
+                  {canDelete ? (
+                    <Tooltip title="Delete">
+                      <Button
+                        size="small"
+                        shape="circle"
+                        icon={<DeleteOutlined />}
+                        aria-label="Delete"
+                        style={ACTION_BUTTON_STYLES.delete}
+                        onClick={() => {
+                          setSelected(row);
+                          setDeleteOpen(true);
+                        }}
+                      />
+                    </Tooltip>
+                  ) : null}
+                </Space>
+              ),
             }}
           />
         ) : null}
