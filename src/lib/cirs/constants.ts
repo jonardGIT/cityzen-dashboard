@@ -8,6 +8,7 @@ export const CIRS_API_KEY = process.env.CIRS_API_KEY;
 
 export const CIRS_RESOURCES = [
   "citizens",
+  "agencies",
   "responders",
   "statuses",
   "categories",

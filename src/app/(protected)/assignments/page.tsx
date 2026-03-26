@@ -1,19 +1,39 @@
 "use client";
 
-import { App, Button, Card, Form, Input, Modal, Select, Space, Table, Typography } from "antd";
+import {
+  App,
+  Button,
+  Card,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Typography,
+} from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
-import { useAssignmentsQuery, useCreateAssignmentMutation } from "@/features/assignments/api";
+import {
+  useAssignmentsQuery,
+  useCreateAssignmentMutation,
+} from "@/features/assignments/api";
 import { useIncidentsQuery } from "@/features/incidents/api";
-import { useRespondersQuery, useStatusesQuery } from "@/features/reference-data/api";
+import {
+  useRespondersQuery,
+  useStatusesQuery,
+} from "@/features/reference-data/api";
 import { CAN_CREATE_ASSIGNMENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
-import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
+import {
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+} from "@/lib/api/list-query-params";
 import type { ApiErrorPayload } from "@/types/api";
 
 const { Title, Text } = Typography;
@@ -95,7 +115,9 @@ export default function AssignmentsPage() {
     }
 
     return items.filter((item) =>
-      JSON.stringify(item).toLowerCase().includes(listQuery.search.toLowerCase()),
+      JSON.stringify(item)
+        .toLowerCase()
+        .includes(listQuery.search.toLowerCase()),
     );
   }, [assignmentsQuery.data, listQuery.search]);
 
@@ -136,7 +158,11 @@ export default function AssignmentsPage() {
           Assignments
         </Title>
         <RoleGuard allowedRoles={CAN_CREATE_ASSIGNMENT} disableOnly>
-          <Button type="primary" onClick={() => setOpen(true)} disabled={!canCreate}>
+          <Button
+            type="primary"
+            onClick={() => setOpen(true)}
+            disabled={!canCreate}
+          >
             Create Assignment
           </Button>
         </RoleGuard>
@@ -175,7 +201,11 @@ export default function AssignmentsPage() {
             }}
             columns={[
               { title: "Incident", dataIndex: "incidentId", key: "incidentId" },
-              { title: "Responder", dataIndex: "responderId", key: "responderId" },
+              {
+                title: "Responder",
+                dataIndex: "responderId",
+                key: "responderId",
+              },
               { title: "Status", dataIndex: "statusId", key: "statusId" },
               { title: "Notes", dataIndex: "notes", key: "notes" },
               {
@@ -189,7 +219,9 @@ export default function AssignmentsPage() {
                   return (
                     <Space orientation="vertical" size={0}>
                       <Text>{formatted}</Text>
-                      {relative ? <Text type="secondary">{relative}</Text> : null}
+                      {relative ? (
+                        <Text type="secondary">{relative}</Text>
+                      ) : null}
                     </Space>
                   );
                 },
@@ -205,7 +237,9 @@ export default function AssignmentsPage() {
                   return (
                     <Space orientation="vertical" size={0}>
                       <Text>{formatted}</Text>
-                      {relative ? <Text type="secondary">{relative}</Text> : null}
+                      {relative ? (
+                        <Text type="secondary">{relative}</Text>
+                      ) : null}
                     </Space>
                   );
                 },
@@ -222,8 +256,16 @@ export default function AssignmentsPage() {
         onOk={() => void submit()}
         confirmLoading={createMutation.isPending}
       >
-        <Form<AssignmentFormValues> form={form} layout="vertical" requiredMark={false}>
-          <Form.Item name="incidentId" label="Incident" rules={[{ required: true }]}>
+        <Form<AssignmentFormValues>
+          form={form}
+          layout="vertical"
+          requiredMark={false}
+        >
+          <Form.Item
+            name="incidentId"
+            label="Incident"
+            rules={[{ required: true }]}
+          >
             <Select
               options={(incidentsQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
@@ -232,7 +274,11 @@ export default function AssignmentsPage() {
             />
           </Form.Item>
 
-          <Form.Item name="responderId" label="Responder" rules={[{ required: true }]}>
+          <Form.Item
+            name="responderId"
+            label="Responder"
+            rules={[{ required: true }]}
+          >
             <Select
               options={(respondersQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),

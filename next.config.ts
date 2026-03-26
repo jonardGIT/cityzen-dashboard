@@ -1,7 +1,16 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(projectRoot, "..");
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  outputFileTracingRoot: workspaceRoot,
+  turbopack: {
+    root: workspaceRoot,
+  },
   allowedDevOrigins: [
     "https://xypes-cirs-dashboard.vercel.app",
     // Local/dev origins can remain if you want to support local development:

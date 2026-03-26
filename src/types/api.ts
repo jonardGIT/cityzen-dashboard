@@ -54,19 +54,22 @@ export interface Category extends BaseEntity {
 }
 
 export interface Severity extends BaseEntity {
-    level?: string;
-    definition?: string;
+  level?: string;
+  definition?: string;
   name?: string;
 }
 
 export interface Location extends BaseEntity {
-  name?: string;
-  address?: string;
+  district?: string;
+  city?: string;
+  province?: string;
+  region?: string;
 }
 
 export interface Incident extends BaseEntity {
   title?: string;
   description?: string;
+  mediaUrl?: string;
   dateReported?: string;
   statusId?: EntityId;
   citizenId?: EntityId;

@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   App,
   Alert,
@@ -18,19 +23,31 @@ import {
 import type { FormInstance } from "antd";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
-import { CrudFormModal, toInitialFormValues } from "@/components/crud/CrudFormModal";
+import {
+  CrudFormModal,
+  toInitialFormValues,
+} from "@/components/crud/CrudFormModal";
 import { CrudTable } from "@/components/crud/CrudTable";
 import { DeleteConfirmModal } from "@/components/crud/DeleteConfirmModal";
 import { adaptPaginatedResponse } from "@/lib/api/pagination";
-import { CrudRequestError, requestCrudEndpoint } from "@/features/dynamic-crud/api-client";
-import { getCrudEndpoint, getCrudResource } from "@/features/dynamic-crud/config";
+import {
+  CrudRequestError,
+  requestCrudEndpoint,
+} from "@/features/dynamic-crud/api-client";
+import {
+  getCrudEndpoint,
+  getCrudResource,
+} from "@/features/dynamic-crud/config";
 import {
   getResourceFieldsForOperation,
   ROLE_OPTIONS,
 } from "@/features/dynamic-crud/field-config";
 import { hasPermission } from "@/features/dynamic-crud/permissions";
 import { useCrudResource } from "@/features/dynamic-crud/useCrudResource";
-import type { CrudFieldConfig, CrudOperation } from "@/features/dynamic-crud/types";
+import type {
+  CrudFieldConfig,
+  CrudOperation,
+} from "@/features/dynamic-crud/types";
 import { useAuth } from "@/context/AuthContext";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { buildListQueryParams } from "@/lib/api/list-query-params";
@@ -45,14 +62,18 @@ function formatDisplayValue(value: unknown): string {
   }
 
   if (Array.isArray(value)) {
-    const items = value.map((item) => formatDisplayValue(item)).filter((item) => item !== "N/A");
+    const items = value
+      .map((item) => formatDisplayValue(item))
+      .filter((item) => item !== "N/A");
     return items.length > 0 ? items.join(", ") : "N/A";
   }
 
   if (typeof value === "object") {
     const record = value as Record<string, unknown>;
     const fullName = [record.firstName, record.lastName]
-      .filter((part): part is string => typeof part === "string" && part.length > 0)
+      .filter(
+        (part): part is string => typeof part === "string" && part.length > 0,
+      )
       .join(" ");
 
     if (typeof record.name === "string" && record.name.length > 0) {
@@ -67,7 +88,10 @@ function formatDisplayValue(value: unknown): string {
       return record.label;
     }
 
-    if (typeof record.description === "string" && record.description.length > 0) {
+    if (
+      typeof record.description === "string" &&
+      record.description.length > 0
+    ) {
       return record.description;
     }
 
@@ -133,7 +157,8 @@ function extractErrorDetails(error: unknown) {
 
   return {
     status: 500,
-    message: error instanceof Error ? error.message : "Unexpected request error",
+    message:
+      error instanceof Error ? error.message : "Unexpected request error",
     details: undefined,
   };
 }
@@ -217,21 +242,44 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     [resourceName],
   );
 
-  const {
-    listQuery,
-    getById,
-    createMutation,
-    updateMutation,
-    deleteMutation,
-  } = useCrudResource(resourceName, tableState);
+  const { listQuery, getById, createMutation, updateMutation, deleteMutation } =
+    useCrudResource(resourceName, tableState);
 
-  const canList = hasPermission(resource?.endpoints.list, user?.role, isAuthenticated);
-  const canGet = hasPermission(resource?.endpoints.get, user?.role, isAuthenticated);
-  const canCreate = hasPermission(resource?.endpoints.create, user?.role, isAuthenticated);
-  const canLinkMe = hasPermission(resource?.endpoints.linkMe, user?.role, isAuthenticated);
-  const canReport = hasPermission(resource?.endpoints.report, user?.role, isAuthenticated);
-  const canUpdate = hasPermission(resource?.endpoints.update, user?.role, isAuthenticated);
-  const canDelete = hasPermission(resource?.endpoints.delete, user?.role, isAuthenticated);
+  const canList = hasPermission(
+    resource?.endpoints.list,
+    user?.role,
+    isAuthenticated,
+  );
+  const canGet = hasPermission(
+    resource?.endpoints.get,
+    user?.role,
+    isAuthenticated,
+  );
+  const canCreate = hasPermission(
+    resource?.endpoints.create,
+    user?.role,
+    isAuthenticated,
+  );
+  const canLinkMe = hasPermission(
+    resource?.endpoints.linkMe,
+    user?.role,
+    isAuthenticated,
+  );
+  const canReport = hasPermission(
+    resource?.endpoints.report,
+    user?.role,
+    isAuthenticated,
+  );
+  const canUpdate = hasPermission(
+    resource?.endpoints.update,
+    user?.role,
+    isAuthenticated,
+  );
+  const canDelete = hasPermission(
+    resource?.endpoints.delete,
+    user?.role,
+    isAuthenticated,
+  );
 
   const specialMutation = useMutation({
     mutationFn: async ({
@@ -243,10 +291,14 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     }) => {
       const endpoint = resource?.endpoints[operation];
       if (!endpoint) {
-        throw new Error(`${operation} operation is not configured for this resource.`);
+        throw new Error(
+          `${operation} operation is not configured for this resource.`,
+        );
       }
 
-      const result = await requestCrudEndpoint<unknown>(endpoint, { body: payload });
+      const result = await requestCrudEndpoint<unknown>(endpoint, {
+        body: payload,
+      });
       if (!result.success) {
         throw new CrudRequestError(
           result.error?.status ?? 500,
@@ -258,7 +310,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       return result.data;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["crud", resourceName, "list"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["crud", resourceName, "list"],
+      });
     },
   });
 
@@ -276,7 +330,12 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
   const optionResources = useMemo(() => {
     const resources = new Map<string, CrudFieldConfig["optionSource"]>();
-    const allFieldSets = [createFields, updateFields, linkMeFields, reportFields];
+    const allFieldSets = [
+      createFields,
+      updateFields,
+      linkMeFields,
+      reportFields,
+    ];
 
     for (const fieldSet of allFieldSets) {
       for (const field of fieldSet) {
@@ -290,10 +349,12 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       }
     }
 
-    return Array.from(resources.entries()).map(([resourceKey, optionSource]) => ({
-      resourceKey,
-      optionSource,
-    }));
+    return Array.from(resources.entries()).map(
+      ([resourceKey, optionSource]) => ({
+        resourceKey,
+        optionSource,
+      }),
+    );
   }, [createFields, linkMeFields, reportFields, updateFields]);
 
   const optionQueries = useQueries({
@@ -306,7 +367,11 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
         const endpoint = getCrudEndpoint(resourceKey, "list");
         if (!endpoint) {
-          return [] as Array<{ value: string; label: string; description?: string }>;
+          return [] as Array<{
+            value: string;
+            label: string;
+            description?: string;
+          }>;
         }
 
         const result = await requestCrudEndpoint<unknown>(endpoint, {
@@ -322,15 +387,23 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
         const items = Array.isArray(result.data)
           ? result.data
-          : (result.data as { data?: unknown[] }).data ?? [];
+          : ((result.data as { data?: unknown[] }).data ?? []);
 
-        const typedItems = Array.isArray(items) ? (items as Record<string, unknown>[]) : [];
+        const typedItems = Array.isArray(items)
+          ? (items as Record<string, unknown>[])
+          : [];
         const valueField = optionSource?.valueField ?? "id";
         const labelField = optionSource?.labelField ?? "name";
 
         return typedItems.map((item) => ({
           value: String(item[valueField] ?? item.id ?? ""),
-          label: String(item[labelField] ?? item.name ?? item.description ?? item.id ?? "Unknown"),
+          label: String(
+            item[labelField] ??
+              item.name ??
+              item.description ??
+              item.id ??
+              "Unknown",
+          ),
           description:
             typeof item.definition === "string"
               ? item.definition
@@ -343,7 +416,10 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   });
 
   const optionsByResource = useMemo(() => {
-    const map = new Map<string, Array<{ value: string; label: string; description?: string }>>();
+    const map = new Map<
+      string,
+      Array<{ value: string; label: string; description?: string }>
+    >();
 
     optionResources.forEach(({ resourceKey }, index) => {
       map.set(resourceKey, optionQueries[index]?.data ?? []);
@@ -379,25 +455,42 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   }, [optionQueries, optionResources]);
 
   const optionsByField = useMemo(() => {
-    const output: Record<string, Array<{ value: string; label: string; description?: string }>> = {};
-    const allFields = [...createFields, ...updateFields, ...linkMeFields, ...reportFields];
+    const output: Record<
+      string,
+      Array<{ value: string; label: string; description?: string }>
+    > = {};
+    const allFields = [
+      ...createFields,
+      ...updateFields,
+      ...linkMeFields,
+      ...reportFields,
+    ];
 
     for (const field of allFields) {
       if (field.type !== "select" || !field.optionSource) {
         continue;
       }
 
-      output[field.name] = optionsByResource.get(field.optionSource.resource) ?? [];
+      output[field.name] =
+        optionsByResource.get(field.optionSource.resource) ?? [];
     }
 
     return output;
-  }, [createFields, linkMeFields, optionsByResource, reportFields, updateFields]);
+  }, [
+    createFields,
+    linkMeFields,
+    optionsByResource,
+    reportFields,
+    updateFields,
+  ]);
 
   const selectLabelsByField = useMemo(() => {
     const output: Record<string, Map<string, string>> = {};
 
     Object.entries(optionsByField).forEach(([fieldName, options]) => {
-      output[fieldName] = new Map(options.map((option) => [option.value, option.label]));
+      output[fieldName] = new Map(
+        options.map((option) => [option.value, option.label]),
+      );
     });
 
     return output;
@@ -405,7 +498,12 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
   const fieldLabels = useMemo(() => {
     const output = new Map<string, string>();
-    const allFields = [...createFields, ...updateFields, ...linkMeFields, ...reportFields];
+    const allFields = [
+      ...createFields,
+      ...updateFields,
+      ...linkMeFields,
+      ...reportFields,
+    ];
 
     allFields.forEach((field) => {
       output.set(field.name, field.label);
@@ -419,13 +517,16 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     [fieldLabels],
   );
 
-  let createDependencyIssue: { message: string; retry: () => void } | null = null;
+  let createDependencyIssue: { message: string; retry: () => void } | null =
+    null;
   for (const field of createFields) {
     if (field.type !== "select" || !field.optionSource) {
       continue;
     }
 
-    const queryState = optionQueryStateByResource.get(field.optionSource.resource);
+    const queryState = optionQueryStateByResource.get(
+      field.optionSource.resource,
+    );
     if (!queryState?.isError) {
       continue;
     }
@@ -437,13 +538,16 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     break;
   }
 
-  let updateDependencyIssue: { message: string; retry: () => void } | null = null;
+  let updateDependencyIssue: { message: string; retry: () => void } | null =
+    null;
   for (const field of updateFields) {
     if (field.type !== "select" || !field.optionSource) {
       continue;
     }
 
-    const queryState = optionQueryStateByResource.get(field.optionSource.resource);
+    const queryState = optionQueryStateByResource.get(
+      field.optionSource.resource,
+    );
     if (!queryState?.isError) {
       continue;
     }
@@ -457,14 +561,25 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
   const paginationMeta = listQuery.data?.pagination;
   const sourceRows = listQuery.data?.data ?? [];
-  const ownershipFields = ["userId", "reportedById", "ownerId", "citizenUserId"];
+  const ownershipFields = [
+    "userId",
+    "reportedById",
+    "ownerId",
+    "citizenUserId",
+  ];
   const hasOwnershipField = sourceRows.some((row) =>
-    ownershipFields.some((field) => row[field] !== undefined && row[field] !== null),
+    ownershipFields.some(
+      (field) => row[field] !== undefined && row[field] !== null,
+    ),
   );
   const rows =
-    resourceName === "incidents" && user?.role === Role.VIEWER && hasOwnershipField
+    resourceName === "incidents" &&
+    user?.role === Role.VIEWER &&
+    hasOwnershipField
       ? sourceRows.filter((row) =>
-          ownershipFields.some((field) => String(row[field] ?? "") === String(user.id)),
+          ownershipFields.some(
+            (field) => String(row[field] ?? "") === String(user.id),
+          ),
         )
       : sourceRows;
 
@@ -477,7 +592,12 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     const nextPage = tableState.page + 1;
 
     void queryClient.prefetchQuery({
-      queryKey: ["crud", resourceName, "list", { ...tableState, page: nextPage, search: undefined }],
+      queryKey: [
+        "crud",
+        resourceName,
+        "list",
+        { ...tableState, page: nextPage, search: undefined },
+      ],
       queryFn: async () => {
         const result = await requestCrudEndpoint<unknown>(listEndpoint, {
           queryParams: buildListQueryParams({ ...tableState, page: nextPage }),
@@ -489,10 +609,20 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
             result.error?.details,
           );
         }
-        return adaptPaginatedResponse(result.data, nextPage, tableState.pageSize);
+        return adaptPaginatedResponse(
+          result.data,
+          nextPage,
+          tableState.pageSize,
+        );
       },
     });
-  }, [paginationMeta?.hasNextPage, queryClient, resource?.endpoints.list, resourceName, tableState]);
+  }, [
+    paginationMeta?.hasNextPage,
+    queryClient,
+    resource?.endpoints.list,
+    resourceName,
+    tableState,
+  ]);
 
   const handleCreate = async () => {
     try {
@@ -506,7 +636,10 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     } catch (error) {
       const parsed = extractErrorDetails(error);
 
-      if (parsed.status === 422 && applyValidationErrors(createForm, parsed.details)) {
+      if (
+        parsed.status === 422 &&
+        applyValidationErrors(createForm, parsed.details)
+      ) {
         message.error("Please correct the highlighted fields.");
         return;
       }
@@ -530,7 +663,10 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     } catch (error) {
       const parsed = extractErrorDetails(error);
 
-      if (parsed.status === 422 && applyValidationErrors(editForm, parsed.details)) {
+      if (
+        parsed.status === 422 &&
+        applyValidationErrors(editForm, parsed.details)
+      ) {
         message.error("Please correct the highlighted fields.");
         return;
       }
@@ -572,7 +708,10 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     } catch (error) {
       const parsed = extractErrorDetails(error);
 
-      if (parsed.status === 422 && applyValidationErrors(form, parsed.details)) {
+      if (
+        parsed.status === 422 &&
+        applyValidationErrors(form, parsed.details)
+      ) {
         message.error("Please correct the highlighted fields.");
         return;
       }
@@ -582,7 +721,13 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   };
 
   if (!resource) {
-    return <Result status="404" title="Unknown resource" subTitle="This dashboard resource is not configured." />;
+    return (
+      <Result
+        status="404"
+        title="Unknown resource"
+        subTitle="This dashboard resource is not configured."
+      />
+    );
   }
 
   if (!canList) {
@@ -612,7 +757,11 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
               Report Incident
             </Button>
           ) : null}
-          <Button type="primary" onClick={() => setCreateOpen(true)} disabled={!canCreate}>
+          <Button
+            type="primary"
+            onClick={() => setCreateOpen(true)}
+            disabled={!canCreate}
+          >
             Create {resource.label.slice(0, -1)}
           </Button>
         </Space>
@@ -632,12 +781,12 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         {listQuery.error ? (
           <Space orientation="vertical" style={{ width: "100%" }}>
             <ErrorState message={String(listQuery.error)} />
-            <Button onClick={() => void listQuery.refetch()}>
-              Retry
-            </Button>
+            <Button onClick={() => void listQuery.refetch()}>Retry</Button>
           </Space>
         ) : null}
-        {!listQuery.isLoading && !listQuery.error && rows.length === 0 ? <Empty description="No records found" /> : null}
+        {!listQuery.isLoading && !listQuery.error && rows.length === 0 ? (
+          <Empty description="No records found" />
+        ) : null}
         {!listQuery.isLoading && !listQuery.error && rows.length > 0 ? (
           <CrudTable
             rows={rows}
@@ -668,7 +817,10 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
             onEdit={(row) => {
               setSelected(row);
               editForm.setFieldsValue(
-                toInitialFormValues(row as Record<string, unknown>, updateFields) as never,
+                toInitialFormValues(
+                  row as Record<string, unknown>,
+                  updateFields,
+                ) as never,
               );
               setEditOpen(true);
             }}
@@ -775,11 +927,16 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         onCancel={() => setDetailsOpen(false)}
       >
         {detailsQuery.isLoading ? <LoadingState /> : null}
-        {detailsQuery.error ? <ErrorState message={String(detailsQuery.error)} /> : null}
+        {detailsQuery.error ? (
+          <ErrorState message={String(detailsQuery.error)} />
+        ) : null}
         {detailsQuery.data ? (
           <Descriptions size="small" column={1}>
             {Object.entries(detailsQuery.data).map(([key, value]) => (
-              <Descriptions.Item key={key} label={fieldLabels.get(key) ?? humanizeKey(key)}>
+              <Descriptions.Item
+                key={key}
+                label={fieldLabels.get(key) ?? humanizeKey(key)}
+              >
                 {formatDisplayValue(
                   selectLabelsByField[key]?.get(String(value ?? "")) ?? value,
                 )}

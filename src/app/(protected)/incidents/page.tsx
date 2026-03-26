@@ -20,7 +20,10 @@ import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
-import { useCreateIncidentMutation, useIncidentsQuery } from "@/features/incidents/api";
+import {
+  useCreateIncidentMutation,
+  useIncidentsQuery,
+} from "@/features/incidents/api";
 import {
   useCategoriesQuery,
   useCitizensQuery,
@@ -31,7 +34,10 @@ import {
 import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
-import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
+import {
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+} from "@/lib/api/list-query-params";
 import type { ApiErrorPayload } from "@/types/api";
 
 const { Title } = Typography;
@@ -163,7 +169,11 @@ export default function IncidentsPage() {
           Incidents
         </Title>
         <RoleGuard allowedRoles={CAN_CREATE_INCIDENT} disableOnly>
-          <Button type="primary" onClick={() => setOpen(true)} disabled={!canCreate}>
+          <Button
+            type="primary"
+            onClick={() => setOpen(true)}
+            disabled={!canCreate}
+          >
             Create Incident
           </Button>
         </RoleGuard>
@@ -201,15 +211,24 @@ export default function IncidentsPage() {
               },
             }}
             columns={[
-              { title: "Description", dataIndex: "description", key: "description" },
+              {
+                title: "Description",
+                dataIndex: "description",
+                key: "description",
+              },
               {
                 title: "Citizen",
                 dataIndex: "citizenId",
                 key: "citizenId",
                 render: (value: string) =>
-                  citizenLabels.get(String(value)) ?? `Citizen ${value ?? "N/A"}`,
+                  citizenLabels.get(String(value)) ??
+                  `Citizen ${value ?? "N/A"}`,
               },
-              { title: "Location ID", dataIndex: "locationId", key: "locationId" },
+              {
+                title: "Location ID",
+                dataIndex: "locationId",
+                key: "locationId",
+              },
               {
                 title: "Status",
                 dataIndex: "statusId",
@@ -247,7 +266,11 @@ export default function IncidentsPage() {
         onOk={() => void submit()}
         confirmLoading={createMutation.isPending}
       >
-        <Form<IncidentFormValues> form={form} layout="vertical" requiredMark={false}>
+        <Form<IncidentFormValues>
+          form={form}
+          layout="vertical"
+          requiredMark={false}
+        >
           <Form.Item
             name="description"
             label="Description"
@@ -256,11 +279,22 @@ export default function IncidentsPage() {
             <Input.TextArea rows={3} />
           </Form.Item>
 
-          <Form.Item name="citizenId" label="Citizen" rules={[{ required: true }]}>
-            <Select options={citizenOptions} loading={citizensQuery.isLoading} />
+          <Form.Item
+            name="citizenId"
+            label="Citizen"
+            rules={[{ required: true }]}
+          >
+            <Select
+              options={citizenOptions}
+              loading={citizensQuery.isLoading}
+            />
           </Form.Item>
 
-          <Form.Item name="locationId" label="Location" rules={[{ required: true }]}>
+          <Form.Item
+            name="locationId"
+            label="Location"
+            rules={[{ required: true }]}
+          >
             <Select
               options={(locationsQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
@@ -270,7 +304,11 @@ export default function IncidentsPage() {
             />
           </Form.Item>
 
-          <Form.Item name="categoryId" label="Category" rules={[{ required: true }]}>
+          <Form.Item
+            name="categoryId"
+            label="Category"
+            rules={[{ required: true }]}
+          >
             <Select
               options={(categoriesQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
@@ -280,12 +318,19 @@ export default function IncidentsPage() {
             />
           </Form.Item>
 
-          <Form.Item name="severityId" label="Severity" rules={[{ required: true }]}>
+          <Form.Item
+            name="severityId"
+            label="Severity"
+            rules={[{ required: true }]}
+          >
             <Select
               options={severityOptions}
               optionRender={(option) => {
                 const description = option.data.description;
-                if (typeof description !== "string" || description.length === 0) {
+                if (
+                  typeof description !== "string" ||
+                  description.length === 0
+                ) {
                   return <span>{String(option.label)}</span>;
                 }
 
@@ -310,7 +355,11 @@ export default function IncidentsPage() {
             />
           </Form.Item>
 
-          <Form.Item name="statusId" label="Status" rules={[{ required: true }]}>
+          <Form.Item
+            name="statusId"
+            label="Status"
+            rules={[{ required: true }]}
+          >
             <Select options={statusOptions} loading={statusesQuery.isLoading} />
           </Form.Item>
         </Form>
