@@ -24,11 +24,17 @@ import {
 import type { FormInstance } from "antd";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
+import { ACTION_BUTTON_STYLES } from "@/components/crud/action-button-styles";
 import { CrudFormModal, toInitialFormValues } from "@/components/crud/CrudFormModal";
 import { DeleteConfirmModal } from "@/components/crud/DeleteConfirmModal";
 import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
 import { extractListQueryValidation } from "@/components/crud/list-query-validation";
 import { adaptPaginatedResponse } from "@/lib/api/pagination";
+import {
+  formatDisplayValue,
+  humanizeKey,
+  isDateLikeFieldName,
+} from "@/lib/format/display";
 import {
   CrudRequestError,
   requestCrudEndpoint,
@@ -54,73 +60,6 @@ import type { ApiErrorPayload, BaseEntity } from "@/types/api";
 import { Role } from "@/types/auth";
 
 const { Title } = Typography;
-
-const ACTION_BUTTON_STYLES = {
-  view: { backgroundColor: "#1677ff", borderColor: "#1677ff", color: "#ffffff" },
-  edit: { backgroundColor: "#faad14", borderColor: "#faad14", color: "#ffffff" },
-  delete: { backgroundColor: "#ff4d4f", borderColor: "#ff4d4f", color: "#ffffff" },
-} as const;
-
-function formatDisplayValue(value: unknown): string {
-  if (value === null || value === undefined || value === "") {
-    return "N/A";
-  }
-
-  if (Array.isArray(value)) {
-    const items = value
-      .map((item) => formatDisplayValue(item))
-      .filter((item) => item !== "N/A");
-    return items.length > 0 ? items.join(", ") : "N/A";
-  }
-
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const fullName = [record.firstName, record.lastName]
-      .filter(
-        (part): part is string => typeof part === "string" && part.length > 0,
-      )
-      .join(" ");
-
-    if (typeof record.name === "string" && record.name.length > 0) {
-      return record.name;
-    }
-
-    if (fullName.length > 0) {
-      return fullName;
-    }
-
-    if (typeof record.label === "string" && record.label.length > 0) {
-      return record.label;
-    }
-
-    if (
-      typeof record.description === "string" &&
-      record.description.length > 0
-    ) {
-      return record.description;
-    }
-
-    if (typeof record.email === "string" && record.email.length > 0) {
-      return record.email;
-    }
-
-    return JSON.stringify(value);
-  }
-
-  return String(value);
-}
-
-function humanizeKey(value: string): string {
-  return value
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (char) => char.toUpperCase())
-    .replace(/\bId\b/i, "ID")
-    .trim();
-}
-
-function isDateLikeFieldName(key: string): boolean {
-  return /(^date|date$|At$|_at$|timestamp|time$)/i.test(key);
-}
 
 function discoverTableKeys(rows: BaseEntity[]): string[] {
   const maxColumns = 6;

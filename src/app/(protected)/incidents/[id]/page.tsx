@@ -39,6 +39,17 @@ import {
   CAN_CREATE_ASSIGNMENT,
   CAN_CREATE_INCIDENT,
 } from "@/lib/auth/permissions";
+import {
+  formatDisplayDateTime as formatDateTime,
+  formatDisplayRelativeTime as formatRelativeTime,
+} from "@/lib/format/date-time";
+import {
+  buildIncidentAddressLabel,
+  buildIncidentCoordinatesLabel,
+  getAssignmentDisplayDate,
+  getResponderDisplayName,
+  getStatusColor,
+} from "@/lib/incidents/display";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
@@ -56,119 +67,6 @@ interface AssignmentQuickActionValues {
 
 interface StatusQuickActionValues {
   statusId: string;
-}
-
-function formatDateTime(value: unknown): string {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return "N/A";
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(parsed);
-}
-
-function formatRelativeTime(value: unknown): string | null {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  const diffMs = parsed.getTime() - Date.now();
-  const minuteMs = 60 * 1000;
-  const hourMs = 60 * minuteMs;
-  const dayMs = 24 * hourMs;
-  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  if (Math.abs(diffMs) < hourMs) {
-    return formatter.format(Math.round(diffMs / minuteMs), "minute");
-  }
-
-  if (Math.abs(diffMs) < dayMs) {
-    return formatter.format(Math.round(diffMs / hourMs), "hour");
-  }
-
-  return formatter.format(Math.round(diffMs / dayMs), "day");
-}
-
-function buildAddressLabel(incident: Incident): string {
-  const parts = [
-    incident.addressLine1,
-    incident.addressLine2,
-    incident.barangay,
-    incident.districtName,
-    incident.cityName,
-    incident.provinceName,
-    incident.regionName,
-    incident.postalCode,
-  ].filter(
-    (value): value is string =>
-      typeof value === "string" && value.trim().length > 0,
-  );
-
-  return parts.length > 0 ? parts.join(", ") : "N/A";
-}
-
-function buildCoordinatesLabel(incident: Incident): string {
-  if (incident.latitude === undefined || incident.longitude === undefined) {
-    return "N/A";
-  }
-
-  return `${incident.latitude}, ${incident.longitude}`;
-}
-
-function getResponderName(responder: Responder | undefined): string {
-  if (!responder) {
-    return "Unassigned";
-  }
-
-  const fullName = [responder.firstName, responder.lastName]
-    .filter(
-      (value): value is string =>
-        typeof value === "string" && value.trim().length > 0,
-    )
-    .join(" ")
-    .trim();
-
-  return fullName || responder.name || responder.email || String(responder.id);
-}
-
-function getAssignmentDate(assignment: Assignment): string | undefined {
-  return (
-    assignment.assignedDate ?? assignment.createdAt ?? assignment.updatedAt
-  );
-}
-
-function getStatusColor(statusName: string): string {
-  const normalized = statusName.trim().toLowerCase();
-
-  if (
-    ["resolved", "closed", "cancelled", "canceled", "completed"].some((term) =>
-      normalized.includes(term),
-    )
-  ) {
-    return "green";
-  }
-
-  if (
-    ["in progress", "dispatched", "responding", "ongoing"].some((term) =>
-      normalized.includes(term),
-    )
-  ) {
-    return "processing";
-  }
-
-  return "gold";
 }
 
 function buildIncidentListUrl(incidentId: string): string {
@@ -244,8 +142,8 @@ export default function IncidentWorkspacePage() {
   const incident = incidentQuery.data;
   const assignments = [...(assignmentsQuery.data?.data ?? [])].sort(
     (left, right) => {
-      const leftTime = new Date(getAssignmentDate(left) ?? 0).getTime();
-      const rightTime = new Date(getAssignmentDate(right) ?? 0).getTime();
+      const leftTime = new Date(getAssignmentDisplayDate(left) ?? 0).getTime();
+      const rightTime = new Date(getAssignmentDisplayDate(right) ?? 0).getTime();
       return rightTime - leftTime;
     },
   );
@@ -523,7 +421,7 @@ export default function IncidentWorkspacePage() {
                     >
                       <Space wrap size={8}>
                         <Text strong>
-                          {getResponderName(assignmentResponder)}
+                          {getResponderDisplayName(assignmentResponder)}
                         </Text>
                         <Tag
                           color={getStatusColor(
@@ -536,10 +434,10 @@ export default function IncidentWorkspacePage() {
                         </Tag>
                       </Space>
                       <Text type="secondary">
-                        Assigned {formatDateTime(getAssignmentDate(assignment))}
+                        Assigned {formatDateTime(getAssignmentDisplayDate(assignment))}
                       </Text>
                       <Text className={styles.assignmentMeta}>
-                        {formatRelativeTime(getAssignmentDate(assignment)) ??
+                        {formatRelativeTime(getAssignmentDisplayDate(assignment)) ??
                           "Assignment time unavailable"}
                       </Text>
                       <Text>
@@ -564,10 +462,10 @@ export default function IncidentWorkspacePage() {
             </Text>
             <Descriptions column={1} size="small">
               <Descriptions.Item label="Coordinates">
-                {buildCoordinatesLabel(incident)}
+                {buildIncidentCoordinatesLabel(incident)}
               </Descriptions.Item>
               <Descriptions.Item label="Address">
-                {buildAddressLabel(incident)}
+                {buildIncidentAddressLabel(incident, "full")}
               </Descriptions.Item>
               <Descriptions.Item label="Landmark">
                 {incident.landmark ?? "N/A"}
@@ -595,11 +493,11 @@ export default function IncidentWorkspacePage() {
             </Text>
             <Descriptions column={1} size="small">
               <Descriptions.Item label="Current responder">
-                {getResponderName(responder)}
+                {getResponderDisplayName(responder)}
               </Descriptions.Item>
               <Descriptions.Item label="Latest assignment">
                 {latestAssignment
-                  ? formatDateTime(getAssignmentDate(latestAssignment))
+                  ? formatDateTime(getAssignmentDisplayDate(latestAssignment))
                   : "N/A"}
               </Descriptions.Item>
               <Descriptions.Item label="Citizen channel">

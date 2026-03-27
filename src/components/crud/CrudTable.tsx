@@ -35,133 +35,18 @@ import {
   DEFAULT_SORT_ORDER,
 } from "@/lib/api/list-query-params";
 import type { PaginationMeta } from "@/lib/api/pagination";
+import {
+  formatDisplayValue,
+  humanizeKey,
+  isDateLikeFieldName,
+} from "@/lib/format/display";
+import { formatDateLikeString } from "@/lib/format/date-time";
 import type { BaseEntity } from "@/types/api";
 import type { ListQueryValidationState } from "@/components/crud/list-query-validation";
+import { ACTION_BUTTON_STYLES } from "@/components/crud/action-button-styles";
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
-
-const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
-const ACTION_BUTTON_STYLES = {
-  view: {
-    backgroundColor: "#1677ff",
-    borderColor: "#1677ff",
-    color: "#ffffff",
-  },
-  edit: {
-    backgroundColor: "#faad14",
-    borderColor: "#faad14",
-    color: "#ffffff",
-  },
-  delete: {
-    backgroundColor: "#ff4d4f",
-    borderColor: "#ff4d4f",
-    color: "#ffffff",
-  },
-} as const;
-
-function formatDateLikeString(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const isDateLike =
-    /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(
-      trimmed,
-    );
-
-  if (!isDateLike) {
-    return null;
-  }
-
-  const parsed = new Date(trimmed);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return DATE_TIME_FORMATTER.format(parsed);
-}
-
-function camelCaseToTitleCase(str: string): string {
-  return str
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (char) => char.toUpperCase())
-    .replace(/\bId\b/i, "ID")
-    .trim();
-}
-
-function isDateLikeFieldName(key: string): boolean {
-  return /(^date|date$|At$|_at$|timestamp|time$)/i.test(key);
-}
-
-function formatCellValue(
-  value: unknown,
-  optionLabels?: Map<string, string>,
-): string {
-  if (value === null || value === undefined || value === "") {
-    return "N/A";
-  }
-
-  if (Array.isArray(value)) {
-    const items = value
-      .map((item) => formatCellValue(item, optionLabels))
-      .filter((item) => item !== "N/A");
-    return items.length > 0 ? items.join(", ") : "N/A";
-  }
-
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const fullName = [record.firstName, record.lastName]
-      .filter(
-        (part): part is string => typeof part === "string" && part.length > 0,
-      )
-      .join(" ");
-
-    if (typeof record.name === "string" && record.name.length > 0) {
-      return record.name;
-    }
-
-    if (fullName.length > 0) {
-      return fullName;
-    }
-
-    if (typeof record.label === "string" && record.label.length > 0) {
-      return record.label;
-    }
-
-    if (
-      typeof record.description === "string" &&
-      record.description.length > 0
-    ) {
-      return record.description;
-    }
-
-    if (typeof record.email === "string" && record.email.length > 0) {
-      return record.email;
-    }
-
-    return JSON.stringify(value);
-  }
-
-  if (typeof value === "string") {
-    if (optionLabels?.has(value)) {
-      return optionLabels.get(value) ?? value;
-    }
-
-    return formatDateLikeString(value) ?? value;
-  }
-
-  if (typeof value === "number" && optionLabels?.has(String(value))) {
-    return optionLabels.get(String(value)) ?? String(value);
-  }
-
-  return String(value);
-}
 
 type ColumnFilterKind = "text" | "number" | "date" | "select";
 
@@ -170,7 +55,7 @@ function formatColumnSortLabel(
   order: ListSortOrder,
   columnLabelsByField?: Record<string, string>,
 ): string {
-  const label = columnLabelsByField?.[key] ?? camelCaseToTitleCase(key);
+  const label = columnLabelsByField?.[key] ?? humanizeKey(key);
   return `Sorted by ${label} (${order === "asc" ? "ascending" : "descending"})`;
 }
 
@@ -270,11 +155,11 @@ function formatFilterTagValue(
 ): string {
   if (Array.isArray(filter.value)) {
     return filter.value
-      .map((value) => formatCellValue(value, optionLabels))
+      .map((value) => formatDisplayValue(value, optionLabels))
       .join(filter.operator === "between" ? " to " : ", ");
   }
 
-  return formatCellValue(filter.value, optionLabels);
+  return formatDisplayValue(filter.value, optionLabels);
 }
 
 interface CrudTableProps {
@@ -475,7 +360,7 @@ export function CrudTable({
         return (
           <Space size={4} wrap>
             <span>
-              {columnLabelsByField?.[key] ?? camelCaseToTitleCase(key)}
+              {columnLabelsByField?.[key] ?? humanizeKey(key)}
             </span>
             <Tooltip
               title={
@@ -492,7 +377,7 @@ export function CrudTable({
                 size="small"
                 danger={sortErrors.length > 0}
                 type={sortBy === key ? "primary" : "default"}
-                aria-label={`Sort ${columnLabelsByField?.[key] ?? camelCaseToTitleCase(key)}`}
+                aria-label={`Sort ${columnLabelsByField?.[key] ?? humanizeKey(key)}`}
                 icon={
                   sortBy === key ? (
                     sortOrder === "asc" ? (
@@ -544,7 +429,7 @@ export function CrudTable({
                       allowClear
                       showSearch
                       mode={selectedOperator === "in" ? "multiple" : undefined}
-                      placeholder={`Filter ${columnLabelsByField?.[key] ?? camelCaseToTitleCase(key)}`}
+                      placeholder={`Filter ${columnLabelsByField?.[key] ?? humanizeKey(key)}`}
                       value={
                         activeFilter?.value as string | string[] | undefined
                       }
@@ -648,7 +533,7 @@ export function CrudTable({
                       placeholder={
                         selectedOperator === "in"
                           ? "Comma-separated values"
-                          : `Search ${columnLabelsByField?.[key] ?? camelCaseToTitleCase(key)}`
+                          : `Search ${columnLabelsByField?.[key] ?? humanizeKey(key)}`
                       }
                       value={
                         Array.isArray(activeFilter?.value)
@@ -688,7 +573,7 @@ export function CrudTable({
                   ) : null}
                   <Button size="small" onClick={() => onFilterRemove(key)}>
                     Clear{" "}
-                    {columnLabelsByField?.[key] ?? camelCaseToTitleCase(key)}{" "}
+                    {columnLabelsByField?.[key] ?? humanizeKey(key)}{" "}
                     filter
                   </Button>
                 </Space>
@@ -698,7 +583,7 @@ export function CrudTable({
                 size="small"
                 danger={fieldErrors.length > 0}
                 type={activeFilter ? "primary" : "default"}
-                aria-label={`Filter ${columnLabelsByField?.[key] ?? camelCaseToTitleCase(key)}`}
+                aria-label={`Filter ${columnLabelsByField?.[key] ?? humanizeKey(key)}`}
                 icon={<FilterOutlined />}
               />
             </Popover>
@@ -716,7 +601,7 @@ export function CrudTable({
         getColumnFilterKind(key, rows, selectLabelsByField),
       ),
       render: (value: unknown) => {
-        return formatCellValue(value, selectLabelsByField?.[key]);
+        return formatDisplayValue(value, selectLabelsByField?.[key]);
       },
     })),
   ];
@@ -748,7 +633,7 @@ export function CrudTable({
               }}
             >
               {(columnLabelsByField?.[filter.field] ??
-                camelCaseToTitleCase(filter.field)) +
+                humanizeKey(filter.field)) +
                 ": " +
                 formatFilterTagValue(
                   filter,

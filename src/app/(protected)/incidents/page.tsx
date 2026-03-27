@@ -48,6 +48,15 @@ import {
   type ListQueryState,
 } from "@/lib/api/list-query-params";
 import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
+import {
+  formatDisplayDateTime,
+  formatDisplayRelativeTime,
+} from "@/lib/format/date-time";
+import {
+  buildIncidentAddressLabel,
+  getStatusColor,
+  joinDisplayParts,
+} from "@/lib/incidents/display";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { reverseGeocodeIncidentAddress } from "@/lib/geo/reverse-geocode";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
@@ -77,65 +86,8 @@ interface IncidentFormValues {
   landmark?: string;
 }
 
-function formatDateTime(value: unknown): string {
-  if (!value) {
-    return "N/A";
-  }
-
-  const parsed = new Date(String(value));
-  if (Number.isNaN(parsed.getTime())) {
-    return "N/A";
-  }
-
-  return parsed.toLocaleString();
-}
-
-function formatRelativeTime(value: unknown): string | null {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  const diffMs = parsed.getTime() - Date.now();
-  const minuteMs = 60 * 1000;
-  const hourMs = 60 * minuteMs;
-  const dayMs = 24 * hourMs;
-  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  if (Math.abs(diffMs) < hourMs) {
-    return rtf.format(Math.round(diffMs / minuteMs), "minute");
-  }
-
-  if (Math.abs(diffMs) < dayMs) {
-    return rtf.format(Math.round(diffMs / hourMs), "hour");
-  }
-
-  return rtf.format(Math.round(diffMs / dayMs), "day");
-}
-
-function joinLocationParts(parts: Array<string | undefined>): string | null {
-  const filtered = parts.filter(
-    (part): part is string =>
-      typeof part === "string" && part.trim().length > 0,
-  );
-
-  return filtered.length > 0 ? filtered.join(", ") : null;
-}
-
 function getIncidentAddress(incident: Incident): string {
-  return (
-    joinLocationParts([
-      incident.addressLine1,
-      incident.addressLine2,
-      incident.barangay,
-      incident.cityName,
-      incident.provinceName,
-    ]) ?? "N/A"
-  );
+  return buildIncidentAddressLabel(incident);
 }
 
 function hasCoordinates(incident: Incident): boolean {
@@ -144,7 +96,7 @@ function hasCoordinates(incident: Incident): boolean {
 
 function hasAddressSnapshot(incident: Incident): boolean {
   return Boolean(
-    joinLocationParts([
+    joinDisplayParts([
       incident.addressLine1,
       incident.addressLine2,
       incident.barangay,
@@ -166,28 +118,6 @@ function getAssignmentTimestamp(assignment: {
     assignment.assignedDate ?? assignment.createdAt ?? assignment.updatedAt;
   const parsed = value ? new Date(value).getTime() : Number.NaN;
   return Number.isNaN(parsed) ? -1 : parsed;
-}
-
-function getStatusColor(statusName: string): string {
-  const normalized = statusName.trim().toLowerCase();
-
-  if (
-    ["resolved", "closed", "cancelled", "canceled", "completed"].some((term) =>
-      normalized.includes(term),
-    )
-  ) {
-    return "green";
-  }
-
-  if (
-    ["in progress", "dispatched", "responding", "ongoing"].some((term) =>
-      normalized.includes(term),
-    )
-  ) {
-    return "processing";
-  }
-
-  return "gold";
 }
 
 export default function IncidentsPage() {
@@ -369,7 +299,7 @@ export default function IncidentsPage() {
           : "Unassigned";
         const relative =
           assignment && assignment.timestamp >= 0
-            ? formatRelativeTime(new Date(assignment.timestamp).toISOString())
+            ? formatDisplayRelativeTime(new Date(assignment.timestamp).toISOString())
             : null;
 
         return (
@@ -387,7 +317,7 @@ export default function IncidentsPage() {
       title: "Reported",
       filterKind: "date",
       width: 170,
-      render: (value) => formatDateTime(value),
+      render: (value) => formatDisplayDateTime(value),
     },
     {
       key: "createdAt",
@@ -395,7 +325,7 @@ export default function IncidentsPage() {
       filterKind: "date",
       sortable: true,
       width: 170,
-      render: (value) => formatDateTime(value),
+      render: (value) => formatDisplayDateTime(value),
     },
     {
       key: "updatedAt",
@@ -403,7 +333,7 @@ export default function IncidentsPage() {
       filterKind: "date",
       sortable: true,
       width: 170,
-      render: (value) => formatDateTime(value),
+      render: (value) => formatDisplayDateTime(value),
     },
   ];
 
@@ -436,7 +366,7 @@ export default function IncidentsPage() {
       parsed.getDate() === now.getDate()
     );
   }).length;
-  const previewAddress = joinLocationParts([
+  const previewAddress = joinDisplayParts([
     addressLine1Value,
     addressLine2Value,
     barangayValue,
