@@ -1,10 +1,11 @@
 "use client";
 
-import { Card, Input, Space, Table, Typography } from "antd";
+import { Card, Input, Space, Typography } from "antd";
 import Link from "next/link";
 import { useMemo } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
+import { ResizableTable } from "@/components/common/ResizableTable";
 import { useCitizensQuery } from "@/features/reference-data/api";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 
@@ -21,7 +22,9 @@ export default function CitizensPage() {
     }
 
     return items.filter((item) =>
-      JSON.stringify(item).toLowerCase().includes(listQuery.search.toLowerCase()),
+      JSON.stringify(item)
+        .toLowerCase()
+        .includes(listQuery.search.toLowerCase()),
     );
   }, [citizensQuery.data, listQuery.search]);
   const paginationMeta = citizensQuery.data?.pagination;
@@ -53,10 +56,13 @@ export default function CitizensPage() {
             setters={listQuery}
             loading={Boolean(citizensQuery.isFetching)}
           />
-          <Table
+          <ResizableTable
             rowKey="id"
             loading={citizensQuery.isFetching}
             dataSource={rows}
+            storageKey="citizens-table-widths"
+            showColumnVisibilitySelector
+            scroll={{ x: 720 }}
             pagination={{
               current: listQuery.page,
               pageSize: listQuery.pageSize,
@@ -76,11 +82,21 @@ export default function CitizensPage() {
                 dataIndex: "name",
                 key: "name",
                 render: (value: string | undefined, record: { id: string }) => (
-                  <Link href={`/citizens/${record.id}`}>{value || `Citizen ${record.id}`}</Link>
+                  <Link href={`/citizens/${record.id}`}>
+                    {value || `Citizen ${record.id}`}
+                  </Link>
                 ),
               },
-              { title: "Contact", dataIndex: "contactInfo", key: "contactInfo" },
-              { title: "Preferred Channel", dataIndex: "preferredChannel", key: "preferredChannel" },
+              {
+                title: "Contact",
+                dataIndex: "contactInfo",
+                key: "contactInfo",
+              },
+              {
+                title: "Preferred Channel",
+                dataIndex: "preferredChannel",
+                key: "preferredChannel",
+              },
             ]}
           />
         </Space>

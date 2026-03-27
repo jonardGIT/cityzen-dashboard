@@ -6,7 +6,11 @@ import {
 } from "@/lib/cirs/constants";
 import { unwrapEntityResponse, unwrapListResponse } from "@/lib/api/normalize";
 import { ApiHttpError } from "@/lib/cirs/errors";
-import type { ApiErrorPayload, BaseEntity, RateLimitMeta } from "@/lib/cirs/types";
+import type {
+  ApiErrorPayload,
+  BaseEntity,
+  RateLimitMeta,
+} from "@/lib/cirs/types";
 
 function parseNumber(value: string | null): number | undefined {
   if (!value) {
@@ -78,14 +82,22 @@ async function request<T>(
 
   if (!response.ok) {
     const payload = await parseJsonBody<ApiErrorPayload>(response);
-    const message = payload?.message ?? payload?.error ?? `Request failed with ${response.status}`;
+    const message =
+      payload?.message ??
+      payload?.error ??
+      `Request failed with ${response.status}`;
     throw new ApiHttpError(message, response.status, payload, rateLimit);
   }
 
   const body = await parseJsonBody<T>(response);
 
   if (body === undefined) {
-    throw new ApiHttpError("Expected JSON response body.", 500, undefined, rateLimit);
+    throw new ApiHttpError(
+      "Expected JSON response body.",
+      500,
+      undefined,
+      rateLimit,
+    );
   }
 
   return body;
@@ -119,5 +131,48 @@ export const cirsApi = {
     );
 
     return unwrapEntityResponse<TResponse>(response);
+  },
+
+  async update<TResponse, TPayload>(
+    resource: CirsResource,
+    id: string,
+    payload: TPayload,
+  ): Promise<TResponse> {
+    const response = await request<unknown>(
+      resource,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+      id,
+    );
+
+    return unwrapEntityResponse<TResponse>(response);
+  },
+
+  async remove(resource: CirsResource, id: string): Promise<void> {
+    const url = buildUrl(resource, id);
+    const headers = new Headers();
+    headers.set("Accept", "application/json");
+
+    if (CIRS_API_KEY) {
+      headers.set("x-api-key", CIRS_API_KEY);
+    }
+
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const rateLimit = readRateLimitHeaders(response.headers);
+      const payload = await parseJsonBody<ApiErrorPayload>(response);
+      const message =
+        payload?.message ??
+        payload?.error ??
+        `Request failed with ${response.status}`;
+      throw new ApiHttpError(message, response.status, payload, rateLimit);
+    }
   },
 };

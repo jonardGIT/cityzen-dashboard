@@ -323,57 +323,6 @@
     },
 
     {
-      "resource": "locations",
-      "label": "Locations",
-      "operation": "list",
-      "method": "GET",
-      "path": "/locations",
-      "fullPath": "/api/v1/locations",
-      "authRequired": false,
-      "allowedRoles": []
-    },
-    {
-      "resource": "locations",
-      "label": "Locations",
-      "operation": "get",
-      "method": "GET",
-      "path": "/locations/{id}",
-      "fullPath": "/api/v1/locations/{id}",
-      "authRequired": false,
-      "allowedRoles": []
-    },
-    {
-      "resource": "locations",
-      "label": "Locations",
-      "operation": "create",
-      "method": "POST",
-      "path": "/locations",
-      "fullPath": "/api/v1/locations",
-      "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
-    },
-    {
-      "resource": "locations",
-      "label": "Locations",
-      "operation": "update",
-      "method": "PATCH",
-      "path": "/locations/{id}",
-      "fullPath": "/api/v1/locations/{id}",
-      "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
-    },
-    {
-      "resource": "locations",
-      "label": "Locations",
-      "operation": "delete",
-      "method": "DELETE",
-      "path": "/locations/{id}",
-      "fullPath": "/api/v1/locations/{id}",
-      "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
-    },
-
-    {
       "resource": "incidents",
       "label": "Incidents",
       "operation": "list",
@@ -381,7 +330,13 @@
       "path": "/incidents",
       "fullPath": "/api/v1/incidents",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN", "DISPATCHER", "RESPONDER", "VIEWER"],
+      "allowedRoles": [
+        "SUPER_ADMIN",
+        "ADMIN",
+        "DISPATCHER",
+        "RESPONDER",
+        "VIEWER"
+      ],
       "notes": "VIEWER users only receive their own incidents."
     },
     {
@@ -392,7 +347,13 @@
       "path": "/incidents/{id}",
       "fullPath": "/api/v1/incidents/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN", "DISPATCHER", "RESPONDER", "VIEWER"],
+      "allowedRoles": [
+        "SUPER_ADMIN",
+        "ADMIN",
+        "DISPATCHER",
+        "RESPONDER",
+        "VIEWER"
+      ],
       "notes": "VIEWER users can only access their own incident IDs."
     },
     {

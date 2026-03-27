@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 
@@ -20,15 +20,32 @@ function Harness() {
 
   return (
     <div>
-      <div data-testid="state">{`${state.page}|${state.pageSize}|${state.sortBy}|${state.sortOrder}`}</div>
-      <button onClick={() => state.setSort("updatedAt", "desc")}>quick-filter</button>
+      <div data-testid="state">{`${state.page}|${state.pageSize}|${state.sortBy}|${state.sortOrder}|${state.filters.length}|${state.search}`}</div>
+      <button onClick={() => state.setSort("updatedAt", "desc")}>
+        quick-filter
+      </button>
       <button
         onClick={() =>
-          state.setCreatedRange("2026-03-20T00:00:00.000Z", "2026-03-20T23:59:59.999Z")
+          state.upsertFilter({
+            field: "name",
+            operator: "contains",
+            value: "fire",
+          })
+        }
+      >
+        apply-filter
+      </button>
+      <button
+        onClick={() =>
+          state.setCreatedRange(
+            "2026-03-20T00:00:00.000Z",
+            "2026-03-20T23:59:59.999Z",
+          )
         }
       >
         created-range
       </button>
+      <button onClick={() => state.setSearch("fire")}>search</button>
     </div>
   );
 }
@@ -36,7 +53,10 @@ function Harness() {
 describe("useListQueryParams", () => {
   beforeEach(() => {
     replaceMock.mockReset();
-    params = new URLSearchParams("page=3&pageSize=20&sortBy=createdAt&sortOrder=desc");
+    params = new URLSearchParams(
+      "page=3&pageSize=20&sortBy=createdAt&sortOrder=desc",
+    );
+    window.sessionStorage.clear();
     vi.useFakeTimers();
   });
 
@@ -57,12 +77,47 @@ describe("useListQueryParams", () => {
     fireEvent.click(screen.getByText("created-range"));
     expect(replaceMock).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(299);
+    act(() => {
+      vi.advanceTimersByTime(299);
+    });
     expect(replaceMock).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(1);
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
     expect(replaceMock).toHaveBeenCalledWith(
       "/incidents?page=1&pageSize=20&sortBy=createdAt&sortOrder=desc&createdFrom=2026-03-20T00%3A00%3A00.000Z&createdTo=2026-03-20T23%3A59%3A59.999Z",
+    );
+  });
+
+  it("encodes filters as JSON and resets the page", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("apply-filter"));
+
+    expect(replaceMock).toHaveBeenCalledWith(
+      "/incidents?page=1&pageSize=20&sortBy=createdAt&sortOrder=desc&filters=%5B%7B%22field%22%3A%22name%22%2C%22operator%22%3A%22contains%22%2C%22value%22%3A%22fire%22%7D%5D",
+    );
+  });
+
+  it("stores search in session storage and only resets the page in the URL", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("search"));
+    expect(replaceMock).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(replaceMock).toHaveBeenCalledWith(
+      "/incidents?page=1&pageSize=20&sortBy=createdAt&sortOrder=desc",
+    );
+    expect(window.sessionStorage.getItem("list-query-search:/incidents")).toBe(
+      "fire",
+    );
+    expect(screen.getByTestId("state").textContent).toBe(
+      "3|20|createdAt|desc|0|fire",
     );
   });
 });

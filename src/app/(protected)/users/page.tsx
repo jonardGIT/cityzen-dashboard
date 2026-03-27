@@ -135,57 +135,52 @@ export default function UsersPage() {
     }
   };
 
-  const openEditModal = (row: User) => {
-    setEditingUser(row);
-    setIsEditOpen(true);
-    editForm.setFieldsValue({
-      name: row.name ?? [row.firstName, row.lastName].filter(Boolean).join(" "),
-      email: row.email ?? "",
-      role: (Object.values(Role).includes(row.role as Role)
-        ? (row.role as Role)
-        : assignableRoles[0]) as Role,
-      firstName: row.firstName ?? "",
-      lastName: row.lastName ?? "",
-    });
-  };
+    const openEditModal = (row: User) => {
+      setEditingUser(row);
+      setIsEditOpen(true);
+      editForm.setFieldsValue({
+        name:
+          row.name ?? [row.firstName, row.lastName].filter(Boolean).join(" "),
+        email: row.email ?? "",
+        role: (Object.values(Role).includes(row.role as Role)
+          ? (row.role as Role)
+          : assignableRoles[0]) as Role,
+        firstName: row.firstName ?? "",
+        lastName: row.lastName ?? "",
+      });
+    };
 
-  const closeEditModal = () => {
-    setIsEditOpen(false);
-    setEditingUser(null);
-    editForm.resetFields();
-  };
-
-  const submitEdit = async () => {
-    if (!editingUser || !user) {
-      return;
-    }
-
-    try {
-      const values = await editForm.validateFields();
+    const closeEditModal = () => {
+      setIsEditOpen(false);
+      setEditingUser(null);
+      editForm.resetFields();
+    };
 
       if (String(editingUser.id) === String(user.id) && values.role !== user.role) {
         message.error("You cannot change your own role.");
         return;
       }
 
-      await updateMutation.mutateAsync({
-        userId: editingUser.id,
-        payload: values,
-      });
-      message.success("User updated");
-      closeEditModal();
-    } catch (error) {
-      const axiosError = error as AxiosError<ApiErrorPayload>;
+      try {
+        const values = await editForm.validateFields();
 
-      if (axiosError.response?.status === 403) {
-        message.error("Permission denied: You cannot manage this user.");
-        return;
-      }
+        // Prevent changing own role
+        if (
+          String(editingUser.id) === String(user.id) &&
+          values.role !== user.role
+        ) {
+          message.error("You cannot change your own role.");
+          return;
+        }
 
-      if (axiosError.response?.status === 409) {
-        message.error("Conflict: Unable to update user. Please try again.");
-        return;
-      }
+        await updateMutation.mutateAsync({
+          userId: editingUser.id,
+          payload: values,
+        });
+        message.success("User updated");
+        closeEditModal();
+      } catch (error) {
+        const axiosError = error as AxiosError<ApiErrorPayload>;
 
       const mapped = mapValidationErrorsToForm(editForm, error);
       if (!mapped && axiosError.response?.data?.message) {
@@ -194,34 +189,44 @@ export default function UsersPage() {
     }
   };
 
-  const submitDelete = async (row: User) => {
-    try {
-      await deleteMutation.mutateAsync(row.id);
-      message.success("User deleted");
-      if (editingUser && String(editingUser.id) === String(row.id)) {
-        closeEditModal();
-      }
-    } catch (error) {
-      const axiosError = error as AxiosError<ApiErrorPayload>;
+        if (axiosError.response?.status === 409) {
+          message.error("Conflict: Unable to update user. Please try again.");
+          return;
+        }
 
-      if (axiosError.response?.status === 403) {
-        message.error("Permission denied: You cannot delete this user.");
-        return;
+        const mapped = mapValidationErrorsToForm(editForm, error);
+        if (!mapped) {
+          if (axiosError.response?.data?.message) {
+            message.error(axiosError.response.data.message);
+          }
+        }
       }
+    };
 
-      if (axiosError.response?.status === 409) {
-        message.error("Conflict: Unable to delete user. Please try again.");
-        return;
-      }
+    const submitDelete = async (row: User) => {
+      try {
+        await deleteMutation.mutateAsync(row.id);
+        message.success("User deleted");
+        if (editingUser && String(editingUser.id) === String(row.id)) {
+          closeEditModal();
+        }
+      } catch (error) {
+        const axiosError = error as AxiosError<ApiErrorPayload>;
 
-      if (axiosError.response?.data?.message) {
-        message.error(axiosError.response.data.message);
-        return;
-      }
+        if (axiosError.response?.status === 403) {
+          message.error("Permission denied: You cannot delete this user.");
+          return;
+        }
 
-      message.error("Failed to delete user");
-    }
-  };
+        if (axiosError.response?.status === 409) {
+          message.error("Conflict: Unable to delete user. Please try again.");
+          return;
+        }
+
+        if (axiosError.response?.data?.message) {
+          message.error(axiosError.response.data.message);
+          return;
+        }
 
   if (!canManage) {
     return (

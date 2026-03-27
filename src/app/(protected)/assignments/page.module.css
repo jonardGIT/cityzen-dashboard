@@ -1,0 +1,210 @@
+.pageShell {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.heroCard {
+  overflow: hidden;
+  border: 1px solid rgba(16, 36, 63, 0.08);
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(41, 123, 255, 0.15),
+      transparent 32%
+    ),
+    linear-gradient(135deg, #ffffff 0%, #f5f9fd 100%);
+  box-shadow: 0 16px 40px rgba(16, 36, 63, 0.08);
+}
+
+.heroInner {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.heroHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 720px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #365d8d;
+}
+
+.heroTitle {
+  margin: 0 !important;
+}
+
+.heroDescription {
+  max-width: 66ch;
+  color: rgba(16, 36, 63, 0.72);
+}
+
+.heroAction {
+  align-self: flex-start;
+}
+
+.heroMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metricTile {
+  padding: 14px 16px;
+  border: 1px solid rgba(16, 36, 63, 0.08);
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96) 0%,
+    #f7fbff 100%
+  );
+}
+
+.metricTile :global(.ant-statistic-title) {
+  color: rgba(16, 36, 63, 0.64) !important;
+  font-weight: 700;
+}
+
+.metricTile :global(.ant-statistic-content) {
+  color: #10243f !important;
+}
+
+.metricLabel {
+  display: block;
+  margin-top: 6px;
+  color: rgba(16, 36, 63, 0.62);
+}
+
+.controlCard,
+.tableCard,
+.sidebarCard {
+  border: 1px solid rgba(16, 36, 63, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  box-shadow: 0 10px 24px rgba(16, 36, 63, 0.06);
+}
+
+.controlStack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.controlHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.controlMeta {
+  color: rgba(16, 36, 63, 0.64);
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+  gap: 16px;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  margin: 0 !important;
+}
+
+.sectionDescription {
+  color: rgba(16, 36, 63, 0.64);
+}
+
+.sidebarList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebarItem {
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(16, 36, 63, 0.08);
+}
+
+.sidebarItem:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.sidebarLabel {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(16, 36, 63, 0.58);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cellStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cellMeta {
+  color: rgba(16, 36, 63, 0.56);
+}
+
+.tableCard :global(.ant-card-head) {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.tableCard :global(.ant-card-body) {
+  padding-top: 16px;
+}
+
+.compactTable :global(.ant-table) {
+  border-radius: 12px;
+}
+
+@media (max-width: 1100px) {
+  .heroMetrics,
+  .contentGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .heroHeader,
+  .controlHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .heroMetrics {
+    grid-template-columns: 1fr;
+  }
+}

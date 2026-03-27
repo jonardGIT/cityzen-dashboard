@@ -46,13 +46,17 @@ export function CrudFormModal({
       okButtonProps={{ disabled: submitDisabled }}
       destroyOnHidden
     >
-      <Form<Record<string, unknown>> form={form} layout="vertical" requiredMark={false}>
+      <Form<Record<string, unknown>>
+        form={form}
+        layout="vertical"
+        requiredMark={false}
+      >
         {submitDisabledMessage ? (
           <Alert
             showIcon
             type="error"
             style={{ marginBottom: 16 }}
-            message={submitDisabledMessage}
+            title={submitDisabledMessage}
             action={
               onRetrySubmitDependency ? (
                 <Button size="small" onClick={onRetrySubmitDependency}>
@@ -73,7 +77,12 @@ export function CrudFormModal({
 
           if (field.type === "textarea") {
             return (
-              <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+              <Form.Item
+                key={field.name}
+                name={field.name}
+                label={field.label}
+                rules={rules}
+              >
                 <Input.TextArea rows={3} />
               </Form.Item>
             );
@@ -85,7 +94,10 @@ export function CrudFormModal({
                 key={field.name}
                 name={field.name}
                 label={field.label}
-                rules={[...rules, { type: "email", message: "Enter a valid email" }]}
+                rules={[
+                  ...rules,
+                  { type: "email", message: "Enter a valid email" },
+                ]}
               >
                 <Input />
               </Form.Item>
@@ -94,7 +106,12 @@ export function CrudFormModal({
 
           if (field.type === "password") {
             return (
-              <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+              <Form.Item
+                key={field.name}
+                name={field.name}
+                label={field.label}
+                rules={rules}
+              >
                 <Input.Password />
               </Form.Item>
             );
@@ -102,12 +119,20 @@ export function CrudFormModal({
 
           if (field.type === "select") {
             return (
-              <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+              <Form.Item
+                key={field.name}
+                name={field.name}
+                label={field.label}
+                rules={rules}
+              >
                 <Select
                   options={optionsByField[field.name] ?? []}
                   optionRender={(option) => {
                     const description = option.data.description;
-                    if (typeof description !== "string" || description.length === 0) {
+                    if (
+                      typeof description !== "string" ||
+                      description.length === 0
+                    ) {
                       return <span>{String(option.label)}</span>;
                     }
 
@@ -147,7 +172,12 @@ export function CrudFormModal({
           }
 
           return (
-            <Form.Item key={field.name} name={field.name} label={field.label} rules={rules}>
+            <Form.Item
+              key={field.name}
+              name={field.name}
+              label={field.label}
+              rules={rules}
+            >
               <Input />
             </Form.Item>
           );
@@ -157,7 +187,10 @@ export function CrudFormModal({
   );
 }
 
-export function toInitialFormValues(values: Record<string, unknown>, fields: CrudFieldConfig[]) {
+export function toInitialFormValues(
+  values: Record<string, unknown>,
+  fields: CrudFieldConfig[],
+) {
   const normalized: Record<string, unknown> = { ...values };
 
   for (const field of fields) {

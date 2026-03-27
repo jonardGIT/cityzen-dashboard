@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTableQueryParams } from "@/hooks/useTableQueryParams";
 
@@ -31,6 +31,7 @@ describe("useTableQueryParams", () => {
   beforeEach(() => {
     replaceMock.mockReset();
     params = new URLSearchParams("page=3&pageSize=10");
+    window.sessionStorage.clear();
     vi.useFakeTimers();
   });
 
@@ -49,10 +50,18 @@ describe("useTableQueryParams", () => {
     fireEvent.click(screen.getByText("search"));
     expect(replaceMock).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(299);
+    act(() => {
+      vi.advanceTimersByTime(299);
+    });
     expect(replaceMock).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(1);
-    expect(replaceMock).toHaveBeenCalledWith("/incidents?page=1&pageSize=10&search=fire");
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(replaceMock).toHaveBeenCalledWith("/incidents?page=1&pageSize=10");
+    expect(window.sessionStorage.getItem("table-query-search:/incidents")).toBe(
+      "fire",
+    );
+    expect(screen.getByTestId("state").textContent).toBe("3|10|fire");
   });
 });

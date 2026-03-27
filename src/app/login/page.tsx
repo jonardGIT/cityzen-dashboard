@@ -61,7 +61,7 @@ export default function LoginPage() {
             style={{ marginTop: 16 }}
             type="error"
             showIcon
-            message="Login Failed"
+            title="Login Failed"
             description={errorMessage}
           />
         ) : null}
@@ -89,7 +89,10 @@ export default function LoginPage() {
             label="Password"
             rules={[{ required: true, message: "Password is required" }]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Enter your password" />
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="Enter your password"
+            />
           </Form.Item>
 
           <Button type="primary" htmlType="submit" loading={submitting} block>

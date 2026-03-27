@@ -50,6 +50,7 @@ export function defaultAssignmentsQueryState(overrides?: Partial<ListQueryState>
     search: "",
     sortBy: DEFAULT_SORT_BY,
     sortOrder: DEFAULT_SORT_ORDER,
+    filters: [],
     ...overrides,
   };
 }

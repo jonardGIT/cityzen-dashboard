@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   DEFAULT_PAGE,
@@ -8,6 +8,9 @@ import {
   DEFAULT_LIST_QUERY_STATE,
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,
+  parseListFilters,
+  serializeListFilters,
+  type ListFilter,
   type ListSortBy,
   type ListSortOrder,
   type ListQueryState,
@@ -20,6 +23,10 @@ export interface ListQuerySetters {
   setSort: (sortBy: ListSortBy, sortOrder: ListSortOrder) => void;
   setSortBy: (value: ListSortBy) => void;
   setSortOrder: (value: ListSortOrder) => void;
+  setFilters: (value: ListFilter[]) => void;
+  upsertFilter: (value: ListFilter) => void;
+  removeFilter: (field: string) => void;
+  clearFilters: () => void;
   setCreatedFrom: (value: string | undefined) => void;
   setCreatedTo: (value: string | undefined) => void;
   setUpdatedFrom: (value: string | undefined) => void;
@@ -31,19 +38,30 @@ export interface ListQuerySetters {
 
 export type ListQueryResult = ListQueryState & ListQuerySetters;
 
-export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQueryResult {
+function getSearchStorageKey(pathname: string): string {
+  return `list-query-search:${pathname}`;
+}
+
+export function useListQueryParams(
+  defaultPageSize = DEFAULT_PAGE_SIZE,
+): ListQueryResult {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dateDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchStorageKey = getSearchStorageKey(pathname);
 
-  const page = Number(searchParams.get("page") ?? String(DEFAULT_PAGE)) || DEFAULT_PAGE;
+  const page =
+    Number(searchParams.get("page") ?? String(DEFAULT_PAGE)) || DEFAULT_PAGE;
   const pageSize =
-    Number(searchParams.get("pageSize") ?? String(defaultPageSize)) || defaultPageSize;
-  const search = searchParams.get("search") ?? "";
+    Number(searchParams.get("pageSize") ?? String(defaultPageSize)) ||
+    defaultPageSize;
+  const [search, setSearchState] = useState("");
   const sortBy = (searchParams.get("sortBy") ?? DEFAULT_SORT_BY) as ListSortBy;
-  const sortOrder = (searchParams.get("sortOrder") ?? DEFAULT_SORT_ORDER) as ListSortOrder;
+  const sortOrder = (searchParams.get("sortOrder") ??
+    DEFAULT_SORT_ORDER) as ListSortOrder;
+  const filters = parseListFilters(searchParams.get("filters"));
   const createdFrom = searchParams.get("createdFrom") ?? undefined;
   const createdTo = searchParams.get("createdTo") ?? undefined;
   const updatedFrom = searchParams.get("updatedFrom") ?? undefined;
@@ -92,12 +110,33 @@ export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQue
       changed = true;
     }
 
+    if (params.get("search")) {
+      params.delete("search");
+      changed = true;
+    }
+
     if (!changed) {
       return;
     }
 
     replaceIfChanged(params);
   }, [defaultPageSize, replaceIfChanged, searchParams]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const urlSearch = searchParams.get("search") ?? "";
+    if (urlSearch) {
+      setSearchState(urlSearch);
+      window.sessionStorage.setItem(searchStorageKey, urlSearch);
+      return;
+    }
+
+    const storedSearch = window.sessionStorage.getItem(searchStorageKey) ?? "";
+    setSearchState(storedSearch);
+  }, [searchParams, searchStorageKey]);
 
   const setParam = (key: string, value: string | undefined) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -159,6 +198,7 @@ export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQue
     search,
     sortBy: sortBy ?? DEFAULT_LIST_QUERY_STATE.sortBy,
     sortOrder: sortOrder ?? DEFAULT_LIST_QUERY_STATE.sortOrder,
+    filters,
     createdFrom,
     createdTo,
     updatedFrom,
@@ -166,15 +206,43 @@ export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQue
     setPage: (value: number) => setParam("page", String(value)),
     setPageSize: (value: number) => setParam("pageSize", String(value)),
     setSearch: (value: string) => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+
       searchDebounceRef.current = setTimeout(() => {
-        setParam("search", value);
+        const nextValue = value.trim();
+        setSearchState(nextValue);
+
+        if (typeof window !== "undefined") {
+          if (nextValue) {
+            window.sessionStorage.setItem(searchStorageKey, nextValue);
+          } else {
+            window.sessionStorage.removeItem(searchStorageKey);
+          }
+        }
+
+        setParam("page", "1");
       }, 300);
     },
     setSort: (nextSortBy: ListSortBy, nextSortOrder: ListSortOrder) =>
       setParamBatch({ sortBy: nextSortBy, sortOrder: nextSortOrder }),
     setSortBy: (value: ListSortBy) => setParam("sortBy", value),
     setSortOrder: (value: ListSortOrder) => setParam("sortOrder", value),
+    setFilters: (value: ListFilter[]) =>
+      setParam("filters", serializeListFilters(value)),
+    upsertFilter: (value: ListFilter) => {
+      const nextFilters = [
+        ...filters.filter((filter) => filter.field !== value.field),
+        value,
+      ];
+      setParam("filters", serializeListFilters(nextFilters));
+    },
+    removeFilter: (field: string) => {
+      const nextFilters = filters.filter((filter) => filter.field !== field);
+      setParam("filters", serializeListFilters(nextFilters));
+    },
+    clearFilters: () => setParam("filters", undefined),
     setCreatedFrom: (value?: string) => setParam("createdFrom", value),
     setCreatedTo: (value?: string) => setParam("createdTo", value),
     setUpdatedFrom: (value?: string) => setParam("updatedFrom", value),
