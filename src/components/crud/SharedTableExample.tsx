@@ -44,6 +44,7 @@ export default function SharedTableExample() {
       <SharedTable
         rows={rows}
         columns={columns}
+        storageKey="shared-table-example"
         loading={false}
         page={1}
         pageSize={20}
