@@ -256,6 +256,7 @@ export default function UsersPage() {
       <SharedTable<User>
         rows={rows}
         columns={columns}
+        storageKey="users-shared-table"
         loading={usersQuery.isFetching}
         page={listQuery.page}
         pageSize={listQuery.pageSize}

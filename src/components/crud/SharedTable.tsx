@@ -1,10 +1,11 @@
 "use client";
 
 import { ArrowDownOutlined, ArrowUpOutlined, FilterFilled, FilterOutlined } from "@ant-design/icons";
-import { Button, DatePicker, Input, Popover, Select, Space, Table, Typography } from "antd";
+import { Button, DatePicker, Input, Popover, Select, Space, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import dayjs from "dayjs";
 import React, { useState, type ReactNode } from "react";
+import { ResizableTable } from "@/components/common/ResizableTable";
 import type { PaginationMeta } from "@/lib/api/pagination";
 import type { BaseEntity } from "@/types/api";
 
@@ -45,6 +46,7 @@ interface SharedTableProps<T extends BaseEntity> {
   topToolbar?: ReactNode;
   emptyText?: ReactNode;
   scrollX?: number;
+  storageKey?: string;
   actionColumn?: {
     title?: string;
     width?: number;
@@ -195,6 +197,7 @@ export function SharedTable<T extends BaseEntity>({
   topToolbar,
   emptyText = "No records found",
   scrollX = 1024,
+  storageKey,
   actionColumn,
   sortState,
   onSortChange,
@@ -398,11 +401,13 @@ export function SharedTable<T extends BaseEntity>({
           onChange={(event) => onGlobalSearchChange(event.target.value)}
         />
       ) : null}
-      <Table
+      <ResizableTable
         rowKey="id"
         loading={loading}
         dataSource={filteredRows}
         columns={tableColumns}
+        storageKey={storageKey}
+        showColumnVisibilitySelector
         scroll={{ x: scrollX }}
         locale={{ emptyText }}
         pagination={{

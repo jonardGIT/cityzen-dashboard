@@ -886,6 +886,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           <SharedTable<BaseEntity>
             rows={rows}
             columns={tableColumns}
+            storageKey={`crud-${resourceName}-shared-table`}
             loading={listQuery.isFetching}
             page={tableState.page}
             pageSize={tableState.pageSize}

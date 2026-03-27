@@ -347,6 +347,7 @@ export default function IncidentsPage() {
       <SharedTable<Incident>
         rows={rows}
         columns={columns}
+        storageKey="incidents-shared-table"
         loading={incidentsListQuery.isFetching}
         page={listQuery.page}
         pageSize={listQuery.pageSize}

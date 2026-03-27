@@ -201,6 +201,7 @@ export default function AssignmentsPage() {
       <SharedTable<Assignment>
         rows={rows}
         columns={columns}
+        storageKey="assignments-shared-table"
         loading={assignmentsQuery.isFetching}
         page={listQuery.page}
         pageSize={listQuery.pageSize}
