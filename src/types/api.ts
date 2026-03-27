@@ -59,23 +59,25 @@ export interface Severity extends BaseEntity {
   name?: string;
 }
 
-export interface Location extends BaseEntity {
-  district?: string;
-  city?: string;
-  province?: string;
-  region?: string;
-}
-
 export interface Incident extends BaseEntity {
-  title?: string;
   description?: string;
   mediaUrl?: string;
   dateReported?: string;
   statusId?: EntityId;
   citizenId?: EntityId;
-  locationId?: EntityId;
   categoryId?: EntityId;
   severityId?: EntityId;
+  latitude?: number;
+  longitude?: number;
+  addressLine1?: string;
+  addressLine2?: string;
+  barangay?: string;
+  districtName?: string;
+  cityName?: string;
+  provinceName?: string;
+  regionName?: string;
+  postalCode?: string;
+  landmark?: string;
 }
 
 export interface Assignment extends BaseEntity {

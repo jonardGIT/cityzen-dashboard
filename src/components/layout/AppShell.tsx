@@ -2,7 +2,6 @@
 
 import {
   AppstoreOutlined,
-  EnvironmentOutlined,
   ExclamationCircleOutlined,
   LogoutOutlined,
   TeamOutlined,
@@ -47,8 +46,6 @@ function iconForResource(resource: string) {
       return <TagsOutlined />;
     case "severities":
       return <ProfileOutlined />;
-    case "locations":
-      return <EnvironmentOutlined />;
     case "users":
       return <UserOutlined />;
     default:
@@ -72,7 +69,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     const fullName = [user.firstName, user.lastName]
-      .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+      .filter(
+        (part): part is string =>
+          typeof part === "string" && part.trim().length > 0,
+      )
       .map((part) => part.trim())
       .join(" ");
 
@@ -114,7 +114,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         key: `/dashboard/${resource.resource}`,
         icon: iconForResource(resource.resource),
         label: resource.label,
-        canView: () => hasPermission(resource.endpoints.list, user?.role, isAuthenticated),
+        canView: () =>
+          hasPermission(resource.endpoints.list, user?.role, isAuthenticated),
       })),
       { key: "/profile", icon: <UserOutlined />, label: "Profile" },
     ];
@@ -131,7 +132,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     const prefix = menuItems.find((item) =>
-      pathname.startsWith(String(item?.key))
+      pathname.startsWith(String(item?.key)),
     )?.key;
 
     return String(prefix ?? "/dashboard");
@@ -139,13 +140,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} width={260}>
+      <Sider
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        width={260}
+      >
         <div style={{ padding: 16 }}>
           <Title level={4} style={{ color: "#fff", margin: 0 }}>
             {collapsed ? "XR" : "Xypes Response"}
           </Title>
           {!collapsed ? (
-            <Text style={{ color: "rgba(255,255,255,0.65)" }}>LGU Incident Ops</Text>
+            <Text style={{ color: "rgba(255,255,255,0.65)" }}>
+              LGU Incident Ops
+            </Text>
           ) : null}
         </div>
         <Menu
@@ -170,12 +178,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Space size={12} align="center" style={{ minWidth: 0 }}>
             <Avatar
               size={36}
-              style={{ backgroundColor: "#1677ff", fontWeight: 600, flexShrink: 0 }}
+              style={{
+                backgroundColor: "#1677ff",
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
             >
               {avatarInitial}
             </Avatar>
             <div style={{ lineHeight: 1.2, minWidth: 0 }}>
-              <Text strong style={{ display: "block" }} ellipsis={{ tooltip: identityLabel }}>
+              <Text
+                strong
+                style={{ display: "block" }}
+                ellipsis={{ tooltip: identityLabel }}
+              >
                 {identityLabel}
               </Text>
               <Text type="secondary" style={{ display: "block" }}>

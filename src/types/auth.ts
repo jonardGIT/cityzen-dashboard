@@ -23,5 +23,14 @@ export interface LoginRequest {
 export interface LoginResponse {
   accessToken?: string;
   token?: string;
+  access_token?: string;
+  jwt?: string;
+  data?: {
+    accessToken?: string;
+    token?: string;
+    access_token?: string;
+    jwt?: string;
+    user?: AuthUser;
+  };
   user?: AuthUser;
 }

@@ -1,4 +1,7 @@
-import type { CrudFieldConfig, CrudOperation } from "@/features/dynamic-crud/types";
+import type {
+  CrudFieldConfig,
+  CrudOperation,
+} from "@/features/dynamic-crud/types";
 
 const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
   users: [
@@ -27,7 +30,11 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
       label: "Agency",
       type: "select",
       required: true,
-      optionSource: { resource: "agencies", valueField: "id", labelField: "name" },
+      optionSource: {
+        resource: "agencies",
+        valueField: "id",
+        labelField: "name",
+      },
     },
     { name: "role", label: "Role", type: "text" },
     { name: "contactInfo", label: "Contact Info", type: "text" },
@@ -45,49 +52,69 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
     { name: "level", label: "Level", type: "text", required: true },
     { name: "definition", label: "Definition", type: "textarea" },
   ],
-  locations: [
-    { name: "district", label: "District", type: "text" },
-    { name: "city", label: "City", type: "text" },
-    { name: "province", label: "Province", type: "text" },
-    { name: "region", label: "Region", type: "text" },
-  ],
   incidents: [
-    { name: "description", label: "Description", type: "textarea", required: true },
+    {
+      name: "description",
+      label: "Description",
+      type: "textarea",
+      required: true,
+    },
     { name: "mediaUrl", label: "Media URL", type: "text" },
+    { name: "dateReported", label: "Date Reported", type: "datetime" },
+    { name: "latitude", label: "Latitude", type: "text" },
+    { name: "longitude", label: "Longitude", type: "text" },
+    { name: "addressLine1", label: "Address Line 1", type: "text" },
+    { name: "addressLine2", label: "Address Line 2", type: "text" },
+    { name: "barangay", label: "Barangay", type: "text" },
+    { name: "districtName", label: "District", type: "text" },
+    { name: "cityName", label: "City", type: "text" },
+    { name: "provinceName", label: "Province", type: "text" },
+    { name: "regionName", label: "Region", type: "text" },
+    { name: "postalCode", label: "Postal Code", type: "text" },
+    { name: "landmark", label: "Landmark", type: "text" },
     {
       name: "statusId",
       label: "Status",
       type: "select",
       required: true,
-      optionSource: { resource: "statuses", valueField: "id", labelField: "name" },
+      optionSource: {
+        resource: "statuses",
+        valueField: "id",
+        labelField: "name",
+      },
     },
     {
       name: "citizenId",
       label: "Citizen",
       type: "select",
       required: true,
-      optionSource: { resource: "citizens", valueField: "id", labelField: "name" },
-    },
-    {
-      name: "locationId",
-      label: "Location",
-      type: "select",
-      required: true,
-      optionSource: { resource: "locations", valueField: "id", labelField: "name" },
+      optionSource: {
+        resource: "citizens",
+        valueField: "id",
+        labelField: "name",
+      },
     },
     {
       name: "categoryId",
       label: "Category",
       type: "select",
       required: true,
-      optionSource: { resource: "categories", valueField: "id", labelField: "name" },
+      optionSource: {
+        resource: "categories",
+        valueField: "id",
+        labelField: "name",
+      },
     },
     {
       name: "severityId",
       label: "Severity",
       type: "select",
       required: true,
-      optionSource: { resource: "severities", valueField: "id", labelField: "level" },
+      optionSource: {
+        resource: "severities",
+        valueField: "id",
+        labelField: "level",
+      },
     },
   ],
   assignments: [
@@ -96,14 +123,22 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
       label: "Incident",
       type: "select",
       required: true,
-      optionSource: { resource: "incidents", valueField: "id", labelField: "description" },
+      optionSource: {
+        resource: "incidents",
+        valueField: "id",
+        labelField: "description",
+      },
     },
     {
       name: "responderId",
       label: "Responder",
       type: "select",
       required: true,
-      optionSource: { resource: "responders", valueField: "id", labelField: "name" },
+      optionSource: {
+        resource: "responders",
+        valueField: "id",
+        labelField: "name",
+      },
     },
     { name: "responseStart", label: "Response Start", type: "datetime" },
     { name: "responseEnd", label: "Response End", type: "datetime" },
@@ -131,7 +166,9 @@ export function getResourceFieldsForOperation(
   const base = getResourceFields(resourceName);
 
   if (resourceName === "citizens" && operation === "linkMe") {
-    return base.filter((field) => field.name === "name" || field.name === "preferredChannel");
+    return base.filter(
+      (field) => field.name === "name" || field.name === "preferredChannel",
+    );
   }
 
   if (resourceName === "incidents" && operation === "report") {
@@ -139,8 +176,17 @@ export function getResourceFieldsForOperation(
       "description",
       "mediaUrl",
       "dateReported",
-      "statusId",
-      "locationId",
+      "latitude",
+      "longitude",
+      "addressLine1",
+      "addressLine2",
+      "barangay",
+      "districtName",
+      "cityName",
+      "provinceName",
+      "regionName",
+      "postalCode",
+      "landmark",
       "categoryId",
       "severityId",
     ];
@@ -151,7 +197,10 @@ export function getResourceFieldsForOperation(
         label: "Date Reported",
         type: "datetime",
       },
-      ...base.filter((field) => reportFields.includes(field.name) && field.name !== "dateReported"),
+      ...base.filter(
+        (field) =>
+          reportFields.includes(field.name) && field.name !== "dateReported",
+      ),
     ];
   }
 

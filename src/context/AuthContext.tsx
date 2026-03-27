@@ -12,6 +12,59 @@ import {
 } from "@/lib/auth/token-storage";
 import type { AuthUser, LoginRequest, LoginResponse, Role } from "@/types/auth";
 
+function isAuthUser(value: unknown): value is AuthUser {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === "string" &&
+    typeof record.email === "string" &&
+    typeof record.role === "string"
+  );
+}
+
+function resolveUserPayload(payload: unknown): AuthUser | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const nestedUser = record.user;
+
+  if (isAuthUser(nestedUser)) {
+    return nestedUser as AuthUser;
+  }
+
+  if (isAuthUser(record)) {
+    return record as AuthUser;
+  }
+
+  if (record.data && typeof record.data === "object") {
+    const dataRecord = record.data as Record<string, unknown>;
+    if (isAuthUser(dataRecord.user)) {
+      return dataRecord.user;
+    }
+  }
+
+  return null;
+}
+
+function resolveAccessToken(payload: LoginResponse): string | null {
+  return (
+    payload.accessToken ??
+    payload.token ??
+    payload.access_token ??
+    payload.jwt ??
+    payload.data?.accessToken ??
+    payload.data?.token ??
+    payload.data?.access_token ??
+    payload.data?.jwt ??
+    null
+  );
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
@@ -50,9 +103,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const response = await authClient.get<AuthUser | { user: AuthUser }>("/auth/me");
-      const resolvedUser =
-        "user" in response.data ? response.data.user : response.data;
+      const response = await authClient.get<unknown>("/auth/me");
+      const resolvedUser = resolveUserPayload(response.data);
+
+      if (!resolvedUser) {
+        throw new Error("Session response did not include a valid user payload.");
+      }
+
       setStoredUser(resolvedUser);
       setUser(resolvedUser);
     } catch {
@@ -78,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const payload: LoginRequest = { email, password };
     const response = await publicClient.post<LoginResponse>("/auth/login", payload);
-    const token = response.data.accessToken ?? response.data.token;
+    const token = resolveAccessToken(response.data);
 
     if (!token) {
       throw new Error("Login response did not include an access token.");
@@ -86,9 +143,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setAccessToken(token);
 
-    if (response.data.user) {
-      setStoredUser(response.data.user);
-      setUser(response.data.user);
+    const resolvedUser = resolveUserPayload(response.data);
+    if (resolvedUser) {
+      setStoredUser(resolvedUser);
+      setUser(resolvedUser);
     }
 
     await restoreSession();

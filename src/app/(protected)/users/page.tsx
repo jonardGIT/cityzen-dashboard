@@ -266,7 +266,7 @@ export default function UsersPage() {
               <Alert
                 type="info"
                 showIcon
-                message="User management capabilities are limited by the connected backend."
+                title="User management capabilities are limited by the connected backend."
                 description={[
                   !capabilitiesQuery.data?.canUpdateUser
                     ? "Edit is not available."

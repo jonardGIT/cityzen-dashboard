@@ -6,7 +6,6 @@ import type {
   Citizen,
   EntityId,
   Incident,
-  Location,
   Responder,
   Severity,
   Status,
@@ -95,20 +94,6 @@ export const severitiesResource = {
       payload,
     ),
   remove: (id: EntityId) => cirsApi.remove("severities", id),
-};
-
-export const locationsResource = {
-  list: () => cirsApi.list<Location>("locations"),
-  getById: (id: EntityId) => cirsApi.getById<Location>("locations", id),
-  create: (payload: Omit<Location, "id">) =>
-    cirsApi.create<Location, Omit<Location, "id">>("locations", payload),
-  update: (id: EntityId, payload: Partial<Omit<Location, "id">>) =>
-    cirsApi.update<Location, Partial<Omit<Location, "id">>>(
-      "locations",
-      id,
-      payload,
-    ),
-  remove: (id: EntityId) => cirsApi.remove("locations", id),
 };
 
 export const incidentsResource = {

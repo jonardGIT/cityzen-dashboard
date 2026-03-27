@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/api/clients";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
-import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  adaptPaginatedResponse,
+  type PaginatedResponse,
+} from "@/lib/api/pagination";
 import {
   buildListQueryParams,
   type FetchListParams,
@@ -11,7 +14,6 @@ import type {
   Category,
   Citizen,
   HealthResponse,
-  Location,
   Responder,
   Severity,
   Status,
@@ -30,7 +32,11 @@ export async function fetchCitizens(
     params: buildListQueryParams(fetchParams),
     signal,
   });
-  return adaptPaginatedResponse<Citizen>(response.data, fetchParams.page, fetchParams.pageSize);
+  return adaptPaginatedResponse<Citizen>(
+    response.data,
+    fetchParams.page,
+    fetchParams.pageSize,
+  );
 }
 
 export async function fetchCitizenById(id: string) {
@@ -46,7 +52,11 @@ export async function fetchResponders(
     params: buildListQueryParams(fetchParams),
     signal,
   });
-  return adaptPaginatedResponse<Responder>(response.data, fetchParams.page, fetchParams.pageSize);
+  return adaptPaginatedResponse<Responder>(
+    response.data,
+    fetchParams.page,
+    fetchParams.pageSize,
+  );
 }
 
 export async function fetchStatuses(
@@ -57,7 +67,11 @@ export async function fetchStatuses(
     params: buildListQueryParams(fetchParams),
     signal,
   });
-  return adaptPaginatedResponse<Status>(response.data, fetchParams.page, fetchParams.pageSize);
+  return adaptPaginatedResponse<Status>(
+    response.data,
+    fetchParams.page,
+    fetchParams.pageSize,
+  );
 }
 
 export async function fetchCategories(
@@ -68,7 +82,11 @@ export async function fetchCategories(
     params: buildListQueryParams(fetchParams),
     signal,
   });
-  return adaptPaginatedResponse<Category>(response.data, fetchParams.page, fetchParams.pageSize);
+  return adaptPaginatedResponse<Category>(
+    response.data,
+    fetchParams.page,
+    fetchParams.pageSize,
+  );
 }
 
 export async function fetchSeverities(
@@ -79,18 +97,11 @@ export async function fetchSeverities(
     params: buildListQueryParams(fetchParams),
     signal,
   });
-  return adaptPaginatedResponse<Severity>(response.data, fetchParams.page, fetchParams.pageSize);
-}
-
-export async function fetchLocations(
-  fetchParams: FetchListParams,
-  signal?: AbortSignal,
-): Promise<PaginatedResponse<Location>> {
-  const response = await authClient.get<unknown>("/locations", {
-    params: buildListQueryParams(fetchParams),
-    signal,
-  });
-  return adaptPaginatedResponse<Location>(response.data, fetchParams.page, fetchParams.pageSize);
+  return adaptPaginatedResponse<Severity>(
+    response.data,
+    fetchParams.page,
+    fetchParams.pageSize,
+  );
 }
 
 export function useHealthQuery() {
@@ -146,15 +157,6 @@ export function useSeveritiesQuery(state: ListQueryState) {
   return useQuery({
     queryKey: ["severities", fetchParams],
     queryFn: ({ signal }) => fetchSeverities(fetchParams, signal),
-    placeholderData: (previous) => previous,
-  });
-}
-
-export function useLocationsQuery(state: ListQueryState) {
-  const fetchParams = state;
-  return useQuery({
-    queryKey: ["locations", fetchParams],
-    queryFn: ({ signal }) => fetchLocations(fetchParams, signal),
     placeholderData: (previous) => previous,
   });
 }

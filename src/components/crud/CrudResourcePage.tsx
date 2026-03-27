@@ -29,6 +29,7 @@ import {
 } from "@/components/crud/CrudFormModal";
 import { CrudTable } from "@/components/crud/CrudTable";
 import { DeleteConfirmModal } from "@/components/crud/DeleteConfirmModal";
+import { extractListQueryValidation } from "@/components/crud/list-query-validation";
 import { adaptPaginatedResponse } from "@/lib/api/pagination";
 import {
   CrudRequestError,
@@ -119,6 +120,7 @@ function normalizeFormValues(
   isUpdate: boolean,
 ) {
   const output: Record<string, unknown> = {};
+  const numericFieldNames = new Set(["latitude", "longitude"]);
 
   for (const field of fields) {
     const raw = values[field.name];
@@ -137,6 +139,35 @@ function normalizeFormValues(
       /^-?\d+$/.test(raw)
     ) {
       output[field.name] = Number(raw);
+      continue;
+    }
+
+    if (numericFieldNames.has(field.name) && typeof raw === "string") {
+      const trimmed = raw.trim();
+
+      if (!trimmed) {
+        if (!isUpdate) {
+          continue;
+        }
+
+        continue;
+      }
+
+      const parsed = Number(trimmed);
+      output[field.name] = Number.isNaN(parsed) ? raw : parsed;
+      continue;
+    }
+
+    if (field.type === "datetime" && typeof raw === "string") {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        continue;
+      }
+
+      const parsed = new Date(trimmed);
+      output[field.name] = Number.isNaN(parsed.getTime())
+        ? raw
+        : parsed.toISOString();
       continue;
     }
 
@@ -561,6 +592,23 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
   const paginationMeta = listQuery.data?.pagination;
   const sourceRows = listQuery.data?.data ?? [];
+  const listValidationState = useMemo(
+    () =>
+      listQuery.isFetching
+        ? null
+        : extractListQueryValidation(
+            listQuery.error,
+            tableState.filters,
+            tableState.sortBy,
+          ),
+    [
+      listQuery.error,
+      listQuery.isFetching,
+      tableState.filters,
+      tableState.sortBy,
+    ],
+  );
+  const hasFatalListError = Boolean(listQuery.error && !listValidationState);
   const ownershipFields = [
     "userId",
     "reportedById",
@@ -596,7 +644,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         "crud",
         resourceName,
         "list",
-        { ...tableState, page: nextPage, search: undefined },
+        { ...tableState, page: nextPage },
       ],
       queryFn: async () => {
         const result = await requestCrudEndpoint<unknown>(listEndpoint, {
@@ -771,28 +819,38 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         <Alert
           showIcon
           type="info"
-          message="Some actions are unavailable"
+          title="Some actions are unavailable"
           description="Permissions for create, update, and delete are role-based and endpoint-driven."
         />
       ) : null}
 
       <Card>
         {listQuery.isLoading ? <LoadingState /> : null}
-        {listQuery.error ? (
+        {hasFatalListError ? (
           <Space orientation="vertical" style={{ width: "100%" }}>
             <ErrorState message={String(listQuery.error)} />
             <Button onClick={() => void listQuery.refetch()}>Retry</Button>
           </Space>
         ) : null}
-        {!listQuery.isLoading && !listQuery.error && rows.length === 0 ? (
+        {!listQuery.isLoading &&
+        !hasFatalListError &&
+        rows.length === 0 &&
+        !listValidationState ? (
           <Empty description="No records found" />
         ) : null}
-        {!listQuery.isLoading && !listQuery.error && rows.length > 0 ? (
+        {!listQuery.isLoading && !hasFatalListError ? (
           <CrudTable
             rows={rows}
             loading={listQuery.isFetching}
             search={tableState.search}
             onSearchChange={tableState.setSearch}
+            filters={tableState.filters}
+            onFilterChange={tableState.upsertFilter}
+            onFilterRemove={tableState.removeFilter}
+            onClearFilters={tableState.clearFilters}
+            sortBy={tableState.sortBy}
+            sortOrder={tableState.sortOrder}
+            onSortChange={tableState.setSort}
             page={tableState.page}
             pageSize={tableState.pageSize}
             onPageChange={tableState.setPage}
@@ -810,6 +868,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
                 loading={Boolean(listQuery.isFetching)}
               />
             }
+            validationState={listValidationState}
             onView={(row) => {
               setSelected(row);
               setDetailsOpen(true);

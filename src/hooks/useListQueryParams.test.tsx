@@ -20,8 +20,19 @@ function Harness() {
 
   return (
     <div>
-      <div data-testid="state">{`${state.page}|${state.pageSize}|${state.sortBy}|${state.sortOrder}`}</div>
+      <div data-testid="state">{`${state.page}|${state.pageSize}|${state.sortBy}|${state.sortOrder}|${state.filters.length}`}</div>
       <button onClick={() => state.setSort("updatedAt", "desc")}>quick-filter</button>
+      <button
+        onClick={() =>
+          state.upsertFilter({
+            field: "name",
+            operator: "contains",
+            value: "fire",
+          })
+        }
+      >
+        apply-filter
+      </button>
       <button
         onClick={() =>
           state.setCreatedRange("2026-03-20T00:00:00.000Z", "2026-03-20T23:59:59.999Z")
@@ -63,6 +74,16 @@ describe("useListQueryParams", () => {
     vi.advanceTimersByTime(1);
     expect(replaceMock).toHaveBeenCalledWith(
       "/incidents?page=1&pageSize=20&sortBy=createdAt&sortOrder=desc&createdFrom=2026-03-20T00%3A00%3A00.000Z&createdTo=2026-03-20T23%3A59%3A59.999Z",
+    );
+  });
+
+  it("encodes filters as JSON and resets the page", () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("apply-filter"));
+
+    expect(replaceMock).toHaveBeenCalledWith(
+      "/incidents?page=1&pageSize=20&sortBy=createdAt&sortOrder=desc&filters=%5B%7B%22field%22%3A%22name%22%2C%22operator%22%3A%22contains%22%2C%22value%22%3A%22fire%22%7D%5D",
     );
   });
 });

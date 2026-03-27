@@ -13,7 +13,6 @@ export const CIRS_RESOURCES = [
   "statuses",
   "categories",
   "severities",
-  "locations",
   "incidents",
   "assignments",
   "users",

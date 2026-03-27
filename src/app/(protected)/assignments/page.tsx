@@ -33,6 +33,7 @@ import { useListQueryParams } from "@/hooks/useListQueryParams";
 import {
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,
+  type ListQueryState,
 } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload } from "@/types/api";
 
@@ -93,13 +94,14 @@ export default function AssignmentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
   const listQuery = useListQueryParams();
-  const optionQueryState = {
+  const optionQueryState: ListQueryState = {
     page: 1,
     pageSize: 200,
     search: "",
     sortBy: DEFAULT_SORT_BY,
     sortOrder: DEFAULT_SORT_ORDER,
-  } as const;
+    filters: [],
+  };
 
   const assignmentsQuery = useAssignmentsQuery(listQuery);
   const incidentsQuery = useIncidentsQuery(optionQueryState);
