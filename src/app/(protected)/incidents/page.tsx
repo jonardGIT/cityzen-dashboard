@@ -5,14 +5,11 @@ import {
   Alert,
   App,
   Button,
-  Card,
   Form,
   Input,
   Modal,
   Select,
   Space,
-  Statistic,
-  Tag,
   Tooltip,
   Typography,
 } from "antd";
@@ -24,6 +21,7 @@ import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { ResizableTable } from "@/components/common/ResizableTable";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
 import { useAuth } from "@/context/AuthContext";
 import {
   defaultAssignmentsQueryState,
@@ -44,13 +42,8 @@ import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { reverseGeocodeIncidentAddress } from "@/lib/geo/reverse-geocode";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
-import {
-  DEFAULT_SORT_BY,
-  DEFAULT_SORT_ORDER,
-  type ListQueryState,
-} from "@/lib/api/list-query-params";
+import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload, Incident } from "@/types/api";
-import styles from "./page.module.css";
 
 const { Link, Text, Title } = Typography;
 
@@ -426,6 +419,32 @@ export default function IncidentsPage() {
     },
   ];
 
+  const columns: Array<SharedTableColumn<Incident>> = [
+    { key: "description", title: "Description", filterKind: "text" },
+    { key: "citizenId", title: "Citizen", filterKind: "select", selectOptions: citizenLabels },
+    { key: "statusId", title: "Status", filterKind: "select", selectOptions: statusLabels },
+    {
+      key: "dateReported",
+      title: "Reported",
+      filterKind: "date",
+      render: (value) => formatDateTime(value),
+    },
+    {
+      key: "createdAt",
+      title: "Created",
+      filterKind: "date",
+      sortable: true,
+      render: (value) => formatDateTime(value),
+    },
+    {
+      key: "updatedAt",
+      title: "Updated",
+      filterKind: "date",
+      sortable: true,
+      render: (value) => formatDateTime(value),
+    },
+  ];
+
   if (incidentsListQuery.isLoading) {
     return <LoadingState />;
   }
@@ -560,163 +579,57 @@ export default function IncidentsPage() {
   };
 
   return (
-    <div className={styles.pageShell}>
-      <Card className={styles.heroCard}>
-        <div className={styles.heroInner}>
-          <div className={styles.heroHeader}>
-            <div className={styles.heroCopy}>
-              <Text className={styles.eyebrow}>Incident operations</Text>
-              <Title level={3} className={styles.heroTitle}>
-                Triage, capture, and review incident reports from one workspace.
-              </Title>
-              <Text className={styles.heroDescription}>
-                Keep the live queue searchable, verify location snapshots
-                quickly, and create new incident records with the
-                backend-aligned address contract.
-              </Text>
-            </div>
-            <RoleGuard allowedRoles={CAN_CREATE_INCIDENT} disableOnly>
-              <Button
-                className={styles.heroAction}
-                type="primary"
-                size="large"
-                onClick={() => setOpen(true)}
-                disabled={!canCreate}
-              >
-                Create Incident
-              </Button>
-            </RoleGuard>
-          </div>
+    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+      <Space style={{ width: "100%", justifyContent: "space-between" }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Incidents
+        </Title>
+        <RoleGuard allowedRoles={CAN_CREATE_INCIDENT} disableOnly>
+          <Button type="primary" onClick={() => setOpen(true)} disabled={!canCreate}>
+            Create Incident
+          </Button>
+        </RoleGuard>
+      </Space>
 
-          <div className={styles.heroMetrics}>
-            <div className={styles.metricTile}>
-              <Statistic value={totalIncidents} title="Total incidents" />
-              <Text className={styles.metricLabel}>
-                Across the current server query.
-              </Text>
-            </div>
-            <div className={styles.metricTile}>
-              <Statistic value={rows.length} title="Visible rows" />
-              <Text className={styles.metricLabel}>
-                Current page after filters and search.
-              </Text>
-            </div>
-            <div className={styles.metricTile}>
-              <Statistic value={geocodedCount} title="With coordinates" />
-              <Text className={styles.metricLabel}>
-                Ready for map-based verification.
-              </Text>
-            </div>
-            <div className={styles.metricTile}>
-              <Statistic value={reportedTodayCount} title="Reported today" />
-              <Text className={styles.metricLabel}>
-                Based on reported or created timestamps.
-              </Text>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <SharedTable<Incident>
+        rows={rows}
+        columns={columns}
+        loading={incidentsListQuery.isFetching}
+        page={listQuery.page}
+        pageSize={listQuery.pageSize}
+        paginationMeta={pagination}
+        onPageChange={listQuery.setPage}
+        onPageSizeChange={listQuery.setPageSize}
+        globalSearch={listQuery.search}
+        onGlobalSearchChange={listQuery.setSearch}
+        globalSearchPlaceholder="Search incidents"
+        sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
+        onSortChange={(columnKey, order) => {
+          if (columnKey === "createdAt" || columnKey === "updatedAt") {
+            listQuery.setSort(columnKey, order);
+          }
+        }}
+        serverDateFilters={{
+          createdAt: { from: listQuery.createdFrom, to: listQuery.createdTo },
+          updatedAt: { from: listQuery.updatedFrom, to: listQuery.updatedTo },
+        }}
+        onServerDateFilterChange={(columnKey, value) => {
+          if (columnKey === "createdAt") {
+            listQuery.setCreatedRange(value.from, value.to);
+            return;
+          }
 
-      <Card className={styles.controlCard}>
-        <div className={styles.controlStack}>
-          <div className={styles.controlHeader}>
-            <Input.Search
-              allowClear
-              placeholder="Search incidents by description or record context"
-              value={listQuery.search}
-              onChange={(event) => listQuery.setSearch(event.target.value)}
-              style={{ maxWidth: 420 }}
-            />
-            <Text className={styles.controlMeta}>
-              {addressSnapshotCount} records include address snapshots in this
-              result set.
-            </Text>
-          </div>
+          listQuery.setUpdatedRange(value.from, value.to);
+        }}
+        topToolbar={
           <FilterToolbar
             state={listQuery}
             setters={listQuery}
             loading={Boolean(incidentsListQuery.isFetching)}
           />
-        </div>
-      </Card>
-
-      <div className={styles.contentGrid}>
-        <Card className={styles.tableCard}>
-          <div className={styles.sectionHeader}>
-            <Title level={4} className={styles.sectionTitle}>
-              Live incident queue
-            </Title>
-            <Text className={styles.sectionDescription}>
-              Review current incident records, verify address quality, and move
-              into follow-up actions.
-            </Text>
-          </div>
-          <ResizableTable
-            rowKey="id"
-            loading={incidentsListQuery.isFetching}
-            dataSource={rows}
-            storageKey="incidents-live-queue-widths"
-            showColumnVisibilitySelector
-            scroll={{ x: 980 }}
-            pagination={{
-              current: listQuery.page,
-              pageSize: listQuery.pageSize,
-              total: totalIncidents,
-              onChange: (nextPage, nextPageSize) => {
-                if (nextPageSize !== listQuery.pageSize) {
-                  listQuery.setPageSize(nextPageSize);
-                  return;
-                }
-
-                listQuery.setPage(nextPage);
-              },
-            }}
-            columns={columns}
-          />
-        </Card>
-
-        <Card className={styles.sidebarCard}>
-          <div className={styles.sectionHeader}>
-            <Title level={4} className={styles.sectionTitle}>
-              Capture checklist
-            </Title>
-            <Text className={styles.sectionDescription}>
-              Keep the incident payload complete before dispatch and assignment
-              workflows begin.
-            </Text>
-          </div>
-          <div className={styles.sidebarList}>
-            <div className={styles.sidebarItem}>
-              <Text className={styles.sidebarLabel}>Location snapshot</Text>
-              <Text>
-                Collect coordinates plus address fields so the incident stays
-                valid even if upstream geo services change later.
-              </Text>
-            </div>
-            <div className={styles.sidebarItem}>
-              <Text className={styles.sidebarLabel}>Severity and status</Text>
-              <Text>
-                Set both on creation so the dashboard can place the incident in
-                the correct queue immediately.
-              </Text>
-            </div>
-            <div className={styles.sidebarItem}>
-              <Text className={styles.sidebarLabel}>Media evidence</Text>
-              <Text>
-                Add a resolvable media URL when supporting photos or attachments
-                exist.
-              </Text>
-            </div>
-            <div className={styles.sidebarItem}>
-              <Text className={styles.sidebarLabel}>Current signal</Text>
-              <Text>
-                {geocodedCount} visible records already have coordinates, and{" "}
-                {addressSnapshotCount} include address snapshots.
-              </Text>
-            </div>
-          </div>
-        </Card>
-      </div>
+        }
+        scrollX={980}
+      />
 
       <Modal
         title="Create Incident"

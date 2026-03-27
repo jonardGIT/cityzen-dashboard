@@ -1,25 +1,13 @@
 "use client";
 
-import {
-  App,
-  Button,
-  Card,
-  Form,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Statistic,
-  Tag,
-  Typography,
-} from "antd";
+import { App, Button, Form, Input, Modal, Select, Space, Typography } from "antd";
 import { AxiosError } from "axios";
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { ResizableTable } from "@/components/common/ResizableTable";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
 import { useAuth } from "@/context/AuthContext";
 import {
   useAssignmentsQuery,
@@ -33,13 +21,8 @@ import {
 import { CAN_CREATE_ASSIGNMENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
-import {
-  DEFAULT_SORT_BY,
-  DEFAULT_SORT_ORDER,
-  type ListQueryState,
-} from "@/lib/api/list-query-params";
+import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload, Assignment } from "@/types/api";
-import styles from "./page.module.css";
 
 const { Title, Text } = Typography;
 
@@ -137,23 +120,62 @@ export default function AssignmentsPage() {
   const createMutation = useCreateAssignmentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<AssignmentFormValues>();
-  const incidents = incidentsQuery.data?.data ?? [];
-  const responders = respondersQuery.data?.data ?? [];
-  const statuses = statusesQuery.data?.data ?? [];
-  const rows = useMemo(() => {
-    const items = assignmentsQuery.data?.data ?? [];
-    if (!listQuery.search) {
-      return items;
-    }
-
-    return items.filter((item) =>
-      JSON.stringify(item)
-        .toLowerCase()
-        .includes(listQuery.search.toLowerCase()),
-    );
-  }, [assignmentsQuery.data, listQuery.search]);
+  const rows = assignmentsQuery.data?.data ?? [];
 
   const pagination = assignmentsQuery.data?.pagination;
+  const incidentLabels = new Map(
+    (incidentsQuery.data?.data ?? []).map((item) => [String(item.id), item.description ?? `Incident ${item.id}`]),
+  );
+  const responderLabels = new Map(
+    (respondersQuery.data?.data ?? []).map((item) => [
+      String(item.id),
+      item.name ??
+        (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() || `Responder ${item.id}`),
+    ]),
+  );
+  const statusLabels = new Map(
+    (statusesQuery.data?.data ?? []).map((item) => [String(item.id), item.name ?? `Status ${item.id}`]),
+  );
+
+  const columns: Array<SharedTableColumn<Assignment>> = [
+    { key: "incidentId", title: "Incident", filterKind: "select", selectOptions: incidentLabels },
+    { key: "responderId", title: "Responder", filterKind: "select", selectOptions: responderLabels },
+    { key: "statusId", title: "Status", filterKind: "select", selectOptions: statusLabels },
+    { key: "notes", title: "Notes", filterKind: "text" },
+    {
+      key: "assignedDate",
+      title: "Assigned",
+      filterKind: "date",
+      render: (value) => {
+        const formatted = formatDateTime(value);
+        const relative = formatRelativeTime(value);
+
+        return (
+          <Space direction="vertical" size={0}>
+            <Text>{formatted}</Text>
+            {relative ? <Text type="secondary">{relative}</Text> : null}
+          </Space>
+        );
+      },
+    },
+    {
+      key: "createdAt",
+      title: "Created",
+      filterKind: "date",
+      sortable: true,
+      render: (value) => {
+        const formatted = formatDateTime(value);
+        const relative = formatRelativeTime(value);
+
+        return (
+          <Space direction="vertical" size={0}>
+            <Text>{formatted}</Text>
+            {relative ? <Text type="secondary">{relative}</Text> : null}
+          </Space>
+        );
+      },
+    },
+  ];
 
   if (assignmentsQuery.isLoading) {
     return <LoadingState />;
@@ -300,165 +322,57 @@ export default function AssignmentsPage() {
   };
 
   return (
-    <div className={styles.pageShell}>
-      <Card className={styles.heroCard}>
-        <div className={styles.heroInner}>
-          <div className={styles.heroHeader}>
-            <div className={styles.heroCopy}>
-              <Text className={styles.eyebrow}>Dispatch assignments</Text>
-              <Title level={3} className={styles.heroTitle}>
-                Coordinate incident handoff and field response from one queue.
-              </Title>
-              <Text className={styles.heroDescription}>
-                Review assignment records with responder, status, and timing
-                context so dispatch activity is readable at a glance.
-              </Text>
-            </div>
-            <RoleGuard allowedRoles={CAN_CREATE_ASSIGNMENT} disableOnly>
-              <Button
-                className={styles.heroAction}
-                type="primary"
-                size="large"
-                onClick={() => setOpen(true)}
-                disabled={!canCreate}
-              >
-                Create Assignment
-              </Button>
-            </RoleGuard>
-          </div>
+    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+      <Space style={{ width: "100%", justifyContent: "space-between" }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Assignments
+        </Title>
+        <RoleGuard allowedRoles={CAN_CREATE_ASSIGNMENT} disableOnly>
+          <Button type="primary" onClick={() => setOpen(true)} disabled={!canCreate}>
+            Create Assignment
+          </Button>
+        </RoleGuard>
+      </Space>
 
-          <div className={styles.heroMetrics}>
-            <div className={styles.metricTile}>
-              <Statistic
-                title="Assignments"
-                value={pagination?.total ?? rows.length}
-              />
-              <Text className={styles.metricLabel}>
-                Current server-backed queue size.
-              </Text>
-            </div>
-            <div className={styles.metricTile}>
-              <Statistic title="Visible rows" value={rows.length} />
-              <Text className={styles.metricLabel}>
-                Current page after search and filters.
-              </Text>
-            </div>
-            <div className={styles.metricTile}>
-              <Statistic title="Linked incidents" value={linkedIncidentCount} />
-              <Text className={styles.metricLabel}>
-                Assignments that resolve to incident records.
-              </Text>
-            </div>
-            <div className={styles.metricTile}>
-              <Statistic title="Missing status" value={unassignedStatusCount} />
-              <Text className={styles.metricLabel}>
-                Assignments needing explicit dispatch state.
-              </Text>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <SharedTable<Assignment>
+        rows={rows}
+        columns={columns}
+        loading={assignmentsQuery.isFetching}
+        page={listQuery.page}
+        pageSize={listQuery.pageSize}
+        paginationMeta={pagination}
+        onPageChange={listQuery.setPage}
+        onPageSizeChange={listQuery.setPageSize}
+        globalSearch={listQuery.search}
+        onGlobalSearchChange={listQuery.setSearch}
+        globalSearchPlaceholder="Search assignments"
+        sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
+        onSortChange={(columnKey, order) => {
+          if (columnKey === "createdAt" || columnKey === "updatedAt") {
+            listQuery.setSort(columnKey, order);
+          }
+        }}
+        serverDateFilters={{
+          createdAt: { from: listQuery.createdFrom, to: listQuery.createdTo },
+          updatedAt: { from: listQuery.updatedFrom, to: listQuery.updatedTo },
+        }}
+        onServerDateFilterChange={(columnKey, value) => {
+          if (columnKey === "createdAt") {
+            listQuery.setCreatedRange(value.from, value.to);
+            return;
+          }
 
-      <Card className={styles.controlCard}>
-        <div className={styles.controlStack}>
-          <div className={styles.controlHeader}>
-            <Input.Search
-              allowClear
-              placeholder="Search assignments"
-              value={listQuery.search}
-              onChange={(event) => listQuery.setSearch(event.target.value)}
-              style={{ maxWidth: 420 }}
-            />
-            <Text className={styles.controlMeta}>
-              {rows.length} assignment{rows.length === 1 ? "" : "s"} in the
-              current view.
-            </Text>
-          </div>
+          listQuery.setUpdatedRange(value.from, value.to);
+        }}
+        topToolbar={
           <FilterToolbar
             state={listQuery}
             setters={listQuery}
             loading={Boolean(assignmentsQuery.isFetching)}
           />
-        </div>
-      </Card>
-
-      <div className={styles.contentGrid}>
-        <Card className={`${styles.tableCard} ${styles.compactTable}`}>
-          <div className={styles.sectionHeader}>
-            <Title level={4} className={styles.sectionTitle}>
-              Assignment queue
-            </Title>
-            <Text className={styles.sectionDescription}>
-              Inspect dispatch records with incident, responder, status, and
-              timing metadata in one table.
-            </Text>
-          </div>
-          <ResizableTable
-            rowKey="id"
-            loading={assignmentsQuery.isFetching}
-            dataSource={rows}
-            storageKey="assignments-queue-widths"
-            showColumnVisibilitySelector
-            scroll={{ x: 1080 }}
-            pagination={{
-              current: listQuery.page,
-              pageSize: listQuery.pageSize,
-              total: pagination?.total ?? rows.length,
-              onChange: (nextPage, nextPageSize) => {
-                if (nextPageSize !== listQuery.pageSize) {
-                  listQuery.setPageSize(nextPageSize);
-                  return;
-                }
-
-                listQuery.setPage(nextPage);
-              },
-            }}
-            columns={columns}
-          />
-        </Card>
-
-        <Card className={styles.sidebarCard}>
-          <div className={styles.sectionHeader}>
-            <Title level={4} className={styles.sectionTitle}>
-              Dispatch guidance
-            </Title>
-            <Text className={styles.sectionDescription}>
-              Keep assignment records clean enough that the dashboard and
-              incident workspace can reflect them immediately.
-            </Text>
-          </div>
-          <div className={styles.sidebarList}>
-            <div className={styles.sidebarItem}>
-              <Text className={styles.sidebarLabel}>Incident link</Text>
-              <Text>
-                Assignments should point to the exact incident so workspace
-                navigation stays precise.
-              </Text>
-            </div>
-            <div className={styles.sidebarItem}>
-              <Text className={styles.sidebarLabel}>Dispatch status</Text>
-              <Text>
-                Set a status when possible so operators can scan active versus
-                completed handoff records.
-              </Text>
-            </div>
-            <div className={styles.sidebarItem}>
-              <Text className={styles.sidebarLabel}>Notes</Text>
-              <Text>
-                Add context that explains the handoff, expected response, or
-                operational blockers.
-              </Text>
-            </div>
-            <div className={styles.sidebarItem}>
-              <Text className={styles.sidebarLabel}>Current signal</Text>
-              <Text>
-                {unassignedStatusCount} visible assignments still need an
-                explicit assignment status.
-              </Text>
-            </div>
-          </div>
-        </Card>
-      </div>
+        }
+        scrollX={920}
+      />
 
       <Modal
         title="Create Assignment"

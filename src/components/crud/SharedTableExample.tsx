@@ -1,5 +1,5 @@
 import React from "react";
-import { SharedTable } from "./SharedTable";
+import { SharedTable, type SharedTableColumn } from "./SharedTable";
 import type { BaseEntity } from "@/types/api";
 
 // Example data
@@ -27,21 +27,15 @@ const rows: BaseEntity[] = [
   },
 ];
 
-const columns = ["name", "age", "createdAt", "status"];
-
-const columnLabels = {
-  name: "Full Name",
-  age: "Age",
-  createdAt: "Created At",
-  status: "Status",
-};
-
-const selectLabelsByField = {
-  status: new Map([
+const columns: Array<SharedTableColumn<BaseEntity>> = [
+  { key: "name", title: "Full Name", filterKind: "text" },
+  { key: "age", title: "Age", filterKind: "text" },
+  { key: "createdAt", title: "Created At", filterKind: "date", sortable: true },
+  { key: "status", title: "Status", filterKind: "select", selectOptions: new Map([
     ["active", "Active"],
     ["inactive", "Inactive"],
-  ]),
-};
+  ]) },
+];
 
 export default function SharedTableExample() {
   return (
@@ -50,10 +44,13 @@ export default function SharedTableExample() {
       <SharedTable
         rows={rows}
         columns={columns}
-        columnLabels={columnLabels}
-        selectLabelsByField={selectLabelsByField}
-        storageKey="shared-table-example-widths"
         loading={false}
+        page={1}
+        pageSize={20}
+        onPageChange={() => undefined}
+        onPageSizeChange={() => undefined}
+        sortState={{ key: "createdAt", order: "desc" }}
+        onSortChange={() => undefined}
       />
     </div>
   );

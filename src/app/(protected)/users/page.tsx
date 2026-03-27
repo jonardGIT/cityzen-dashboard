@@ -1,47 +1,26 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-  Typography,
-  App,
-  Form,
-  Input,
-  Select,
-  Button,
-  Card,
-  Space,
-  Result,
-  Alert,
-  Modal,
-  Popconfirm,
-} from "antd";
-import { LoadingState, EmptyState } from "@/components/common/PageStates";
-import { FilterToolbar } from "@/components/common/FilterToolbar";
-import { ResizableTable } from "@/components/common/ResizableTable";
-import { useAuth } from "@/context/AuthContext";
+import { App, Alert, Button, Form, Input, Modal, Popconfirm, Result, Select, Space, Typography } from "antd";
 import { AxiosError } from "axios";
-// Temporary stub for submitCreate to fix reference error
-const submitCreate = async () => {
-  /* TODO: implement user creation */
-};
+import { useMemo, useState } from "react";
+import { FilterToolbar } from "@/components/common/FilterToolbar";
+import { ErrorState, LoadingState } from "@/components/common/PageStates";
+import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
+import { useAuth } from "@/context/AuthContext";
 import {
   useCreateUserMutation,
   useDeleteUserMutation,
-  useUsersCapabilitiesQuery,
   useUpdateUserMutation,
+  useUsersCapabilitiesQuery,
   useUsersQuery,
 } from "@/features/users/api";
-import {
-  CAN_MANAGE_USERS,
-  canManageRole,
-  getAssignableRoles,
-} from "@/lib/auth/permissions";
-import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
+import { CAN_MANAGE_USERS, canManageRole, getAssignableRoles } from "@/lib/auth/permissions";
+import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import type { ApiErrorPayload, User } from "@/types/api";
 import { Role } from "@/types/auth";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface CreateUserFormValues {
   name: string;
@@ -61,7 +40,6 @@ interface EditUserFormValues {
 }
 
 export default function UsersPage() {
-  // ...existing code...
   const { message } = App.useApp();
   const { hasRole, user } = useAuth();
   const canManage = hasRole(...CAN_MANAGE_USERS);
@@ -74,20 +52,29 @@ export default function UsersPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  // ...existing code...
-  const isEditingSelf = Boolean(
-    editingUser && String(editingUser.id) === String(user?.id),
-  );
   const [createForm] = Form.useForm<CreateUserFormValues>();
   const [editForm] = Form.useForm<EditUserFormValues>();
 
   const assignableRoles = useMemo(() => {
     if (!user) {
-      return [];
+      return [] as Role[];
     }
 
     return getAssignableRoles(user.role);
   }, [user]);
+
+  const rows = usersQuery.data?.data ?? [];
+  const paginationMeta = usersQuery.data?.pagination;
+  const isEditingSelf = Boolean(editingUser && String(editingUser.id) === String(user?.id));
+  const roleOptions = new Map(Object.values(Role).map((role) => [role, role]));
+
+  const columns: Array<SharedTableColumn<User>> = [
+    { key: "email", title: "Email", filterKind: "text" },
+    { key: "name", title: "Name", filterKind: "text" },
+    { key: "role", title: "Role", filterKind: "select", selectOptions: roleOptions },
+    { key: "createdAt", title: "Created", filterKind: "date", sortable: true },
+    { key: "updatedAt", title: "Updated", filterKind: "date", sortable: true },
+  ];
 
   const canEditRow = (row: User): boolean => {
     if (!capabilitiesQuery.data?.canUpdateUser) {
@@ -98,12 +85,10 @@ export default function UsersPage() {
       return false;
     }
 
-    // Cannot edit self
     if (String(row.id) === String(user.id)) {
       return false;
     }
 
-    // Can only edit users with lower privilege level
     return canManageRole(user.role, row.role as Role);
   };
 
@@ -116,41 +101,39 @@ export default function UsersPage() {
       return false;
     }
 
-    // Cannot delete self
     if (String(row.id) === String(user.id)) {
       return false;
     }
 
-    // Can only delete users with lower privilege level
     return canManageRole(user.role, row.role as Role);
   };
 
-  const rows = useMemo(() => {
-    const items = usersQuery.data?.data ?? [];
-    if (!listQuery.search) {
-      return items;
+  const submitCreate = async () => {
+    try {
+      const values = await createForm.validateFields();
+      await createMutation.mutateAsync(values);
+      message.success("User created");
+      createForm.resetFields();
+      setIsCreateOpen(false);
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorPayload>;
+
+      if (axiosError.response?.status === 403) {
+        message.error("Permission denied: You cannot assign this role to a user.");
+        return;
+      }
+
+      if (axiosError.response?.status === 409) {
+        message.error("Conflict: A user with this email already exists.");
+        return;
+      }
+
+      const mapped = mapValidationErrorsToForm(createForm, error);
+      if (!mapped && axiosError.response?.data?.message) {
+        message.error(axiosError.response.data.message);
+      }
     }
-
-    return items.filter((item) =>
-      JSON.stringify(item)
-        .toLowerCase()
-        .includes(listQuery.search.toLowerCase()),
-    );
-  }, [listQuery.search, usersQuery.data]);
-  const paginationMeta = usersQuery.data?.pagination;
-
-  if (!canManage) {
-    return (
-      <Result
-        status="403"
-        title="Forbidden"
-        subTitle="Only SUPER_ADMIN and ADMIN can manage users."
-      />
-    );
-  }
-
-  if (usersQuery.isLoading) {
-    return <LoadingState />;
+  };
 
     const openEditModal = (row: User) => {
       setEditingUser(row);
@@ -173,8 +156,8 @@ export default function UsersPage() {
       editForm.resetFields();
     };
 
-    const submitEdit = async () => {
-      if (!editingUser || !user) {
+      if (String(editingUser.id) === String(user.id) && values.role !== user.role) {
+        message.error("You cannot change your own role.");
         return;
       }
 
@@ -199,10 +182,12 @@ export default function UsersPage() {
       } catch (error) {
         const axiosError = error as AxiosError<ApiErrorPayload>;
 
-        if (axiosError.response?.status === 403) {
-          message.error("Permission denied: You cannot manage this user.");
-          return;
-        }
+      const mapped = mapValidationErrorsToForm(editForm, error);
+      if (!mapped && axiosError.response?.data?.message) {
+        message.error(axiosError.response.data.message);
+      }
+    }
+  };
 
         if (axiosError.response?.status === 409) {
           message.error("Conflict: Unable to update user. Please try again.");
@@ -243,217 +228,174 @@ export default function UsersPage() {
           return;
         }
 
-        message.error("Failed to delete user");
-      }
-    };
-
+  if (!canManage) {
     return (
-      <Space orientation="vertical" size={16} style={{ width: "100%" }}>
-        <Space style={{ width: "100%", justifyContent: "space-between" }}>
-          <Title level={3} style={{ margin: 0 }}>
-            Users
-          </Title>
-          <Button type="primary" onClick={() => setIsCreateOpen(true)}>
-            Create User
-          </Button>
-        </Space>
+      <Result
+        status="403"
+        title="Forbidden"
+        subTitle="Only SUPER_ADMIN and ADMIN can manage users."
+      />
+    );
+  }
 
-        <Card>
-          <Space orientation="vertical" style={{ width: "100%" }}>
+  if (usersQuery.isLoading) {
+    return <LoadingState />;
+  }
+
+  if (usersQuery.error) {
+    return <ErrorState message={String(usersQuery.error)} />;
+  }
+
+  return (
+    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+      <Space style={{ width: "100%", justifyContent: "space-between" }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Users
+        </Title>
+        <Button type="primary" onClick={() => setIsCreateOpen(true)}>
+          Create User
+        </Button>
+      </Space>
+
+      <SharedTable<User>
+        rows={rows}
+        columns={columns}
+        loading={usersQuery.isFetching}
+        page={listQuery.page}
+        pageSize={listQuery.pageSize}
+        paginationMeta={paginationMeta}
+        onPageChange={listQuery.setPage}
+        onPageSizeChange={listQuery.setPageSize}
+        globalSearch={listQuery.search}
+        onGlobalSearchChange={listQuery.setSearch}
+        globalSearchPlaceholder="Search users"
+        sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
+        onSortChange={(columnKey, order) => {
+          if (columnKey === "createdAt" || columnKey === "updatedAt") {
+            listQuery.setSort(columnKey, order);
+          }
+        }}
+        serverDateFilters={{
+          createdAt: { from: listQuery.createdFrom, to: listQuery.createdTo },
+          updatedAt: { from: listQuery.updatedFrom, to: listQuery.updatedTo },
+        }}
+        onServerDateFilterChange={(columnKey, value) => {
+          if (columnKey === "createdAt") {
+            listQuery.setCreatedRange(value.from, value.to);
+            return;
+          }
+
+          listQuery.setUpdatedRange(value.from, value.to);
+        }}
+        topToolbar={
+          <Space direction="vertical" style={{ width: "100%" }}>
             {capabilitiesQuery.data &&
-            (!capabilitiesQuery.data?.canUpdateUser ||
-              !capabilitiesQuery.data?.canDeleteUser) ? (
+            (!capabilitiesQuery.data.canUpdateUser || !capabilitiesQuery.data.canDeleteUser) ? (
               <Alert
                 type="info"
                 showIcon
-                title="User management capabilities are limited by the connected backend."
+                message="User management capabilities are limited by the connected backend."
                 description={[
-                  !capabilitiesQuery.data?.canUpdateUser
-                    ? "Edit is not available."
-                    : null,
-                  !capabilitiesQuery.data?.canDeleteUser
-                    ? "Delete is not available."
-                    : null,
+                  !capabilitiesQuery.data.canUpdateUser ? "Edit is not available." : null,
+                  !capabilitiesQuery.data.canDeleteUser ? "Delete is not available." : null,
                 ]
                   .filter(Boolean)
                   .join(" ")}
               />
             ) : null}
-            <Input.Search
-              allowClear
-              placeholder="Search users"
-              value={listQuery.search}
-              onChange={(event) => listQuery.setSearch(event.target.value)}
-            />
             <FilterToolbar
               state={listQuery}
               setters={listQuery}
               loading={Boolean(usersQuery.isFetching)}
             />
-            {rows.length === 0 ? (
-              <EmptyState description="No users found" />
-            ) : (
-              <ResizableTable
-                rowKey="id"
-                loading={usersQuery.isFetching}
-                dataSource={rows}
-                storageKey="users-table-widths"
-                showColumnVisibilitySelector
-                scroll={{ x: 720 }}
-                pagination={{
-                  current: listQuery.page,
-                  pageSize: listQuery.pageSize,
-                  total: paginationMeta?.total ?? rows.length,
-                  onChange: (nextPage, nextPageSize) => {
-                    if (nextPageSize !== listQuery.pageSize) {
-                      listQuery.setPageSize(nextPageSize);
-                      return;
-                    }
-
-                    listQuery.setPage(nextPage);
-                  },
-                }}
-                columns={[
-                  {
-                    title: "Actions",
-                    key: "actions",
-                    render: (_, record: User) =>
-                      canEditRow(record) || canDeleteRow(record) ? (
-                        <Space>
-                          {canEditRow(record) ? (
-                            <Button
-                              size="small"
-                              onClick={() => openEditModal(record)}
-                            >
-                              Edit
-                            </Button>
-                          ) : null}
-                          {canDeleteRow(record) ? (
-                            <Popconfirm
-                              title="Delete user"
-                              description="This action cannot be undone."
-                              okText="Delete"
-                              okButtonProps={{
-                                danger: true,
-                                loading: deleteMutation.isPending,
-                              }}
-                              onConfirm={() => void submitDelete(record)}
-                            >
-                              <Button size="small" danger>
-                                Delete
-                              </Button>
-                            </Popconfirm>
-                          ) : null}
-                        </Space>
-                      ) : (
-                        <Typography.Text type="secondary">
-                          No access
-                        </Typography.Text>
-                      ),
-                  },
-                  { title: "Email", dataIndex: "email", key: "email" },
-                  { title: "Name", dataIndex: "name", key: "name" },
-                  { title: "Role", dataIndex: "role", key: "role" },
-                ]}
-              />
-            )}
           </Space>
-        </Card>
+        }
+        actionColumn={{
+          render: (record) =>
+            canEditRow(record) || canDeleteRow(record) ? (
+              <Space>
+                {canEditRow(record) ? (
+                  <Button size="small" onClick={() => openEditModal(record)}>
+                    Edit
+                  </Button>
+                ) : null}
+                {canDeleteRow(record) ? (
+                  <Popconfirm
+                    title="Delete user"
+                    description="This action cannot be undone."
+                    okText="Delete"
+                    okButtonProps={{ danger: true, loading: deleteMutation.isPending }}
+                    onConfirm={() => void submitDelete(record)}
+                  >
+                    <Button size="small" danger>
+                      Delete
+                    </Button>
+                  </Popconfirm>
+                ) : null}
+              </Space>
+            ) : (
+              <Text type="secondary">No access</Text>
+            ),
+        }}
+      />
 
-        <Modal
-          title="Create User"
-          open={isCreateOpen}
-          onCancel={() => setIsCreateOpen(false)}
-          onOk={() => void submitCreate()}
-          confirmLoading={createMutation.isPending}
-        >
-          <Form<CreateUserFormValues>
-            form={createForm}
-            layout="vertical"
-            requiredMark={false}
-          >
-            <Form.Item
-              name="name"
-              label="Name"
-              rules={[{ required: true, message: "Name is required" }]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="email"
-              label="Email"
-              rules={[{ required: true }, { type: "email" }]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="password"
-              label="Password"
-              rules={[{ required: true, min: 8 }]}
-            >
-              <Input.Password />
-            </Form.Item>
-            <Form.Item name="role" label="Role" rules={[{ required: true }]}>
-              <Select
-                options={assignableRoles.map((role) => ({
-                  value: role,
-                  label: role,
-                }))}
-              />
-            </Form.Item>
-            <Form.Item name="firstName" label="First Name">
-              <Input />
-            </Form.Item>
-            <Form.Item name="lastName" label="Last Name">
-              <Input />
-            </Form.Item>
-          </Form>
-        </Modal>
+      <Modal
+        title="Create User"
+        open={isCreateOpen}
+        onCancel={() => setIsCreateOpen(false)}
+        onOk={() => void submitCreate()}
+        confirmLoading={createMutation.isPending}
+      >
+        <Form<CreateUserFormValues> form={createForm} layout="vertical" requiredMark={false}>
+          <Form.Item name="name" label="Name" rules={[{ required: true, message: "Name is required" }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="email" label="Email" rules={[{ required: true }, { type: "email" }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="password" label="Password" rules={[{ required: true, min: 8 }]}>
+            <Input.Password />
+          </Form.Item>
+          <Form.Item name="role" label="Role" rules={[{ required: true }]}>
+            <Select options={assignableRoles.map((role) => ({ value: role, label: role }))} />
+          </Form.Item>
+          <Form.Item name="firstName" label="First Name">
+            <Input />
+          </Form.Item>
+          <Form.Item name="lastName" label="Last Name">
+            <Input />
+          </Form.Item>
+        </Form>
+      </Modal>
 
-        <Modal
-          title="Edit User"
-          open={isEditOpen}
-          onCancel={closeEditModal}
-          onOk={() => void submitEdit()}
-          confirmLoading={updateMutation.isPending}
-        >
-          <Form<EditUserFormValues>
-            form={editForm}
-            layout="vertical"
-            requiredMark={false}
-          >
-            <Form.Item
-              name="name"
-              label="Name"
-              rules={[{ required: true, message: "Name is required" }]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="email"
-              label="Email"
-              rules={[{ required: true }, { type: "email" }]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item name="role" label="Role" rules={[{ required: true }]}>
-              <Select
-                disabled={isEditingSelf}
-                options={assignableRoles.map((role) => ({
-                  value: role,
-                  label: role,
-                }))}
-              />
-            </Form.Item>
-            <Form.Item name="firstName" label="First Name">
-              <Input />
-            </Form.Item>
-            <Form.Item name="lastName" label="Last Name">
-              <Input />
-            </Form.Item>
-          </Form>
-        </Modal>
-      </Space>
-    );
-  }
+      <Modal
+        title="Edit User"
+        open={isEditOpen}
+        onCancel={closeEditModal}
+        onOk={() => void submitEdit()}
+        confirmLoading={updateMutation.isPending}
+      >
+        <Form<EditUserFormValues> form={editForm} layout="vertical" requiredMark={false}>
+          <Form.Item name="name" label="Name" rules={[{ required: true, message: "Name is required" }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="email" label="Email" rules={[{ required: true }, { type: "email" }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="role" label="Role" rules={[{ required: true }]}>
+            <Select
+              disabled={isEditingSelf}
+              options={assignableRoles.map((role) => ({ value: role, label: role }))}
+            />
+          </Form.Item>
+          <Form.Item name="firstName" label="First Name">
+            <Input />
+          </Form.Item>
+          <Form.Item name="lastName" label="Last Name">
+            <Input />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </Space>
+  );
 }
