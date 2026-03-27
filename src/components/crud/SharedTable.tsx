@@ -1,19 +1,12 @@
 import React from "react";
-import {
-  Table,
-  Input,
-  Button,
-  Space,
-  Dropdown,
-  DatePicker,
-  Select,
-} from "antd";
+import { Input, Button, Space, Dropdown, DatePicker, Select } from "antd";
 import type { MenuProps } from "antd";
 import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   FilterOutlined,
 } from "@ant-design/icons";
+import { ResizableTable } from "@/components/common/ResizableTable";
 import type { BaseEntity } from "@/types/api";
 
 // Utility to detect field type (simple heuristic)
@@ -34,6 +27,7 @@ interface SharedTableProps {
   columns: string[];
   columnLabels?: Record<string, string>;
   selectLabelsByField?: Record<string, Map<string, string>>;
+  storageKey?: string;
   onRowView?: (row: BaseEntity) => void;
   onRowEdit?: (row: BaseEntity) => void;
   onRowDelete?: (row: BaseEntity) => void;
@@ -53,6 +47,7 @@ export const SharedTable: React.FC<SharedTableProps> = ({
   columns,
   columnLabels,
   selectLabelsByField,
+  storageKey,
   loading,
   filterState = {},
   onFilterChange,
@@ -176,16 +171,20 @@ export const SharedTable: React.FC<SharedTableProps> = ({
       ),
       dataIndex: col,
       key: col,
+      width: type === "date" ? 180 : type === "number" ? 120 : 200,
       render: (value: unknown) => String(value ?? "N/A"),
     };
   });
 
   return (
-    <Table
+    <ResizableTable
       rowKey="id"
       loading={loading}
       dataSource={rows}
+      storageKey={storageKey}
+      showColumnVisibilitySelector
       columns={tableColumns}
+      scroll={{ x: 720 }}
       pagination={false}
     />
   );

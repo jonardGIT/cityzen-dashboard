@@ -19,12 +19,12 @@ import {
   Skeleton,
   Space,
   Tag,
-  Table,
   Tooltip,
   Typography,
 } from "antd";
 import dayjs from "dayjs";
 import { useMemo, useState, type ReactNode } from "react";
+import { ResizableTable } from "@/components/common/ResizableTable";
 import type {
   ListFilter,
   ListFilterOperator,
@@ -214,6 +214,19 @@ function getDefaultOperator(kind: ColumnFilterKind): ListFilterOperator {
   }
 }
 
+function getDefaultColumnWidth(kind: ColumnFilterKind): number {
+  switch (kind) {
+    case "date":
+      return 180;
+    case "number":
+      return 120;
+    case "select":
+      return 160;
+    default:
+      return 220;
+  }
+}
+
 function getOperatorOptions(kind: ColumnFilterKind): Array<{
   label: string;
   value: ListFilterOperator;
@@ -291,6 +304,7 @@ interface CrudTableProps {
   canDelete: boolean;
   filterToolbar?: ReactNode;
   validationState?: ListQueryValidationState | null;
+  storageKey?: string;
 }
 
 export function CrudTable({
@@ -320,6 +334,7 @@ export function CrudTable({
   canDelete,
   filterToolbar,
   validationState,
+  storageKey,
 }: CrudTableProps) {
   const [draftOperators, setDraftOperators] = useState<
     Partial<Record<string, ListFilterOperator>>
@@ -697,6 +712,9 @@ export function CrudTable({
       })(),
       dataIndex: key,
       key,
+      width: getDefaultColumnWidth(
+        getColumnFilterKind(key, rows, selectLabelsByField),
+      ),
       render: (value: unknown) => {
         return formatCellValue(value, selectLabelsByField?.[key]);
       },
@@ -771,10 +789,12 @@ export function CrudTable({
       {loading ? (
         <Skeleton active paragraph={{ rows: 3 }} title={false} />
       ) : null}
-      <Table
+      <ResizableTable
         rowKey="id"
         loading={loading}
         dataSource={rows}
+        storageKey={storageKey}
+        showColumnVisibilitySelector
         scroll={{ x: 1024 }}
         columns={columns}
         locale={{ emptyText: "No records found" }}

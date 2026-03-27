@@ -1,16 +1,19 @@
 "use client";
 
-import { Card, Input, Skeleton, Space, Table, Typography } from "antd";
+import { Card, Input, Skeleton, Space, Typography } from "antd";
 import { useMemo } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
+import { ResizableTable } from "@/components/common/ResizableTable";
 import type { ListQuerySetters } from "@/hooks/useListQueryParams";
 import type { ListQueryState } from "@/lib/api/list-query-params";
 import type { PaginatedResponse } from "@/lib/api/pagination";
 
 const { Title } = Typography;
 
-interface SimpleResourcePageProps<T extends { id: string; [key: string]: unknown }> {
+interface SimpleResourcePageProps<
+  T extends { id: string; [key: string]: unknown },
+> {
   title: string;
   listQueryState: ListQueryState;
   listQuerySetters: ListQuerySetters;
@@ -24,7 +27,9 @@ interface SimpleResourcePageProps<T extends { id: string; [key: string]: unknown
   columns: Array<{ title: string; dataIndex: string; key: string }>;
 }
 
-export function SimpleResourcePage<T extends { id: string; [key: string]: unknown }>({
+export function SimpleResourcePage<
+  T extends { id: string; [key: string]: unknown },
+>({
   title,
   listQueryState,
   listQuerySetters,
@@ -46,7 +51,10 @@ export function SimpleResourcePage<T extends { id: string; [key: string]: unknow
   const pagination = query.data?.pagination;
 
   const visibleColumns = useMemo(
-    () => columns.filter((column) => column.dataIndex !== "id" && column.key !== "id"),
+    () =>
+      columns.filter(
+        (column) => column.dataIndex !== "id" && column.key !== "id",
+      ),
     [columns],
   );
 
@@ -77,11 +85,16 @@ export function SimpleResourcePage<T extends { id: string; [key: string]: unknow
             value={search}
             onChange={(event) => listQuerySetters.setSearch(event.target.value)}
           />
-          {query.isFetching ? <Skeleton active paragraph={{ rows: 3 }} title={false} /> : null}
-          <Table
+          {query.isFetching ? (
+            <Skeleton active paragraph={{ rows: 3 }} title={false} />
+          ) : null}
+          <ResizableTable
             rowKey="id"
             loading={Boolean(query.isFetching)}
             dataSource={rows}
+            storageKey={`simple-resource-${title.toLowerCase().replace(/\s+/g, "-")}-widths`}
+            showColumnVisibilitySelector
+            scroll={{ x: 720 }}
             pagination={{
               current: page,
               pageSize,

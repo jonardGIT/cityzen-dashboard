@@ -35,6 +35,27 @@ export interface CreateIncidentDto {
   landmark?: string;
 }
 
+export interface UpdateIncidentDto {
+  description?: string;
+  mediaUrl?: string;
+  dateReported?: string;
+  citizenId?: string;
+  categoryId?: string;
+  severityId?: string;
+  statusId?: string;
+  latitude?: number;
+  longitude?: number;
+  addressLine1?: string;
+  addressLine2?: string;
+  barangay?: string;
+  districtName?: string;
+  cityName?: string;
+  provinceName?: string;
+  regionName?: string;
+  postalCode?: string;
+  landmark?: string;
+}
+
 export async function fetchIncidents(
   fetchParams: FetchListParams,
   signal?: AbortSignal,
@@ -50,8 +71,20 @@ export async function fetchIncidents(
   );
 }
 
+export async function fetchIncidentById(id: string, signal?: AbortSignal) {
+  const response = await authClient.get<unknown>(`/incidents/${id}`, {
+    signal,
+  });
+  return unwrapEntityResponse<Incident>(response.data);
+}
+
 export async function createIncident(payload: CreateIncidentDto) {
   const response = await authClient.post<unknown>("/incidents", payload);
+  return unwrapEntityResponse<Incident>(response.data);
+}
+
+export async function updateIncident(id: string, payload: UpdateIncidentDto) {
+  const response = await authClient.patch<unknown>(`/incidents/${id}`, payload);
   return unwrapEntityResponse<Incident>(response.data);
 }
 
@@ -61,6 +94,14 @@ export function useIncidentsQuery(state: ListQueryState) {
     queryKey: ["incidents", fetchParams],
     queryFn: ({ signal }) => fetchIncidents(fetchParams, signal),
     placeholderData: (previous) => previous,
+  });
+}
+
+export function useIncidentQuery(id: string) {
+  return useQuery({
+    queryKey: ["incidents", id],
+    queryFn: ({ signal }) => fetchIncidentById(id, signal),
+    enabled: Boolean(id),
   });
 }
 
@@ -85,6 +126,19 @@ export function useCreateIncidentMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useUpdateIncidentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateIncidentDto }) =>
+      updateIncident(id, payload),
+    onSuccess: (incident) => {
+      queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.setQueryData(["incidents", String(incident.id)], incident);
     },
   });
 }

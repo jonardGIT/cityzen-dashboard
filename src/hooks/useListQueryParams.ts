@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   DEFAULT_PAGE,
@@ -38,19 +38,29 @@ export interface ListQuerySetters {
 
 export type ListQueryResult = ListQueryState & ListQuerySetters;
 
-export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQueryResult {
+function getSearchStorageKey(pathname: string): string {
+  return `list-query-search:${pathname}`;
+}
+
+export function useListQueryParams(
+  defaultPageSize = DEFAULT_PAGE_SIZE,
+): ListQueryResult {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dateDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchStorageKey = getSearchStorageKey(pathname);
 
-  const page = Number(searchParams.get("page") ?? String(DEFAULT_PAGE)) || DEFAULT_PAGE;
+  const page =
+    Number(searchParams.get("page") ?? String(DEFAULT_PAGE)) || DEFAULT_PAGE;
   const pageSize =
-    Number(searchParams.get("pageSize") ?? String(defaultPageSize)) || defaultPageSize;
-  const search = searchParams.get("search") ?? "";
+    Number(searchParams.get("pageSize") ?? String(defaultPageSize)) ||
+    defaultPageSize;
+  const [search, setSearchState] = useState("");
   const sortBy = (searchParams.get("sortBy") ?? DEFAULT_SORT_BY) as ListSortBy;
-  const sortOrder = (searchParams.get("sortOrder") ?? DEFAULT_SORT_ORDER) as ListSortOrder;
+  const sortOrder = (searchParams.get("sortOrder") ??
+    DEFAULT_SORT_ORDER) as ListSortOrder;
   const filters = parseListFilters(searchParams.get("filters"));
   const createdFrom = searchParams.get("createdFrom") ?? undefined;
   const createdTo = searchParams.get("createdTo") ?? undefined;
@@ -100,12 +110,33 @@ export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQue
       changed = true;
     }
 
+    if (params.get("search")) {
+      params.delete("search");
+      changed = true;
+    }
+
     if (!changed) {
       return;
     }
 
     replaceIfChanged(params);
   }, [defaultPageSize, replaceIfChanged, searchParams]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const urlSearch = searchParams.get("search") ?? "";
+    if (urlSearch) {
+      setSearchState(urlSearch);
+      window.sessionStorage.setItem(searchStorageKey, urlSearch);
+      return;
+    }
+
+    const storedSearch = window.sessionStorage.getItem(searchStorageKey) ?? "";
+    setSearchState(storedSearch);
+  }, [searchParams, searchStorageKey]);
 
   const setParam = (key: string, value: string | undefined) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -175,9 +206,23 @@ export function useListQueryParams(defaultPageSize = DEFAULT_PAGE_SIZE): ListQue
     setPage: (value: number) => setParam("page", String(value)),
     setPageSize: (value: number) => setParam("pageSize", String(value)),
     setSearch: (value: string) => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+
       searchDebounceRef.current = setTimeout(() => {
-        setParam("search", value);
+        const nextValue = value.trim();
+        setSearchState(nextValue);
+
+        if (typeof window !== "undefined") {
+          if (nextValue) {
+            window.sessionStorage.setItem(searchStorageKey, nextValue);
+          } else {
+            window.sessionStorage.removeItem(searchStorageKey);
+          }
+        }
+
+        setParam("page", "1");
       }, 300);
     },
     setSort: (nextSortBy: ListSortBy, nextSortOrder: ListSortOrder) =>

@@ -12,12 +12,12 @@ import {
   Space,
   Result,
   Alert,
-  Table,
   Modal,
   Popconfirm,
 } from "antd";
 import { LoadingState, EmptyState } from "@/components/common/PageStates";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
+import { ResizableTable } from "@/components/common/ResizableTable";
 import { useAuth } from "@/context/AuthContext";
 import { AxiosError } from "axios";
 // Temporary stub for submitCreate to fix reference error
@@ -293,10 +293,13 @@ export default function UsersPage() {
             {rows.length === 0 ? (
               <EmptyState description="No users found" />
             ) : (
-              <Table
+              <ResizableTable
                 rowKey="id"
                 loading={usersQuery.isFetching}
                 dataSource={rows}
+                storageKey="users-table-widths"
+                showColumnVisibilitySelector
+                scroll={{ x: 720 }}
                 pagination={{
                   current: listQuery.page,
                   pageSize: listQuery.pageSize,

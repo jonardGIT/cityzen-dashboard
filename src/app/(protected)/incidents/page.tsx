@@ -11,17 +11,24 @@ import {
   Modal,
   Select,
   Space,
-  Table,
+  Statistic,
+  Tag,
   Tooltip,
   Typography,
 } from "antd";
 import type { TableProps } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
+import { ResizableTable } from "@/components/common/ResizableTable";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
+import {
+  defaultAssignmentsQueryState,
+  useAssignmentsQuery,
+} from "@/features/assignments/api";
 import {
   useCreateIncidentMutation,
   useIncidentsQuery,
@@ -29,6 +36,7 @@ import {
 import {
   useCategoriesQuery,
   useCitizensQuery,
+  useRespondersQuery,
   useSeveritiesQuery,
   useStatusesQuery,
 } from "@/features/reference-data/api";
@@ -42,6 +50,7 @@ import {
   type ListQueryState,
 } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload, Incident } from "@/types/api";
+import styles from "./page.module.css";
 
 const { Link, Text, Title } = Typography;
 
@@ -79,6 +88,33 @@ function formatDateTime(value: unknown): string {
   return parsed.toLocaleString();
 }
 
+function formatRelativeTime(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const diffMs = parsed.getTime() - Date.now();
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  if (Math.abs(diffMs) < hourMs) {
+    return rtf.format(Math.round(diffMs / minuteMs), "minute");
+  }
+
+  if (Math.abs(diffMs) < dayMs) {
+    return rtf.format(Math.round(diffMs / hourMs), "hour");
+  }
+
+  return rtf.format(Math.round(diffMs / dayMs), "day");
+}
+
 function joinLocationParts(parts: Array<string | undefined>): string | null {
   const filtered = parts.filter(
     (part): part is string =>
@@ -88,9 +124,74 @@ function joinLocationParts(parts: Array<string | undefined>): string | null {
   return filtered.length > 0 ? filtered.join(", ") : null;
 }
 
+function getIncidentAddress(incident: Incident): string {
+  return (
+    joinLocationParts([
+      incident.addressLine1,
+      incident.addressLine2,
+      incident.barangay,
+      incident.cityName,
+      incident.provinceName,
+    ]) ?? "N/A"
+  );
+}
+
+function hasCoordinates(incident: Incident): boolean {
+  return incident.latitude !== undefined && incident.longitude !== undefined;
+}
+
+function hasAddressSnapshot(incident: Incident): boolean {
+  return Boolean(
+    joinLocationParts([
+      incident.addressLine1,
+      incident.addressLine2,
+      incident.barangay,
+      incident.districtName,
+      incident.cityName,
+      incident.provinceName,
+      incident.regionName,
+      incident.postalCode,
+    ]),
+  );
+}
+
+function getAssignmentTimestamp(assignment: {
+  assignedDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}): number {
+  const value =
+    assignment.assignedDate ?? assignment.createdAt ?? assignment.updatedAt;
+  const parsed = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isNaN(parsed) ? -1 : parsed;
+}
+
+function getStatusColor(statusName: string): string {
+  const normalized = statusName.trim().toLowerCase();
+
+  if (
+    ["resolved", "closed", "cancelled", "canceled", "completed"].some((term) =>
+      normalized.includes(term),
+    )
+  ) {
+    return "green";
+  }
+
+  if (
+    ["in progress", "dispatched", "responding", "ongoing"].some((term) =>
+      normalized.includes(term),
+    )
+  ) {
+    return "processing";
+  }
+
+  return "gold";
+}
+
 export default function IncidentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
+  const router = useRouter();
   const optionQueryState: ListQueryState = {
     page: 1,
     pageSize: 200,
@@ -103,6 +204,10 @@ export default function IncidentsPage() {
   const categoriesQuery = useCategoriesQuery(optionQueryState);
   const severitiesQuery = useSeveritiesQuery(optionQueryState);
   const statusesQuery = useStatusesQuery(optionQueryState);
+  const respondersQuery = useRespondersQuery(optionQueryState);
+  const assignmentsQuery = useAssignmentsQuery(
+    defaultAssignmentsQueryState({ page: 1, pageSize: 200 }),
+  );
   const createMutation = useCreateIncidentMutation();
   const [open, setOpen] = useState(false);
   const [locationLookupPending, setLocationLookupPending] = useState(false);
@@ -127,6 +232,7 @@ export default function IncidentsPage() {
   const incidentsListQuery = useIncidentsQuery(listQuery);
   const rows = incidentsListQuery.data?.data ?? [];
   const pagination = incidentsListQuery.data?.pagination;
+  const totalIncidents = pagination?.total ?? rows.length;
 
   const severityOptions = useMemo(
     () =>
@@ -165,17 +271,61 @@ export default function IncidentsPage() {
     () => new Map(statusOptions.map((item) => [item.value, item.label])),
     [statusOptions],
   );
+  const responderLabels = useMemo(
+    () =>
+      new Map(
+        (respondersQuery.data?.data ?? []).map((item) => [
+          String(item.id),
+          item.name ??
+            (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() ||
+              item.email ||
+              `Responder ${item.id}`),
+        ]),
+      ),
+    [respondersQuery.data],
+  );
+  const latestAssignmentByIncident = useMemo(() => {
+    const map = new Map<string, { responderId?: string; timestamp: number }>();
+
+    for (const assignment of assignmentsQuery.data?.data ?? []) {
+      const incidentId = assignment.incidentId
+        ? String(assignment.incidentId)
+        : null;
+      if (!incidentId) {
+        continue;
+      }
+
+      const existingAssignment = map.get(incidentId);
+      const nextTimestamp = getAssignmentTimestamp(assignment);
+
+      if (
+        !existingAssignment ||
+        nextTimestamp >= existingAssignment.timestamp
+      ) {
+        map.set(incidentId, {
+          responderId: assignment.responderId
+            ? String(assignment.responderId)
+            : undefined,
+          timestamp: nextTimestamp,
+        });
+      }
+    }
+
+    return map;
+  }, [assignmentsQuery.data]);
 
   const columns: TableProps<Incident>["columns"] = [
     {
       title: "Description",
       dataIndex: "description",
       key: "description",
+      width: 260,
     },
     {
       title: "Citizen",
       dataIndex: "citizenId",
       key: "citizenId",
+      width: 180,
       render: (value: string) =>
         citizenLabels.get(String(value)) ?? `Citizen ${value ?? "N/A"}`,
     },
@@ -183,43 +333,96 @@ export default function IncidentsPage() {
       title: "Address",
       dataIndex: "addressLine1",
       key: "addressLine1",
-      render: (value: string | undefined, row: Incident) =>
-        [value, row.addressLine2, row.barangay, row.cityName, row.provinceName]
-          .filter(Boolean)
-          .join(", ") || "N/A",
+      width: 260,
+      render: (_value: string | undefined, row: Incident) =>
+        getIncidentAddress(row),
     },
     {
       title: "Coordinates",
       key: "coordinates",
+      width: 180,
       render: (_: unknown, row: Incident) =>
-        row.latitude !== undefined && row.longitude !== undefined
-          ? `${row.latitude}, ${row.longitude}`
-          : "N/A",
+        hasCoordinates(row) ? `${row.latitude}, ${row.longitude}` : "N/A",
     },
     {
       title: "Status",
       dataIndex: "statusId",
       key: "statusId",
-      render: (value: string) =>
-        statusLabels.get(String(value)) ?? `Status ${value ?? "N/A"}`,
+      width: 140,
+      render: (value: string) => {
+        const statusName =
+          statusLabels.get(String(value)) ?? `Status ${value ?? "N/A"}`;
+
+        return <Tag color={getStatusColor(statusName)}>{statusName}</Tag>;
+      },
+    },
+    {
+      title: "Assignee",
+      key: "assignee",
+      width: 180,
+      render: (_: unknown, row: Incident) => {
+        const assignment = latestAssignmentByIncident.get(String(row.id));
+        const label = assignment?.responderId
+          ? (responderLabels.get(assignment.responderId) ?? "Assigned")
+          : "Unassigned";
+        const relative =
+          assignment && assignment.timestamp >= 0
+            ? formatRelativeTime(new Date(assignment.timestamp).toISOString())
+            : null;
+
+        return (
+          <div className={styles.cellStack}>
+            <Text>{label}</Text>
+            <Text className={styles.cellMeta}>
+              {relative ? `Assigned ${relative}` : "No assignment yet"}
+            </Text>
+          </div>
+        );
+      },
     },
     {
       title: "Reported",
       dataIndex: "dateReported",
       key: "dateReported",
+      width: 170,
       render: (value: unknown) => formatDateTime(value),
     },
     {
       title: "Created",
       dataIndex: "createdAt",
       key: "createdAt",
+      width: 170,
       render: (value: unknown) => formatDateTime(value),
     },
     {
       title: "Updated",
       dataIndex: "updatedAt",
       key: "updatedAt",
+      width: 170,
       render: (value: unknown) => formatDateTime(value),
+    },
+    {
+      title: "Actions",
+      key: "workspace",
+      width: 180,
+      render: (_: unknown, row: Incident) => (
+        <Space size={4} wrap>
+          <Button
+            type="link"
+            onClick={() => router.push(`/incidents/${row.id}`)}
+          >
+            Open workspace
+          </Button>
+          {row.citizenId ? (
+            <Button
+              type="link"
+              onClick={() => router.push(`/citizens/${row.citizenId}`)}
+            >
+              Citizen
+            </Button>
+          ) : null}
+        </Space>
+      ),
     },
   ];
 
@@ -232,6 +435,27 @@ export default function IncidentsPage() {
   }
 
   const canCreate = hasRole(...CAN_CREATE_INCIDENT);
+  const geocodedCount = rows.filter(hasCoordinates).length;
+  const addressSnapshotCount = rows.filter(hasAddressSnapshot).length;
+  const reportedTodayCount = rows.filter((incident) => {
+    const value = incident.dateReported ?? incident.createdAt;
+    if (!value) {
+      return false;
+    }
+
+    const parsed = new Date(String(value));
+    if (Number.isNaN(parsed.getTime())) {
+      return false;
+    }
+
+    const now = new Date();
+
+    return (
+      parsed.getFullYear() === now.getFullYear() &&
+      parsed.getMonth() === now.getMonth() &&
+      parsed.getDate() === now.getDate()
+    );
+  }).length;
   const previewAddress = joinLocationParts([
     addressLine1Value,
     addressLine2Value,
@@ -336,44 +560,108 @@ export default function IncidentsPage() {
   };
 
   return (
-    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
-      <Space style={{ width: "100%", justifyContent: "space-between" }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Incidents
-        </Title>
-        <RoleGuard allowedRoles={CAN_CREATE_INCIDENT} disableOnly>
-          <Button
-            type="primary"
-            onClick={() => setOpen(true)}
-            disabled={!canCreate}
-          >
-            Create Incident
-          </Button>
-        </RoleGuard>
-      </Space>
+    <div className={styles.pageShell}>
+      <Card className={styles.heroCard}>
+        <div className={styles.heroInner}>
+          <div className={styles.heroHeader}>
+            <div className={styles.heroCopy}>
+              <Text className={styles.eyebrow}>Incident operations</Text>
+              <Title level={3} className={styles.heroTitle}>
+                Triage, capture, and review incident reports from one workspace.
+              </Title>
+              <Text className={styles.heroDescription}>
+                Keep the live queue searchable, verify location snapshots
+                quickly, and create new incident records with the
+                backend-aligned address contract.
+              </Text>
+            </div>
+            <RoleGuard allowedRoles={CAN_CREATE_INCIDENT} disableOnly>
+              <Button
+                className={styles.heroAction}
+                type="primary"
+                size="large"
+                onClick={() => setOpen(true)}
+                disabled={!canCreate}
+              >
+                Create Incident
+              </Button>
+            </RoleGuard>
+          </div>
 
-      <Card>
-        <Space orientation="vertical" style={{ width: "100%" }}>
-          <Input.Search
-            allowClear
-            placeholder="Search incidents"
-            value={listQuery.search}
-            onChange={(event) => listQuery.setSearch(event.target.value)}
-          />
+          <div className={styles.heroMetrics}>
+            <div className={styles.metricTile}>
+              <Statistic value={totalIncidents} title="Total incidents" />
+              <Text className={styles.metricLabel}>
+                Across the current server query.
+              </Text>
+            </div>
+            <div className={styles.metricTile}>
+              <Statistic value={rows.length} title="Visible rows" />
+              <Text className={styles.metricLabel}>
+                Current page after filters and search.
+              </Text>
+            </div>
+            <div className={styles.metricTile}>
+              <Statistic value={geocodedCount} title="With coordinates" />
+              <Text className={styles.metricLabel}>
+                Ready for map-based verification.
+              </Text>
+            </div>
+            <div className={styles.metricTile}>
+              <Statistic value={reportedTodayCount} title="Reported today" />
+              <Text className={styles.metricLabel}>
+                Based on reported or created timestamps.
+              </Text>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card className={styles.controlCard}>
+        <div className={styles.controlStack}>
+          <div className={styles.controlHeader}>
+            <Input.Search
+              allowClear
+              placeholder="Search incidents by description or record context"
+              value={listQuery.search}
+              onChange={(event) => listQuery.setSearch(event.target.value)}
+              style={{ maxWidth: 420 }}
+            />
+            <Text className={styles.controlMeta}>
+              {addressSnapshotCount} records include address snapshots in this
+              result set.
+            </Text>
+          </div>
           <FilterToolbar
             state={listQuery}
             setters={listQuery}
             loading={Boolean(incidentsListQuery.isFetching)}
           />
-          <Table
+        </div>
+      </Card>
+
+      <div className={styles.contentGrid}>
+        <Card className={styles.tableCard}>
+          <div className={styles.sectionHeader}>
+            <Title level={4} className={styles.sectionTitle}>
+              Live incident queue
+            </Title>
+            <Text className={styles.sectionDescription}>
+              Review current incident records, verify address quality, and move
+              into follow-up actions.
+            </Text>
+          </div>
+          <ResizableTable
             rowKey="id"
             loading={incidentsListQuery.isFetching}
             dataSource={rows}
+            storageKey="incidents-live-queue-widths"
+            showColumnVisibilitySelector
             scroll={{ x: 980 }}
             pagination={{
               current: listQuery.page,
               pageSize: listQuery.pageSize,
-              total: pagination?.total ?? rows.length,
+              total: totalIncidents,
               onChange: (nextPage, nextPageSize) => {
                 if (nextPageSize !== listQuery.pageSize) {
                   listQuery.setPageSize(nextPageSize);
@@ -385,8 +673,50 @@ export default function IncidentsPage() {
             }}
             columns={columns}
           />
-        </Space>
-      </Card>
+        </Card>
+
+        <Card className={styles.sidebarCard}>
+          <div className={styles.sectionHeader}>
+            <Title level={4} className={styles.sectionTitle}>
+              Capture checklist
+            </Title>
+            <Text className={styles.sectionDescription}>
+              Keep the incident payload complete before dispatch and assignment
+              workflows begin.
+            </Text>
+          </div>
+          <div className={styles.sidebarList}>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Location snapshot</Text>
+              <Text>
+                Collect coordinates plus address fields so the incident stays
+                valid even if upstream geo services change later.
+              </Text>
+            </div>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Severity and status</Text>
+              <Text>
+                Set both on creation so the dashboard can place the incident in
+                the correct queue immediately.
+              </Text>
+            </div>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Media evidence</Text>
+              <Text>
+                Add a resolvable media URL when supporting photos or attachments
+                exist.
+              </Text>
+            </div>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Current signal</Text>
+              <Text>
+                {geocodedCount} visible records already have coordinates, and{" "}
+                {addressSnapshotCount} include address snapshots.
+              </Text>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       <Modal
         title="Create Incident"
@@ -403,7 +733,7 @@ export default function IncidentsPage() {
           layout="vertical"
           requiredMark={false}
         >
-          <Space orientation="vertical" size={12} style={{ width: "100%" }}>
+          <div className={styles.modalBody}>
             <Button
               onClick={() => void applyCurrentLocation()}
               loading={locationLookupPending}
@@ -415,12 +745,12 @@ export default function IncidentsPage() {
             ) : null}
 
             {previewAddress || previewCoordinates || landmarkValue ? (
-              <Card size="small" title="Location Preview">
-                <Space
-                  orientation="vertical"
-                  size={4}
-                  style={{ width: "100%" }}
-                >
+              <Card
+                size="small"
+                title="Location Preview"
+                className={styles.previewCard}
+              >
+                <div className={styles.previewStack}>
                   <Text>
                     <strong>Coordinates:</strong>{" "}
                     {previewCoordinates ?? "Not set"}
@@ -437,145 +767,168 @@ export default function IncidentsPage() {
                       Open in OpenStreetMap
                     </Link>
                   ) : null}
-                </Space>
+                </div>
               </Card>
             ) : null}
 
-            <Form.Item
-              name="description"
-              label="Description"
-              rules={[{ required: true, message: "Description is required" }]}
+            <Card
+              size="small"
+              title="Incident details"
+              className={styles.previewCard}
             >
-              <Input.TextArea rows={3} />
-            </Form.Item>
+              <div className={styles.sectionGrid}>
+                <Form.Item
+                  className={styles.fullSpan}
+                  name="description"
+                  label="Description"
+                  rules={[
+                    { required: true, message: "Description is required" },
+                  ]}
+                >
+                  <Input.TextArea rows={3} />
+                </Form.Item>
 
-            <Form.Item name="mediaUrl" label="Media URL">
-              <Input placeholder="Optional evidence or attachment URL" />
-            </Form.Item>
+                <Form.Item name="mediaUrl" label="Media URL">
+                  <Input placeholder="Optional evidence or attachment URL" />
+                </Form.Item>
 
-            <Form.Item name="dateReported" label="Date Reported">
-              <Input type="datetime-local" />
-            </Form.Item>
+                <Form.Item name="dateReported" label="Date Reported">
+                  <Input type="datetime-local" />
+                </Form.Item>
 
-            <Form.Item
-              name="citizenId"
-              label="Citizen"
-              rules={[{ required: true }]}
+                <Form.Item
+                  name="citizenId"
+                  label="Citizen"
+                  rules={[{ required: true }]}
+                >
+                  <Select
+                    options={citizenOptions}
+                    loading={citizensQuery.isLoading}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="categoryId"
+                  label="Category"
+                  rules={[{ required: true }]}
+                >
+                  <Select
+                    options={(categoriesQuery.data?.data ?? []).map((item) => ({
+                      value: String(item.id),
+                      label: item.name ?? `Category ${item.id}`,
+                    }))}
+                    loading={categoriesQuery.isLoading}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="severityId"
+                  label="Severity"
+                  rules={[{ required: true }]}
+                >
+                  <Select
+                    options={severityOptions}
+                    optionRender={(option) => {
+                      const description = option.data.description;
+                      if (
+                        typeof description !== "string" ||
+                        description.length === 0
+                      ) {
+                        return <span>{String(option.label)}</span>;
+                      }
+
+                      return (
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            width: "100%",
+                          }}
+                        >
+                          <span>{String(option.label)}</span>
+                          <Tooltip title={description}>
+                            <InfoCircleOutlined style={{ color: "#1677ff" }} />
+                          </Tooltip>
+                        </span>
+                      );
+                    }}
+                    loading={severitiesQuery.isLoading}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="statusId"
+                  label="Status"
+                  rules={[{ required: true }]}
+                >
+                  <Select
+                    options={statusOptions}
+                    loading={statusesQuery.isLoading}
+                  />
+                </Form.Item>
+              </div>
+            </Card>
+
+            <Card
+              size="small"
+              title="Location snapshot"
+              className={styles.previewCard}
             >
-              <Select
-                options={citizenOptions}
-                loading={citizensQuery.isLoading}
-              />
-            </Form.Item>
+              <div className={styles.sectionGrid}>
+                <Form.Item name="latitude" label="Latitude">
+                  <Input placeholder="e.g. 14.5995" />
+                </Form.Item>
 
-            <Form.Item name="latitude" label="Latitude">
-              <Input placeholder="e.g. 14.5995" />
-            </Form.Item>
+                <Form.Item name="longitude" label="Longitude">
+                  <Input placeholder="e.g. 120.9842" />
+                </Form.Item>
 
-            <Form.Item name="longitude" label="Longitude">
-              <Input placeholder="e.g. 120.9842" />
-            </Form.Item>
+                <Form.Item name="addressLine1" label="Address Line 1">
+                  <Input placeholder="House number, street, building" />
+                </Form.Item>
 
-            <Form.Item name="addressLine1" label="Address Line 1">
-              <Input placeholder="House number, street, building" />
-            </Form.Item>
+                <Form.Item name="addressLine2" label="Address Line 2">
+                  <Input placeholder="Subdivision, block, unit, or floor" />
+                </Form.Item>
 
-            <Form.Item name="addressLine2" label="Address Line 2">
-              <Input placeholder="Subdivision, block, unit, or floor" />
-            </Form.Item>
+                <Form.Item name="barangay" label="Barangay">
+                  <Input placeholder="Barangay" />
+                </Form.Item>
 
-            <Form.Item name="barangay" label="Barangay">
-              <Input placeholder="Barangay" />
-            </Form.Item>
+                <Form.Item name="districtName" label="District">
+                  <Input placeholder="District" />
+                </Form.Item>
 
-            <Form.Item name="districtName" label="District">
-              <Input placeholder="District" />
-            </Form.Item>
+                <Form.Item name="cityName" label="City">
+                  <Input placeholder="City" />
+                </Form.Item>
 
-            <Form.Item name="cityName" label="City">
-              <Input placeholder="City" />
-            </Form.Item>
+                <Form.Item name="provinceName" label="Province">
+                  <Input placeholder="Province" />
+                </Form.Item>
 
-            <Form.Item name="provinceName" label="Province">
-              <Input placeholder="Province" />
-            </Form.Item>
+                <Form.Item name="regionName" label="Region">
+                  <Input placeholder="Region" />
+                </Form.Item>
 
-            <Form.Item name="regionName" label="Region">
-              <Input placeholder="Region" />
-            </Form.Item>
+                <Form.Item name="postalCode" label="Postal Code">
+                  <Input placeholder="Postal code" />
+                </Form.Item>
 
-            <Form.Item name="postalCode" label="Postal Code">
-              <Input placeholder="Postal code" />
-            </Form.Item>
-
-            <Form.Item name="landmark" label="Landmark">
-              <Input placeholder="Nearby landmark" />
-            </Form.Item>
-
-            <Form.Item
-              name="categoryId"
-              label="Category"
-              rules={[{ required: true }]}
-            >
-              <Select
-                options={(categoriesQuery.data?.data ?? []).map((item) => ({
-                  value: String(item.id),
-                  label: item.name ?? `Category ${item.id}`,
-                }))}
-                loading={categoriesQuery.isLoading}
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="severityId"
-              label="Severity"
-              rules={[{ required: true }]}
-            >
-              <Select
-                options={severityOptions}
-                optionRender={(option) => {
-                  const description = option.data.description;
-                  if (
-                    typeof description !== "string" ||
-                    description.length === 0
-                  ) {
-                    return <span>{String(option.label)}</span>;
-                  }
-
-                  return (
-                    <span
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 8,
-                        width: "100%",
-                      }}
-                    >
-                      <span>{String(option.label)}</span>
-                      <Tooltip title={description}>
-                        <InfoCircleOutlined style={{ color: "#1677ff" }} />
-                      </Tooltip>
-                    </span>
-                  );
-                }}
-                loading={severitiesQuery.isLoading}
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="statusId"
-              label="Status"
-              rules={[{ required: true }]}
-            >
-              <Select
-                options={statusOptions}
-                loading={statusesQuery.isLoading}
-              />
-            </Form.Item>
-          </Space>
+                <Form.Item
+                  className={styles.fullSpan}
+                  name="landmark"
+                  label="Landmark"
+                >
+                  <Input placeholder="Nearby landmark" />
+                </Form.Item>
+              </div>
+            </Card>
+          </div>
         </Form>
       </Modal>
-    </Space>
+    </div>
   );
 }

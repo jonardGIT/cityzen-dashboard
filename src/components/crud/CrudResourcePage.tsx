@@ -842,6 +842,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           <CrudTable
             rows={rows}
             loading={listQuery.isFetching}
+            storageKey={`crud-${resourceName}-table-widths`}
             search={tableState.search}
             onSearchChange={tableState.setSearch}
             filters={tableState.filters}

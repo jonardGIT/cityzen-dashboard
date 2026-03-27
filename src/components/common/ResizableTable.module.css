@@ -1,0 +1,149 @@
+.tableShell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tableControls {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.columnButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.columnCount {
+  color: rgba(16, 36, 63, 0.56);
+  font-size: 12px;
+}
+
+.columnPopover {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 220px;
+}
+
+.columnSummary {
+  color: rgba(16, 36, 63, 0.64);
+}
+
+.columnChecklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.columnOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: grab;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.columnOption:hover {
+  border-color: rgba(16, 36, 63, 0.12);
+  background: #f7fbff;
+}
+
+.columnOption[data-dragging="true"] {
+  opacity: 0.55;
+}
+
+.columnOption[data-drag-over="true"] {
+  border-color: rgba(22, 119, 255, 0.3);
+  background: rgba(22, 119, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.12);
+}
+
+.columnHandle {
+  flex-shrink: 0;
+  color: rgba(16, 36, 63, 0.42);
+}
+
+.columnLabel {
+  min-width: 0;
+  flex: 1;
+}
+
+.columnActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table {
+  width: 100%;
+}
+
+.headerCell {
+  position: relative;
+}
+
+.headerContent {
+  min-width: 0;
+  padding-right: 14px;
+  white-space: normal;
+}
+
+.table :global(.ant-table-cell) {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.table :global(.ant-table-cell .ant-btn-link) {
+  height: auto;
+  white-space: normal;
+  text-align: left;
+}
+
+.table :global(.ant-table-cell .ant-space) {
+  max-width: 100%;
+}
+
+.table :global(.ant-table-cell .ant-space-item) {
+  min-width: 0;
+}
+
+.table :global(.ant-table-cell .ant-typography) {
+  max-width: 100%;
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.resizeHandle::after {
+  content: "";
+  position: absolute;
+  top: 20%;
+  right: 5px;
+  width: 2px;
+  height: 60%;
+  border-radius: 999px;
+  background: rgba(16, 36, 63, 0.18);
+  transition: background-color 120ms ease;
+}
+
+.headerCell:hover .resizeHandle::after,
+.headerCell[data-resizing="true"] .resizeHandle::after {
+  background: rgba(16, 36, 63, 0.42);
+}

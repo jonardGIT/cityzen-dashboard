@@ -1,0 +1,183 @@
+.pageShell {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.heroCard,
+.sectionCard {
+  border: 1px solid rgba(16, 36, 63, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(16, 36, 63, 0.07);
+}
+
+.heroCard {
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(41, 123, 255, 0.14),
+      transparent 32%
+    ),
+    linear-gradient(135deg, #ffffff 0%, #f6f9fd 100%);
+}
+
+.heroInner {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.heroHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 780px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #365d8d;
+}
+
+.heroTitle {
+  margin: 0 !important;
+}
+
+.heroDescription {
+  max-width: 68ch;
+  color: rgba(16, 36, 63, 0.72);
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.heroMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metricTile {
+  padding: 14px 16px;
+  border: 1px solid rgba(16, 36, 63, 0.08);
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96) 0%,
+    #f7fbff 100%
+  );
+}
+
+.metricTile :global(.ant-statistic-title) {
+  color: rgba(16, 36, 63, 0.64) !important;
+  font-weight: 700;
+}
+
+.metricTile :global(.ant-statistic-content) {
+  color: #10243f !important;
+}
+
+.metricLabel {
+  display: block;
+  margin-top: 6px;
+  color: rgba(16, 36, 63, 0.62);
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr);
+  gap: 16px;
+}
+
+.mainStack,
+.sidebarStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionTitle {
+  margin: 0 0 12px !important;
+}
+
+.sectionDescription {
+  display: block;
+  margin-bottom: 16px;
+  color: rgba(16, 36, 63, 0.64);
+}
+
+.assignmentList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assignmentRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(16, 36, 63, 0.08);
+}
+
+.assignmentRow:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.assignmentMeta {
+  color: rgba(16, 36, 63, 0.56);
+}
+
+.actionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.helperText {
+  display: block;
+  margin-top: 12px;
+  color: rgba(16, 36, 63, 0.58);
+}
+
+.emptyText {
+  color: rgba(16, 36, 63, 0.58);
+}
+
+@media (max-width: 1100px) {
+  .contentGrid,
+  .heroMetrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .heroHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .heroMetrics {
+    grid-template-columns: 1fr;
+  }
+}

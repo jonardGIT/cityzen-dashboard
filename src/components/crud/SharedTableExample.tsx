@@ -52,6 +52,7 @@ export default function SharedTableExample() {
         columns={columns}
         columnLabels={columnLabels}
         selectLabelsByField={selectLabelsByField}
+        storageKey="shared-table-example-widths"
         loading={false}
       />
     </div>
