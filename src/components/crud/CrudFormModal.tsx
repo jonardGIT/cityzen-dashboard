@@ -1,9 +1,24 @@
 "use client";
 
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Input, Modal, Select, Tooltip } from "antd";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  App,
+  Button,
+  Card,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Tooltip,
+  Typography,
+} from "antd";
 import type { FormInstance } from "antd";
 import type { CrudFieldConfig } from "@/features/dynamic-crud/types";
+import { reverseGeocodeIncidentAddress } from "@/lib/geo/reverse-geocode";
+
+const { Link, Text } = Typography;
 
 type SelectFieldOption = { value: string; label: string; description?: string };
 
@@ -22,6 +37,15 @@ interface CrudFormModalProps {
   onRetrySubmitDependency?: () => void;
 }
 
+function joinLocationParts(parts: Array<string | undefined>): string | null {
+  const filtered = parts.filter(
+    (part): part is string =>
+      typeof part === "string" && part.trim().length > 0,
+  );
+
+  return filtered.length > 0 ? filtered.join(", ") : null;
+}
+
 export function CrudFormModal({
   title,
   open,
@@ -36,11 +60,113 @@ export function CrudFormModal({
   submitDisabledMessage,
   onRetrySubmitDependency,
 }: CrudFormModalProps) {
+  const { message } = App.useApp();
+  const [locationLookupPending, setLocationLookupPending] = useState(false);
+  const [locationLookupError, setLocationLookupError] = useState<string | null>(
+    null,
+  );
+  const latitudeValue = Form.useWatch("latitude", form);
+  const longitudeValue = Form.useWatch("longitude", form);
+  const addressLine1Value = Form.useWatch("addressLine1", form);
+  const addressLine2Value = Form.useWatch("addressLine2", form);
+  const barangayValue = Form.useWatch("barangay", form);
+  const districtNameValue = Form.useWatch("districtName", form);
+  const cityNameValue = Form.useWatch("cityName", form);
+  const provinceNameValue = Form.useWatch("provinceName", form);
+  const regionNameValue = Form.useWatch("regionName", form);
+  const postalCodeValue = Form.useWatch("postalCode", form);
+  const landmarkValue = Form.useWatch("landmark", form);
+
+  const supportsLocationAssist = fields.some(
+    (field) => field.name === "latitude" || field.name === "longitude",
+  );
+  const previewAddress = joinLocationParts([
+    typeof addressLine1Value === "string" ? addressLine1Value : undefined,
+    typeof addressLine2Value === "string" ? addressLine2Value : undefined,
+    typeof barangayValue === "string" ? barangayValue : undefined,
+    typeof districtNameValue === "string" ? districtNameValue : undefined,
+    typeof cityNameValue === "string" ? cityNameValue : undefined,
+    typeof provinceNameValue === "string" ? provinceNameValue : undefined,
+    typeof regionNameValue === "string" ? regionNameValue : undefined,
+    typeof postalCodeValue === "string" ? postalCodeValue : undefined,
+  ]);
+  const previewCoordinates =
+    typeof latitudeValue === "string" &&
+    latitudeValue.trim().length > 0 &&
+    typeof longitudeValue === "string" &&
+    longitudeValue.trim().length > 0
+      ? `${latitudeValue}, ${longitudeValue}`
+      : null;
+  const previewMapUrl =
+    previewCoordinates &&
+    typeof latitudeValue === "string" &&
+    typeof longitudeValue === "string"
+      ? `https://www.openstreetmap.org/?mlat=${encodeURIComponent(latitudeValue)}&mlon=${encodeURIComponent(longitudeValue)}#map=18/${encodeURIComponent(latitudeValue)}/${encodeURIComponent(longitudeValue)}`
+      : null;
+
+  useEffect(() => {
+    if (!open) {
+      setLocationLookupError(null);
+      setLocationLookupPending(false);
+    }
+  }, [open]);
+
+  const applyCurrentLocation = async () => {
+    if (!supportsLocationAssist) {
+      return;
+    }
+
+    if (!("geolocation" in navigator)) {
+      const errorMessage = "Geolocation is not available in this browser.";
+      setLocationLookupError(errorMessage);
+      message.error(errorMessage);
+      return;
+    }
+
+    setLocationLookupPending(true);
+    setLocationLookupError(null);
+
+    try {
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0,
+          });
+        },
+      );
+
+      const addressSnapshot = await reverseGeocodeIncidentAddress(
+        position.coords.latitude,
+        position.coords.longitude,
+      );
+
+      form.setFieldsValue(
+        addressSnapshot as unknown as Parameters<typeof form.setFieldsValue>[0],
+      );
+      message.success("Current location applied to the incident form.");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to capture the current location.";
+
+      setLocationLookupError(errorMessage);
+      message.error(errorMessage);
+    } finally {
+      setLocationLookupPending(false);
+    }
+  };
+
   return (
     <Modal
       title={title}
       open={open}
-      onCancel={onCancel}
+      onCancel={() => {
+        setLocationLookupError(null);
+        onCancel();
+      }}
       onOk={onSubmit}
       confirmLoading={submitting}
       okButtonProps={{ disabled: submitDisabled }}
@@ -51,6 +177,56 @@ export function CrudFormModal({
         layout="vertical"
         requiredMark={false}
       >
+        {supportsLocationAssist ? (
+          <>
+            <Button
+              style={{ marginBottom: 16 }}
+              onClick={() => void applyCurrentLocation()}
+              loading={locationLookupPending}
+            >
+              Use Current Location
+            </Button>
+            {locationLookupError ? (
+              <Alert
+                showIcon
+                type="warning"
+                style={{ marginBottom: 16 }}
+                title={locationLookupError}
+              />
+            ) : null}
+            {previewAddress ||
+            previewCoordinates ||
+            typeof landmarkValue === "string" ? (
+              <Card
+                size="small"
+                title="Location Preview"
+                style={{ marginBottom: 16 }}
+              >
+                <div style={{ display: "grid", gap: 8 }}>
+                  <Text>
+                    <strong>Coordinates:</strong>{" "}
+                    {previewCoordinates ?? "Not set"}
+                  </Text>
+                  <Text>
+                    <strong>Address:</strong> {previewAddress ?? "Not set"}
+                  </Text>
+                  <Text>
+                    <strong>Landmark:</strong>{" "}
+                    {typeof landmarkValue === "string" &&
+                    landmarkValue.trim().length > 0
+                      ? landmarkValue
+                      : "Not set"}
+                  </Text>
+                  {previewMapUrl ? (
+                    <Link href={previewMapUrl} target="_blank" rel="noreferrer">
+                      Open in OpenStreetMap
+                    </Link>
+                  ) : null}
+                </div>
+              </Card>
+            ) : null}
+          </>
+        ) : null}
         {submitDisabledMessage ? (
           <Alert
             showIcon
