@@ -5,7 +5,6 @@ import { AxiosError } from "axios";
 import { useState } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
-import { ResizableTable } from "@/components/common/ResizableTable";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
 import { useAuth } from "@/context/AuthContext";
@@ -21,7 +20,11 @@ import {
 import { CAN_CREATE_ASSIGNMENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
-import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
+import {
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import type { ApiErrorPayload, Assignment } from "@/types/api";
 
 const { Title, Text } = Typography;
@@ -77,32 +80,9 @@ function formatRelativeTime(value: unknown): string | null {
   return rtf.format(Math.round(diffMs / dayMs), "day");
 }
 
-function getStatusColor(statusName: string): string {
-  const normalized = statusName.trim().toLowerCase();
-
-  if (
-    ["resolved", "closed", "cancelled", "canceled", "completed"].some((term) =>
-      normalized.includes(term),
-    )
-  ) {
-    return "green";
-  }
-
-  if (
-    ["in progress", "dispatched", "responding", "ongoing"].some((term) =>
-      normalized.includes(term),
-    )
-  ) {
-    return "processing";
-  }
-
-  return "gold";
-}
-
 export default function AssignmentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
-  const router = useRouter();
   const listQuery = useListQueryParams();
   const optionQueryState: ListQueryState = {
     page: 1,
@@ -186,122 +166,6 @@ export default function AssignmentsPage() {
   }
 
   const canCreate = hasRole(...CAN_CREATE_ASSIGNMENT);
-  const linkedIncidentCount = rows.filter((item) =>
-    Boolean(item.incidentId),
-  ).length;
-  const unassignedStatusCount = rows.filter((item) => !item.statusId).length;
-  const columns = [
-    {
-      title: "Incident",
-      key: "incidentId",
-      width: 280,
-      render: (_: unknown, row: Assignment) => {
-        const incident = incidents.find(
-          (item) => String(item.id) === String(row.incidentId ?? ""),
-        );
-
-        return (
-          <div className={styles.cellStack}>
-            <Button
-              type="link"
-              style={{ paddingInline: 0, justifyContent: "flex-start" }}
-              onClick={() => {
-                if (row.incidentId) {
-                  router.push(`/incidents/${row.incidentId}`);
-                }
-              }}
-            >
-              {incident?.description ?? `Incident ${row.incidentId ?? "N/A"}`}
-            </Button>
-            <Text className={styles.cellMeta}>
-              {incident ? "Open workspace" : "Incident record unavailable"}
-            </Text>
-          </div>
-        );
-      },
-    },
-    {
-      title: "Responder",
-      key: "responderId",
-      width: 180,
-      render: (_: unknown, row: Assignment) => {
-        const responder = responders.find(
-          (item) => String(item.id) === String(row.responderId ?? ""),
-        );
-        const label =
-          responder?.name ??
-          (`${responder?.firstName ?? ""} ${responder?.lastName ?? ""}`.trim() ||
-            responder?.email ||
-            `Responder ${row.responderId ?? "N/A"}`);
-
-        return (
-          <div className={styles.cellStack}>
-            <Text>{label}</Text>
-            <Text className={styles.cellMeta}>
-              {responder?.role ?? "Responder"}
-            </Text>
-          </div>
-        );
-      },
-    },
-    {
-      title: "Status",
-      key: "statusId",
-      width: 140,
-      render: (_: unknown, row: Assignment) => {
-        const status = statuses.find(
-          (item) => String(item.id) === String(row.statusId ?? ""),
-        );
-        const label = status?.name ?? "Status not set";
-        return <Tag color={getStatusColor(label)}>{label}</Tag>;
-      },
-    },
-    {
-      title: "Notes",
-      dataIndex: "notes",
-      key: "notes",
-      width: 240,
-      render: (value: string | undefined) => value?.trim() || "No notes",
-    },
-    {
-      title: "Assigned",
-      dataIndex: "assignedDate",
-      key: "assignedDate",
-      width: 180,
-      render: (value: unknown) => {
-        const formatted = formatDateTime(value);
-        const relative = formatRelativeTime(value);
-
-        return (
-          <div className={styles.cellStack}>
-            <Text>{formatted}</Text>
-            <Text className={styles.cellMeta}>
-              {relative ?? "Assignment time unavailable"}
-            </Text>
-          </div>
-        );
-      },
-    },
-    {
-      title: "Created",
-      dataIndex: "createdAt",
-      key: "createdAt",
-      width: 180,
-      render: (value: unknown) => {
-        const formatted = formatDateTime(value);
-        const relative = formatRelativeTime(value);
-
-        return (
-          <div className={styles.cellStack}>
-            <Text>{formatted}</Text>
-            <Text className={styles.cellMeta}>
-              {relative ?? "Created time unavailable"}
-            </Text>
-          </div>
-        );
-      },
-    },
-  ];
 
   const submit = async () => {
     try {
@@ -430,6 +294,6 @@ export default function AssignmentsPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </Space>
   );
 }

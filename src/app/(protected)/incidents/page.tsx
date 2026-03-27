@@ -5,6 +5,7 @@ import {
   Alert,
   App,
   Button,
+  Card,
   Form,
   Input,
   Modal,
@@ -13,13 +14,10 @@ import {
   Tooltip,
   Typography,
 } from "antd";
-import type { TableProps } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
-import { ResizableTable } from "@/components/common/ResizableTable";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
 import { useAuth } from "@/context/AuthContext";
@@ -38,12 +36,17 @@ import {
   useSeveritiesQuery,
   useStatusesQuery,
 } from "@/features/reference-data/api";
+import {
+  DEFAULT_SORT_BY,
+  DEFAULT_SORT_ORDER,
+  type ListQueryState,
+} from "@/lib/api/list-query-params";
 import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { reverseGeocodeIncidentAddress } from "@/lib/geo/reverse-geocode";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
-import { DEFAULT_SORT_BY, DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
 import type { ApiErrorPayload, Incident } from "@/types/api";
+import styles from "./page.module.css";
 
 const { Link, Text, Title } = Typography;
 
@@ -81,33 +84,6 @@ function formatDateTime(value: unknown): string {
   return parsed.toLocaleString();
 }
 
-function formatRelativeTime(value: unknown): string | null {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  const diffMs = parsed.getTime() - Date.now();
-  const minuteMs = 60 * 1000;
-  const hourMs = 60 * minuteMs;
-  const dayMs = 24 * hourMs;
-  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  if (Math.abs(diffMs) < hourMs) {
-    return rtf.format(Math.round(diffMs / minuteMs), "minute");
-  }
-
-  if (Math.abs(diffMs) < dayMs) {
-    return rtf.format(Math.round(diffMs / hourMs), "hour");
-  }
-
-  return rtf.format(Math.round(diffMs / dayMs), "day");
-}
-
 function joinLocationParts(parts: Array<string | undefined>): string | null {
   const filtered = parts.filter(
     (part): part is string =>
@@ -115,18 +91,6 @@ function joinLocationParts(parts: Array<string | undefined>): string | null {
   );
 
   return filtered.length > 0 ? filtered.join(", ") : null;
-}
-
-function getIncidentAddress(incident: Incident): string {
-  return (
-    joinLocationParts([
-      incident.addressLine1,
-      incident.addressLine2,
-      incident.barangay,
-      incident.cityName,
-      incident.provinceName,
-    ]) ?? "N/A"
-  );
 }
 
 function hasCoordinates(incident: Incident): boolean {
@@ -148,43 +112,9 @@ function hasAddressSnapshot(incident: Incident): boolean {
   );
 }
 
-function getAssignmentTimestamp(assignment: {
-  assignedDate?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}): number {
-  const value =
-    assignment.assignedDate ?? assignment.createdAt ?? assignment.updatedAt;
-  const parsed = value ? new Date(value).getTime() : Number.NaN;
-  return Number.isNaN(parsed) ? -1 : parsed;
-}
-
-function getStatusColor(statusName: string): string {
-  const normalized = statusName.trim().toLowerCase();
-
-  if (
-    ["resolved", "closed", "cancelled", "canceled", "completed"].some((term) =>
-      normalized.includes(term),
-    )
-  ) {
-    return "green";
-  }
-
-  if (
-    ["in progress", "dispatched", "responding", "ongoing"].some((term) =>
-      normalized.includes(term),
-    )
-  ) {
-    return "processing";
-  }
-
-  return "gold";
-}
-
 export default function IncidentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
-  const router = useRouter();
   const optionQueryState: ListQueryState = {
     page: 1,
     pageSize: 200,
@@ -225,7 +155,6 @@ export default function IncidentsPage() {
   const incidentsListQuery = useIncidentsQuery(listQuery);
   const rows = incidentsListQuery.data?.data ?? [];
   const pagination = incidentsListQuery.data?.pagination;
-  const totalIncidents = pagination?.total ?? rows.length;
 
   const severityOptions = useMemo(
     () =>
@@ -264,161 +193,6 @@ export default function IncidentsPage() {
     () => new Map(statusOptions.map((item) => [item.value, item.label])),
     [statusOptions],
   );
-  const responderLabels = useMemo(
-    () =>
-      new Map(
-        (respondersQuery.data?.data ?? []).map((item) => [
-          String(item.id),
-          item.name ??
-            (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() ||
-              item.email ||
-              `Responder ${item.id}`),
-        ]),
-      ),
-    [respondersQuery.data],
-  );
-  const latestAssignmentByIncident = useMemo(() => {
-    const map = new Map<string, { responderId?: string; timestamp: number }>();
-
-    for (const assignment of assignmentsQuery.data?.data ?? []) {
-      const incidentId = assignment.incidentId
-        ? String(assignment.incidentId)
-        : null;
-      if (!incidentId) {
-        continue;
-      }
-
-      const existingAssignment = map.get(incidentId);
-      const nextTimestamp = getAssignmentTimestamp(assignment);
-
-      if (
-        !existingAssignment ||
-        nextTimestamp >= existingAssignment.timestamp
-      ) {
-        map.set(incidentId, {
-          responderId: assignment.responderId
-            ? String(assignment.responderId)
-            : undefined,
-          timestamp: nextTimestamp,
-        });
-      }
-    }
-
-    return map;
-  }, [assignmentsQuery.data]);
-
-  const columns: TableProps<Incident>["columns"] = [
-    {
-      title: "Description",
-      dataIndex: "description",
-      key: "description",
-      width: 260,
-    },
-    {
-      title: "Citizen",
-      dataIndex: "citizenId",
-      key: "citizenId",
-      width: 180,
-      render: (value: string) =>
-        citizenLabels.get(String(value)) ?? `Citizen ${value ?? "N/A"}`,
-    },
-    {
-      title: "Address",
-      dataIndex: "addressLine1",
-      key: "addressLine1",
-      width: 260,
-      render: (_value: string | undefined, row: Incident) =>
-        getIncidentAddress(row),
-    },
-    {
-      title: "Coordinates",
-      key: "coordinates",
-      width: 180,
-      render: (_: unknown, row: Incident) =>
-        hasCoordinates(row) ? `${row.latitude}, ${row.longitude}` : "N/A",
-    },
-    {
-      title: "Status",
-      dataIndex: "statusId",
-      key: "statusId",
-      width: 140,
-      render: (value: string) => {
-        const statusName =
-          statusLabels.get(String(value)) ?? `Status ${value ?? "N/A"}`;
-
-        return <Tag color={getStatusColor(statusName)}>{statusName}</Tag>;
-      },
-    },
-    {
-      title: "Assignee",
-      key: "assignee",
-      width: 180,
-      render: (_: unknown, row: Incident) => {
-        const assignment = latestAssignmentByIncident.get(String(row.id));
-        const label = assignment?.responderId
-          ? (responderLabels.get(assignment.responderId) ?? "Assigned")
-          : "Unassigned";
-        const relative =
-          assignment && assignment.timestamp >= 0
-            ? formatRelativeTime(new Date(assignment.timestamp).toISOString())
-            : null;
-
-        return (
-          <div className={styles.cellStack}>
-            <Text>{label}</Text>
-            <Text className={styles.cellMeta}>
-              {relative ? `Assigned ${relative}` : "No assignment yet"}
-            </Text>
-          </div>
-        );
-      },
-    },
-    {
-      title: "Reported",
-      dataIndex: "dateReported",
-      key: "dateReported",
-      width: 170,
-      render: (value: unknown) => formatDateTime(value),
-    },
-    {
-      title: "Created",
-      dataIndex: "createdAt",
-      key: "createdAt",
-      width: 170,
-      render: (value: unknown) => formatDateTime(value),
-    },
-    {
-      title: "Updated",
-      dataIndex: "updatedAt",
-      key: "updatedAt",
-      width: 170,
-      render: (value: unknown) => formatDateTime(value),
-    },
-    {
-      title: "Actions",
-      key: "workspace",
-      width: 180,
-      render: (_: unknown, row: Incident) => (
-        <Space size={4} wrap>
-          <Button
-            type="link"
-            onClick={() => router.push(`/incidents/${row.id}`)}
-          >
-            Open workspace
-          </Button>
-          {row.citizenId ? (
-            <Button
-              type="link"
-              onClick={() => router.push(`/citizens/${row.citizenId}`)}
-            >
-              Citizen
-            </Button>
-          ) : null}
-        </Space>
-      ),
-    },
-  ];
-
   const columns: Array<SharedTableColumn<Incident>> = [
     { key: "description", title: "Description", filterKind: "text" },
     { key: "citizenId", title: "Citizen", filterKind: "select", selectOptions: citizenLabels },
@@ -454,27 +228,6 @@ export default function IncidentsPage() {
   }
 
   const canCreate = hasRole(...CAN_CREATE_INCIDENT);
-  const geocodedCount = rows.filter(hasCoordinates).length;
-  const addressSnapshotCount = rows.filter(hasAddressSnapshot).length;
-  const reportedTodayCount = rows.filter((incident) => {
-    const value = incident.dateReported ?? incident.createdAt;
-    if (!value) {
-      return false;
-    }
-
-    const parsed = new Date(String(value));
-    if (Number.isNaN(parsed.getTime())) {
-      return false;
-    }
-
-    const now = new Date();
-
-    return (
-      parsed.getFullYear() === now.getFullYear() &&
-      parsed.getMonth() === now.getMonth() &&
-      parsed.getDate() === now.getDate()
-    );
-  }).length;
   const previewAddress = joinLocationParts([
     addressLine1Value,
     addressLine2Value,
@@ -842,6 +595,6 @@ export default function IncidentsPage() {
           </div>
         </Form>
       </Modal>
-    </div>
+    </Space>
   );
 }

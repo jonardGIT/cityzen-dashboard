@@ -27,6 +27,7 @@ import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { CrudFormModal, toInitialFormValues } from "@/components/crud/CrudFormModal";
 import { DeleteConfirmModal } from "@/components/crud/DeleteConfirmModal";
 import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
+import { extractListQueryValidation } from "@/components/crud/list-query-validation";
 import { adaptPaginatedResponse } from "@/lib/api/pagination";
 import {
   CrudRequestError,
