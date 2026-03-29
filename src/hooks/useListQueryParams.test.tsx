@@ -120,4 +120,29 @@ describe("useListQueryParams", () => {
       "3|20|createdAt|desc|0|fire",
     );
   });
+
+  it("supports custom default sorting for pages that do not use createdAt", () => {
+    params = new URLSearchParams("page=1&pageSize=20");
+
+    function CustomSortHarness() {
+      const state = useListQueryParams({
+        defaultPageSize: 20,
+        defaultSortBy: "timestamp",
+        defaultSortOrder: "desc",
+      });
+
+      return (
+        <div data-testid="custom-state">{`${state.sortBy}|${state.sortOrder}`}</div>
+      );
+    }
+
+    render(<CustomSortHarness />);
+
+    expect(screen.getByTestId("custom-state").textContent).toBe(
+      "timestamp|desc",
+    );
+    expect(replaceMock).toHaveBeenCalledWith(
+      "/incidents?page=1&pageSize=20&sortBy=timestamp&sortOrder=desc",
+    );
+  });
 });

@@ -13,6 +13,8 @@ export const CAN_CREATE_ASSIGNMENT: Role[] = [
   Role.DISPATCHER,
 ];
 
+export const CAN_VIEW_AUDIT_LOGS: Role[] = [Role.SUPER_ADMIN, Role.ADMIN];
+
 export const CAN_MANAGE_USERS: Role[] = [Role.SUPER_ADMIN, Role.ADMIN];
 
 /**

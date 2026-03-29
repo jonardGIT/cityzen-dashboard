@@ -2,6 +2,7 @@
 
 import {
   AppstoreOutlined,
+  FileSearchOutlined,
   ExclamationCircleOutlined,
   LogoutOutlined,
   TeamOutlined,
@@ -19,6 +20,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAllCrudResources } from "@/features/dynamic-crud/config";
 import { hasPermission } from "@/features/dynamic-crud/permissions";
+import { CAN_VIEW_AUDIT_LOGS } from "@/lib/auth/permissions";
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -117,6 +119,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         canView: () =>
           hasPermission(resource.endpoints.list, user?.role, isAuthenticated),
       })),
+      {
+        key: "/audit-logs",
+        icon: <FileSearchOutlined />,
+        label: "Audit Logs",
+        canView: () =>
+          Boolean(user?.role && CAN_VIEW_AUDIT_LOGS.includes(user.role)),
+      },
       { key: "/profile", icon: <UserOutlined />, label: "Profile" },
     ];
 

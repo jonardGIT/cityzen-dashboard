@@ -1,8 +1,19 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
-import { authClient, publicClient, registerUnauthorizedHandler } from "@/lib/api/clients";
+import {
+  authClient,
+  publicClient,
+  registerUnauthorizedHandler,
+} from "@/lib/api/clients";
 import {
   clearAuthStorage,
   getAccessToken,
@@ -107,7 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const resolvedUser = resolveUserPayload(response.data);
 
       if (!resolvedUser) {
-        throw new Error("Session response did not include a valid user payload.");
+        throw new Error(
+          "Session response did not include a valid user payload.",
+        );
       }
 
       setStoredUser(resolvedUser);
@@ -132,25 +145,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [router]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const payload: LoginRequest = { email, password };
-    const response = await publicClient.post<LoginResponse>("/auth/login", payload);
-    const token = resolveAccessToken(response.data);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const payload: LoginRequest = { email, password };
+      const response = await publicClient.post<LoginResponse>(
+        "/auth/login",
+        payload,
+      );
+      const token = resolveAccessToken(response.data);
 
-    if (!token) {
-      throw new Error("Login response did not include an access token.");
-    }
+      if (!token) {
+        throw new Error("Login response did not include an access token.");
+      }
 
-    setAccessToken(token);
+      setAccessToken(token);
 
-    const resolvedUser = resolveUserPayload(response.data);
-    if (resolvedUser) {
-      setStoredUser(resolvedUser);
-      setUser(resolvedUser);
-    }
+      const resolvedUser = resolveUserPayload(response.data);
+      if (resolvedUser) {
+        setStoredUser(resolvedUser);
+        setUser(resolvedUser);
+      }
 
-    await restoreSession();
-  }, [restoreSession]);
+      await restoreSession();
+    },
+    [restoreSession],
+  );
 
   const hasRole = useCallback(
     (...roles: Role[]) => {

@@ -62,6 +62,7 @@ export default function CitizensPage() {
             dataSource={rows}
             storageKey="citizens-table-widths"
             showColumnVisibilitySelector
+            stickyEdgeColumnCount={{ left: 1 }}
             scroll={{ x: 720 }}
             pagination={{
               current: listQuery.page,

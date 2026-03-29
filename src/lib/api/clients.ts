@@ -2,13 +2,16 @@ import axios, { AxiosError } from "axios";
 import { clearAuthStorage, getAccessToken } from "@/lib/auth/token-storage";
 import type { ApiErrorPayload } from "@/types/api";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api/v1";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api/v1";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
 
 type UnauthorizedHandler = () => void;
 const unauthorizedHandlers = new Set<UnauthorizedHandler>();
 
-export function registerUnauthorizedHandler(handler: UnauthorizedHandler): () => void {
+export function registerUnauthorizedHandler(
+  handler: UnauthorizedHandler,
+): () => void {
   unauthorizedHandlers.add(handler);
   return () => unauthorizedHandlers.delete(handler);
 }

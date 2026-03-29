@@ -322,6 +322,7 @@ export function SharedTable<T extends BaseEntity>({
         columns={tableColumns}
         storageKey={storageKey}
         showColumnVisibilitySelector
+        stickyEdgeColumnCount={{ left: actionColumn ? 2 : 1 }}
         scroll={{ x: scrollX }}
         locale={{ emptyText }}
         pagination={{

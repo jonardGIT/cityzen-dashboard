@@ -96,6 +96,25 @@ export interface User extends BaseEntity {
   role?: string;
 }
 
+export interface AuditLog extends BaseEntity {
+  timestamp?: string;
+  action?: string;
+  summary?: string;
+  outcome?: string;
+  actorUserId?: string | null;
+  actorEmail?: string | null;
+  actorRole?: string | null;
+  resource?: string;
+  method?: string;
+  path?: string;
+  statusCode?: number | null;
+  targetId?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  requestId?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
 export interface HealthResponse {
   status: string;
 }

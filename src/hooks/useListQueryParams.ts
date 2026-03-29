@@ -38,13 +38,39 @@ export interface ListQuerySetters {
 
 export type ListQueryResult = ListQueryState & ListQuerySetters;
 
+export interface UseListQueryParamsOptions {
+  defaultPageSize?: number;
+  defaultSortBy?: ListSortBy;
+  defaultSortOrder?: ListSortOrder;
+}
+
+function resolveOptions(
+  options?: number | UseListQueryParamsOptions,
+): Required<UseListQueryParamsOptions> {
+  if (typeof options === "number") {
+    return {
+      defaultPageSize: options,
+      defaultSortBy: DEFAULT_SORT_BY,
+      defaultSortOrder: DEFAULT_SORT_ORDER,
+    };
+  }
+
+  return {
+    defaultPageSize: options?.defaultPageSize ?? DEFAULT_PAGE_SIZE,
+    defaultSortBy: options?.defaultSortBy ?? DEFAULT_SORT_BY,
+    defaultSortOrder: options?.defaultSortOrder ?? DEFAULT_SORT_ORDER,
+  };
+}
+
 function getSearchStorageKey(pathname: string): string {
   return `list-query-search:${pathname}`;
 }
 
 export function useListQueryParams(
-  defaultPageSize = DEFAULT_PAGE_SIZE,
+  options?: number | UseListQueryParamsOptions,
 ): ListQueryResult {
+  const { defaultPageSize, defaultSortBy, defaultSortOrder } =
+    resolveOptions(options);
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,9 +84,9 @@ export function useListQueryParams(
     Number(searchParams.get("pageSize") ?? String(defaultPageSize)) ||
     defaultPageSize;
   const [search, setSearchState] = useState("");
-  const sortBy = (searchParams.get("sortBy") ?? DEFAULT_SORT_BY) as ListSortBy;
+  const sortBy = (searchParams.get("sortBy") ?? defaultSortBy) as ListSortBy;
   const sortOrder = (searchParams.get("sortOrder") ??
-    DEFAULT_SORT_ORDER) as ListSortOrder;
+    defaultSortOrder) as ListSortOrder;
   const filters = parseListFilters(searchParams.get("filters"));
   const createdFrom = searchParams.get("createdFrom") ?? undefined;
   const createdTo = searchParams.get("createdTo") ?? undefined;
@@ -91,12 +117,12 @@ export function useListQueryParams(
     let changed = false;
 
     if (!params.get("sortBy")) {
-      params.set("sortBy", DEFAULT_SORT_BY);
+      params.set("sortBy", defaultSortBy);
       changed = true;
     }
 
     if (!params.get("sortOrder")) {
-      params.set("sortOrder", DEFAULT_SORT_ORDER);
+      params.set("sortOrder", defaultSortOrder);
       changed = true;
     }
 
@@ -120,7 +146,13 @@ export function useListQueryParams(
     }
 
     replaceIfChanged(params);
-  }, [defaultPageSize, replaceIfChanged, searchParams]);
+  }, [
+    defaultPageSize,
+    defaultSortBy,
+    defaultSortOrder,
+    replaceIfChanged,
+    searchParams,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -196,8 +228,9 @@ export function useListQueryParams(
     page,
     pageSize,
     search,
-    sortBy: sortBy ?? DEFAULT_LIST_QUERY_STATE.sortBy,
-    sortOrder: sortOrder ?? DEFAULT_LIST_QUERY_STATE.sortOrder,
+    sortBy: sortBy ?? defaultSortBy ?? DEFAULT_LIST_QUERY_STATE.sortBy,
+    sortOrder:
+      sortOrder ?? defaultSortOrder ?? DEFAULT_LIST_QUERY_STATE.sortOrder,
     filters,
     createdFrom,
     createdTo,

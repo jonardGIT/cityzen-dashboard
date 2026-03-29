@@ -1027,6 +1027,7 @@ export default function DashboardPage() {
             columns={recentIncidentColumns}
             storageKey="dashboard-recent-incidents-widths"
             showColumnVisibilitySelector
+            stickyEdgeColumnCount={{ left: 1 }}
             locale={{ emptyText: "No incidents available" }}
           />
         </Card>
@@ -1061,6 +1062,7 @@ export default function DashboardPage() {
             columns={urgentQueueColumns}
             storageKey="dashboard-urgent-queue-widths"
             showColumnVisibilitySelector
+            stickyEdgeColumnCount={{ left: 1 }}
             locale={{ emptyText: "All open incidents are assigned" }}
           />
         </Card>
@@ -1093,6 +1095,7 @@ export default function DashboardPage() {
           columns={recentAssignmentsColumns}
           storageKey="dashboard-recent-assignments-widths"
           showColumnVisibilitySelector
+          stickyEdgeColumnCount={{ left: 1 }}
           locale={{ emptyText: "No assignments available" }}
         />
       </Card>

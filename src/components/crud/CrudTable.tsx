@@ -680,6 +680,7 @@ export function CrudTable({
         dataSource={rows}
         storageKey={storageKey}
         showColumnVisibilitySelector
+        stickyEdgeColumnCount={{ left: 2 }}
         scroll={{ x: 1024 }}
         columns={columns}
         locale={{ emptyText: "No records found" }}
