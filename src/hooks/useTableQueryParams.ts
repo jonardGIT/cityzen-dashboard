@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+  type ReadonlyURLSearchParams,
+} from "next/navigation";
 
 interface TableQueryParams {
   page: number;
@@ -16,6 +21,22 @@ function getSearchStorageKey(pathname: string): string {
   return `table-query-search:${pathname}`;
 }
 
+function getInitialSearchValue(
+  searchParams: ReadonlyURLSearchParams,
+  searchStorageKey: string,
+): string {
+  const urlSearch = searchParams.get("search") ?? "";
+  if (urlSearch) {
+    return urlSearch;
+  }
+
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.sessionStorage.getItem(searchStorageKey) ?? "";
+}
+
 export function useTableQueryParams(defaultPageSize = 10): TableQueryParams {
   const pathname = usePathname();
   const router = useRouter();
@@ -27,7 +48,9 @@ export function useTableQueryParams(defaultPageSize = 10): TableQueryParams {
   const pageSize =
     Number(searchParams.get("pageSize") ?? String(defaultPageSize)) ||
     defaultPageSize;
-  const [search, setSearchState] = useState("");
+  const [search, setSearchState] = useState(() =>
+    getInitialSearchValue(searchParams, searchStorageKey),
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -38,22 +61,6 @@ export function useTableQueryParams(defaultPageSize = 10): TableQueryParams {
     params.delete("search");
     router.replace(`${pathname}?${params.toString()}`);
   }, [pathname, router, searchParams]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const urlSearch = searchParams.get("search") ?? "";
-    if (urlSearch) {
-      setSearchState(urlSearch);
-      window.sessionStorage.setItem(searchStorageKey, urlSearch);
-      return;
-    }
-
-    const storedSearch = window.sessionStorage.getItem(searchStorageKey) ?? "";
-    setSearchState(storedSearch);
-  }, [searchParams, searchStorageKey]);
 
   const setParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());

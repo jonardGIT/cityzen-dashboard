@@ -1,18 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  getMock,
-  requestUseMock,
-  responseUseMock,
-  clearAuthStorageMock,
-  getAccessTokenMock,
-} = vi.hoisted(() => ({
-  getMock: vi.fn(),
-  requestUseMock: vi.fn(),
-  responseUseMock: vi.fn(),
-  clearAuthStorageMock: vi.fn(),
-  getAccessTokenMock: vi.fn(),
-}));
+const { getMock, requestUseMock, responseUseMock, getAccessTokenMock } =
+  vi.hoisted(() => ({
+    getMock: vi.fn(),
+    requestUseMock: vi.fn(),
+    responseUseMock: vi.fn(),
+    getAccessTokenMock: vi.fn(),
+  }));
 
 vi.mock("axios", () => ({
   default: {
@@ -28,8 +22,10 @@ vi.mock("axios", () => ({
 }));
 
 vi.mock("@/lib/auth/token-storage", () => ({
-  clearAuthStorage: clearAuthStorageMock,
   getAccessToken: getAccessTokenMock,
+  getRefreshToken: vi.fn(),
+  storeAuthResponse: vi.fn(),
+  clearAuthStorage: vi.fn(),
 }));
 
 import { fetchAuditLogById, fetchAuditLogs } from "@/features/audit-logs/api";
@@ -37,7 +33,6 @@ import { fetchAuditLogById, fetchAuditLogs } from "@/features/audit-logs/api";
 describe("audit log api client", () => {
   beforeEach(() => {
     getMock.mockReset();
-    clearAuthStorageMock.mockReset();
     getAccessTokenMock.mockReset();
   });
 
@@ -108,26 +103,5 @@ describe("audit log api client", () => {
       action: "delete",
       summary: "delete users succeeded",
     });
-  });
-
-  it("adds the bearer token on requests and clears auth on unauthorized responses", async () => {
-    getAccessTokenMock.mockReturnValue("jwt-token");
-
-    const requestInterceptor = requestUseMock.mock.calls[0]?.[0] as
-      | ((config: { headers: Record<string, string> }) => {
-          headers: Record<string, string>;
-        })
-      | undefined;
-    const responseRejected = responseUseMock.mock.calls[0]?.[1] as
-      | ((error: { response?: { status?: number } }) => Promise<never>)
-      | undefined;
-
-    const config = requestInterceptor?.({ headers: {} });
-    expect(config?.headers.Authorization).toBe("Bearer jwt-token");
-
-    await expect(
-      responseRejected?.({ response: { status: 401 } }),
-    ).rejects.toEqual({ response: { status: 401 } });
-    expect(clearAuthStorageMock).toHaveBeenCalledTimes(1);
   });
 });

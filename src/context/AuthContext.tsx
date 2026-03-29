@@ -9,80 +9,40 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import {
-  authClient,
-  publicClient,
-  registerUnauthorizedHandler,
-} from "@/lib/api/clients";
+import { registerUnauthorizedHandler } from "@/lib/api/clients";
 import {
   clearAuthStorage,
   getAccessToken,
   getStoredUser,
-  setAccessToken,
   setStoredUser,
+  storeAuthResponse,
 } from "@/lib/auth/token-storage";
-import type { AuthUser, LoginRequest, LoginResponse, Role } from "@/types/auth";
+import {
+  fetchCurrentUser,
+  loginWithPassword,
+  logoutCurrentSession,
+} from "@/features/auth/api";
+import type { AuthUser, LoginReason, LoginResult, Role } from "@/types/auth";
 
-function isAuthUser(value: unknown): value is AuthUser {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.id === "string" &&
-    typeof record.email === "string" &&
-    typeof record.role === "string"
-  );
-}
-
-function resolveUserPayload(payload: unknown): AuthUser | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const record = payload as Record<string, unknown>;
-  const nestedUser = record.user;
-
-  if (isAuthUser(nestedUser)) {
-    return nestedUser as AuthUser;
-  }
-
-  if (isAuthUser(record)) {
-    return record as AuthUser;
-  }
-
-  if (record.data && typeof record.data === "object") {
-    const dataRecord = record.data as Record<string, unknown>;
-    if (isAuthUser(dataRecord.user)) {
-      return dataRecord.user;
-    }
-  }
-
-  return null;
-}
-
-function resolveAccessToken(payload: LoginResponse): string | null {
-  return (
-    payload.accessToken ??
-    payload.token ??
-    payload.access_token ??
-    payload.jwt ??
-    payload.data?.accessToken ??
-    payload.data?.token ??
-    payload.data?.access_token ??
-    payload.data?.jwt ??
-    null
-  );
+interface LogoutOptions {
+  revokeRemote?: boolean;
+  redirectTo?: string;
+  reason?: LoginReason;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isRestoring: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  login: (
+    email: string,
+    password: string,
+    mfaCode?: string,
+  ) => Promise<LoginResult>;
+  logout: (options?: LogoutOptions) => Promise<void>;
+  clearSession: () => void;
   restoreSession: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   hasRole: (...roles: Role[]) => boolean;
 }
 
@@ -93,11 +53,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isRestoring, setIsRestoring] = useState(true);
   const router = useRouter();
 
-  const logout = useCallback(() => {
+  const clearLocalSession = useCallback(() => {
     clearAuthStorage();
     setUser(null);
-    router.replace("/login");
-  }, [router]);
+  }, []);
+
+  const logout = useCallback(
+    async (options?: LogoutOptions) => {
+      if (options?.revokeRemote !== false) {
+        try {
+          await logoutCurrentSession();
+        } catch {
+          // Local cleanup still needs to happen when the server-side session is already invalid.
+        }
+      }
+
+      clearLocalSession();
+      const redirectTo =
+        options?.redirectTo ??
+        `/login?reason=${encodeURIComponent(options?.reason ?? "signed-out")}`;
+      router.replace(redirectTo);
+    },
+    [clearLocalSession, router],
+  );
+
+  const refreshUser = useCallback(async () => {
+    const resolvedUser = await fetchCurrentUser();
+    setStoredUser(resolvedUser);
+    setUser(resolvedUser);
+  }, []);
 
   const restoreSession = useCallback(async () => {
     const token = getAccessToken();
@@ -114,59 +98,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const response = await authClient.get<unknown>("/auth/me");
-      const resolvedUser = resolveUserPayload(response.data);
-
-      if (!resolvedUser) {
-        throw new Error(
-          "Session response did not include a valid user payload.",
-        );
-      }
-
-      setStoredUser(resolvedUser);
-      setUser(resolvedUser);
+      await refreshUser();
     } catch {
-      clearAuthStorage();
-      setUser(null);
+      clearLocalSession();
     } finally {
       setIsRestoring(false);
     }
-  }, []);
+  }, [clearLocalSession, refreshUser]);
 
   useEffect(() => {
     void restoreSession();
   }, [restoreSession]);
 
   useEffect(() => {
-    return registerUnauthorizedHandler(() => {
-      clearAuthStorage();
-      setUser(null);
-      router.replace("/login");
+    return registerUnauthorizedHandler((reason) => {
+      clearLocalSession();
+      router.replace(`/login?reason=${encodeURIComponent(reason)}`);
     });
-  }, [router]);
+  }, [clearLocalSession, router]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
-      const payload: LoginRequest = { email, password };
-      const response = await publicClient.post<LoginResponse>(
-        "/auth/login",
-        payload,
-      );
-      const token = resolveAccessToken(response.data);
+    async (email: string, password: string, mfaCode?: string) => {
+      const result = await loginWithPassword({ email, password, mfaCode });
 
-      if (!token) {
-        throw new Error("Login response did not include an access token.");
+      if (!result.auth) {
+        return result;
       }
 
-      setAccessToken(token);
-
-      const resolvedUser = resolveUserPayload(response.data);
-      if (resolvedUser) {
-        setStoredUser(resolvedUser);
-        setUser(resolvedUser);
-      }
-
+      storeAuthResponse(result.auth);
+      setUser(result.auth.user);
       await restoreSession();
+
+      return result;
     },
     [restoreSession],
   );
@@ -189,10 +152,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isRestoring,
       login,
       logout,
+      clearSession: clearLocalSession,
       restoreSession,
+      refreshUser,
       hasRole,
     }),
-    [user, isRestoring, login, logout, restoreSession, hasRole],
+    [
+      user,
+      isRestoring,
+      login,
+      logout,
+      clearLocalSession,
+      restoreSession,
+      refreshUser,
+      hasRole,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

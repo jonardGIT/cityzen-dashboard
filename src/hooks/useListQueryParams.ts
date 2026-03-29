@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+  type ReadonlyURLSearchParams,
+} from "next/navigation";
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
@@ -66,6 +71,22 @@ function getSearchStorageKey(pathname: string): string {
   return `list-query-search:${pathname}`;
 }
 
+function getInitialSearchValue(
+  searchParams: ReadonlyURLSearchParams,
+  searchStorageKey: string,
+): string {
+  const urlSearch = searchParams.get("search") ?? "";
+  if (urlSearch) {
+    return urlSearch;
+  }
+
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.sessionStorage.getItem(searchStorageKey) ?? "";
+}
+
 export function useListQueryParams(
   options?: number | UseListQueryParamsOptions,
 ): ListQueryResult {
@@ -83,7 +104,9 @@ export function useListQueryParams(
   const pageSize =
     Number(searchParams.get("pageSize") ?? String(defaultPageSize)) ||
     defaultPageSize;
-  const [search, setSearchState] = useState("");
+  const [search, setSearchState] = useState(() =>
+    getInitialSearchValue(searchParams, searchStorageKey),
+  );
   const sortBy = (searchParams.get("sortBy") ?? defaultSortBy) as ListSortBy;
   const sortOrder = (searchParams.get("sortOrder") ??
     defaultSortOrder) as ListSortOrder;
@@ -153,22 +176,6 @@ export function useListQueryParams(
     replaceIfChanged,
     searchParams,
   ]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const urlSearch = searchParams.get("search") ?? "";
-    if (urlSearch) {
-      setSearchState(urlSearch);
-      window.sessionStorage.setItem(searchStorageKey, urlSearch);
-      return;
-    }
-
-    const storedSearch = window.sessionStorage.getItem(searchStorageKey) ?? "";
-    setSearchState(storedSearch);
-  }, [searchParams, searchStorageKey]);
 
   const setParam = (key: string, value: string | undefined) => {
     const params = new URLSearchParams(searchParams.toString());

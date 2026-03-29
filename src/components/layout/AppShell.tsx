@@ -70,18 +70,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return user.name.trim();
     }
 
-    const fullName = [user.firstName, user.lastName]
-      .filter(
-        (part): part is string =>
-          typeof part === "string" && part.trim().length > 0,
-      )
-      .map((part) => part.trim())
-      .join(" ");
-
-    if (fullName.length > 0) {
-      return fullName;
-    }
-
     return user.email ?? "User";
   }, [user]);
 
@@ -126,13 +114,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         canView: () =>
           Boolean(user?.role && CAN_VIEW_AUDIT_LOGS.includes(user.role)),
       },
-      { key: "/profile", icon: <UserOutlined />, label: "Profile" },
+      {
+        key: "/profile",
+        icon: <UserOutlined />,
+        label: "Account Security",
+      },
     ];
 
     return items
       .filter((item) => (item.canView ? item.canView() : true))
       .map(({ key, icon, label }) => ({ key, icon, label }));
-  }, [isAuthenticated, user?.role]);
+  }, [isAuthenticated, user]);
 
   const selectedKey = useMemo(() => {
     const exact = menuItems.find((item) => item?.key === pathname)?.key;
@@ -208,7 +200,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Text>
             </div>
           </Space>
-          <Button icon={<LogoutOutlined />} onClick={logout}>
+          <Button icon={<LogoutOutlined />} onClick={() => void logout()}>
             Logout
           </Button>
         </Header>
