@@ -132,6 +132,8 @@ export function ResizableTable<RecordType extends AnyObject>({
   components,
   ...props
 }: ResizableTableProps<RecordType>) {
+  const isJsdomEnvironment =
+    typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent);
   const visibleColumnsStorageKey = storageKey
     ? `${storageKey}-visible-columns`
     : undefined;
@@ -678,7 +680,7 @@ export function ResizableTable<RecordType extends AnyObject>({
               ? Math.max(scroll.x, totalWidth)
               : (scroll?.x ?? totalWidth),
         }}
-        sticky={sticky ?? true}
+        sticky={sticky ?? !isJsdomEnvironment}
         tableLayout={tableLayout ?? "fixed"}
       />
     </div>
