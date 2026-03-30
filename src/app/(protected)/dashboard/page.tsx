@@ -13,12 +13,12 @@ import {
   Tag,
   Typography,
 } from "antd";
-import type { TableProps } from "antd";
 import { useQueries } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ResizableTable } from "@/components/common/ResizableTable";
+import { InteractiveLocalTable } from "@/components/common/InteractiveLocalTable";
+import type { SimpleResourceColumn } from "@/components/common/SimpleResourcePage";
 import styles from "./page.module.css";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { fetchAssignments } from "@/features/assignments/api";
@@ -100,15 +100,10 @@ function parseDate(value: unknown): Date | null {
 }
 
 function formatAgeHours(value: unknown, currentTime: number): string {
-  const parsed = parseDate(value);
-  if (!parsed) {
+  const diffHours = getAgeHours(value, currentTime);
+  if (diffHours === null) {
     return "N/A";
   }
-
-  const diffHours = Math.max(
-    0,
-    Math.floor((currentTime - parsed.getTime()) / (60 * 60 * 1000)),
-  );
 
   if (diffHours < 1) {
     return "<1h";
@@ -120,6 +115,18 @@ function formatAgeHours(value: unknown, currentTime: number): string {
 
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays}d ${diffHours % 24}h`;
+}
+
+function getAgeHours(value: unknown, currentTime: number): number | null {
+  const parsed = parseDate(value);
+  if (!parsed) {
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.floor((currentTime - parsed.getTime()) / (60 * 60 * 1000)),
+  );
 }
 
 function getIncidentDate(incident: Incident): string | undefined {
@@ -287,6 +294,12 @@ export default function DashboardPage() {
       severity.level?.trim() || severity.name?.trim() || String(severity.id),
     ]),
   );
+  const statusFilterOptions = Array.from(
+    new Set(Array.from(statusLabels.values()).filter(Boolean)),
+  ).map((value) => ({ label: value, value }));
+  const severityFilterOptions = Array.from(
+    new Set(Array.from(severityLabels.values()).filter(Boolean)),
+  ).map((value) => ({ label: value, value }));
   const categoryLabels = new Map(
     categories.map((category) => [
       String(category.id),
@@ -557,7 +570,7 @@ export default function DashboardPage() {
     router.push(`/incidents?${params.toString()}`);
   };
 
-  const recentIncidentColumns: TableProps<Incident>["columns"] = [
+  const recentIncidentColumns: SimpleResourceColumn<Incident>[] = [
     {
       title: "Description",
       dataIndex: "description",
@@ -587,6 +600,9 @@ export default function DashboardPage() {
       dataIndex: "statusId",
       key: "statusId",
       width: 140,
+      valueGetter: (incident: Incident) =>
+        getIncidentStatusName(incident, statusLabels),
+      filterOptions: statusFilterOptions,
       render: (value: string | undefined) => {
         const statusName = statusLabels.get(String(value ?? "")) ?? "Unknown";
         const color = isClosedStatus(statusName)
@@ -603,6 +619,9 @@ export default function DashboardPage() {
       dataIndex: "severityId",
       key: "severityId",
       width: 130,
+      valueGetter: (incident: Incident) =>
+        severityLabels.get(String(incident.severityId ?? "")) ?? "Unspecified",
+      filterOptions: severityFilterOptions,
       render: (value: string | undefined) => {
         const label = severityLabels.get(String(value ?? "")) ?? "Unspecified";
         return <Tag color={getSeverityColor(label)}>{label}</Tag>;
@@ -612,6 +631,13 @@ export default function DashboardPage() {
       title: "Assignee",
       key: "assignee",
       width: 180,
+      valueGetter: (incident: Incident) => {
+        const assignment = latestAssignmentByIncident.get(String(incident.id));
+        const responder = assignment?.responderId
+          ? responderLabels.get(String(assignment.responderId))
+          : undefined;
+        return getResponderDisplayName(responder);
+      },
       render: (_: unknown, incident: Incident) => {
         const assignment = latestAssignmentByIncident.get(String(incident.id));
         const responder = assignment?.responderId
@@ -646,6 +672,9 @@ export default function DashboardPage() {
       title: "Age",
       key: "age",
       width: 100,
+      filterKind: "number",
+      valueGetter: (incident: Incident) =>
+        getAgeHours(getIncidentDate(incident), currentTime),
       render: (_: unknown, incident: Incident) =>
         formatAgeHours(getIncidentDate(incident), currentTime),
     },
@@ -653,6 +682,7 @@ export default function DashboardPage() {
       title: "Reported",
       key: "reported",
       width: 170,
+      valueGetter: (incident: Incident) => getIncidentDate(incident),
       render: (_: unknown, incident: Incident) =>
         formatDateTime(getIncidentDate(incident)),
     },
@@ -660,6 +690,8 @@ export default function DashboardPage() {
       title: "Action",
       key: "action",
       width: 100,
+      filterable: false,
+      sortable: false,
       render: (_: unknown, incident: Incident) => (
         <Button
           type="link"
@@ -671,7 +703,7 @@ export default function DashboardPage() {
     },
   ];
 
-  const urgentQueueColumns: TableProps<Incident>["columns"] = [
+  const urgentQueueColumns: SimpleResourceColumn<Incident>[] = [
     {
       title: "Incident",
       dataIndex: "description",
@@ -700,6 +732,9 @@ export default function DashboardPage() {
       title: "Status",
       key: "status",
       width: 150,
+      valueGetter: (incident: Incident) =>
+        getIncidentStatusName(incident, statusLabels),
+      filterOptions: statusFilterOptions,
       render: (_: unknown, incident: Incident) => (
         <Tag color="gold">{getIncidentStatusName(incident, statusLabels)}</Tag>
       ),
@@ -708,6 +743,9 @@ export default function DashboardPage() {
       title: "Age",
       key: "age",
       width: 100,
+      filterKind: "number",
+      valueGetter: (incident: Incident) =>
+        getAgeHours(getIncidentDate(incident), currentTime),
       render: (_: unknown, incident: Incident) =>
         formatAgeHours(getIncidentDate(incident), currentTime),
     },
@@ -715,6 +753,8 @@ export default function DashboardPage() {
       title: "Action",
       key: "action",
       width: 110,
+      filterable: false,
+      sortable: false,
       render: (_: unknown, incident: Incident) => (
         <Button
           type="link"
@@ -726,11 +766,21 @@ export default function DashboardPage() {
     },
   ];
 
-  const recentAssignmentsColumns: TableProps<Assignment>["columns"] = [
+  const recentAssignmentsColumns: SimpleResourceColumn<Assignment>[] = [
     {
       title: "Incident",
       key: "incident",
       width: 300,
+      valueGetter: (assignment: Assignment) => {
+        const incident = incidents.find(
+          (candidate) =>
+            String(candidate.id) === String(assignment.incidentId ?? ""),
+        );
+
+        return (
+          incident?.description || `Incident ${assignment.incidentId ?? "N/A"}`
+        );
+      },
       render: (_: unknown, assignment: Assignment) => {
         const incident = incidents.find(
           (candidate) =>
@@ -765,6 +815,12 @@ export default function DashboardPage() {
       title: "Responder",
       key: "responder",
       width: 180,
+      valueGetter: (assignment: Assignment) =>
+        getResponderDisplayName(
+          assignment.responderId
+            ? responderLabels.get(String(assignment.responderId))
+            : undefined,
+        ),
       render: (_: unknown, assignment: Assignment) => {
         const label = getResponderDisplayName(
           assignment.responderId
@@ -783,6 +839,8 @@ export default function DashboardPage() {
       title: "Assigned",
       key: "assignedDate",
       width: 180,
+      valueGetter: (assignment: Assignment) =>
+        getAssignmentDisplayDate(assignment),
       render: (_: unknown, assignment: Assignment) => (
         <div className={styles.cellStack}>
           <Text
@@ -1131,16 +1189,15 @@ export default function DashboardPage() {
             </Button>
           }
         >
-          <ResizableTable
-            rowKey="id"
-            dataSource={recentIncidents}
-            pagination={false}
-            scroll={{ x: 980 }}
+          <InteractiveLocalTable
+            rows={recentIncidents}
             columns={recentIncidentColumns}
             storageKey="dashboard-recent-incidents-widths"
-            showColumnVisibilitySelector
+            emptyText="No incidents available"
+            searchPlaceholder="Search incidents"
+            scroll={{ x: 980 }}
             stickyEdgeColumnCount={{ left: 1 }}
-            locale={{ emptyText: "No incidents available" }}
+            pagination={false}
           />
         </Card>
 
@@ -1168,15 +1225,14 @@ export default function DashboardPage() {
             </Button>
           }
         >
-          <ResizableTable
-            rowKey="id"
-            dataSource={urgentQueue}
-            pagination={false}
+          <InteractiveLocalTable
+            rows={urgentQueue}
             columns={urgentQueueColumns}
             storageKey="dashboard-urgent-queue-widths"
-            showColumnVisibilitySelector
+            emptyText="All open incidents are assigned"
+            searchPlaceholder="Search queue"
             stickyEdgeColumnCount={{ left: 1 }}
-            locale={{ emptyText: "All open incidents are assigned" }}
+            pagination={false}
           />
         </Card>
         ) : null}
@@ -1203,15 +1259,14 @@ export default function DashboardPage() {
           </Button>
         }
       >
-        <ResizableTable
-          rowKey="id"
-          dataSource={filteredAssignments}
-          pagination={false}
+        <InteractiveLocalTable
+          rows={filteredAssignments}
           columns={recentAssignmentsColumns}
           storageKey="dashboard-recent-assignments-widths"
-          showColumnVisibilitySelector
+          emptyText="No assignments available"
+          searchPlaceholder="Search assignments"
           stickyEdgeColumnCount={{ left: 1 }}
-          locale={{ emptyText: "No assignments available" }}
+          pagination={false}
         />
       </Card>
       ) : null}
