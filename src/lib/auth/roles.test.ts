@@ -22,7 +22,7 @@ describe("auth role normalization", () => {
   it("normalizes capabilities and detects self-service access", () => {
     const capabilities = normalizeCapabilities({
       role: "VIEWER",
-      permissions: ["incidents.report", "citizens.link-me"],
+      permissions: ["incident:create:self", "citizen:link:self"],
       scope: ["self"],
       canUpdateUser: false,
       canDeleteUser: false,
@@ -30,8 +30,8 @@ describe("auth role normalization", () => {
 
     expect(capabilities.role).toBe(Role.CITIZEN_REPORTER);
     expect(capabilities.permissions).toEqual([
-      "incidents.report",
-      "citizens.link-me",
+      "incident:create:self",
+      "citizen:link:self",
     ]);
     expect(capabilities.scope).toEqual(["self"]);
     expect(isCitizenSelfServiceUser(capabilities.role, capabilities)).toBe(true);

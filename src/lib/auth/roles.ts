@@ -22,6 +22,10 @@ function normalizeToken(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
 }
 
+export function normalizePermissionKey(value: string): string {
+  return normalizeToken(value);
+}
+
 function normalizeStringList(value: unknown): string[] {
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -168,11 +172,7 @@ export function permissionListIncludes(
   const normalizedPermissions = permissions.map((entry) => normalizeToken(entry));
   const normalizedHints = hints.map((entry) => normalizeToken(entry));
 
-  return normalizedHints.some((hint) =>
-    normalizedPermissions.some(
-      (permission) => permission === hint || permission.includes(hint) || hint.includes(permission),
-    ),
-  );
+  return normalizedHints.some((hint) => normalizedPermissions.includes(hint));
 }
 
 export function isCitizenSelfServiceUser(
@@ -189,9 +189,9 @@ export function isCitizenSelfServiceUser(
 
   if (
     permissionListIncludes(capabilities.permissions, [
-      "incidents_report",
-      "citizens_link_me",
-      "self_service",
+      "citizen:link:self",
+      "incident:create:self",
+      "incident:read:own",
     ])
   ) {
     return true;

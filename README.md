@@ -81,6 +81,14 @@ Legacy cached frontend role labels are normalized automatically:
 - Create assignment: `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`
 - View audit logs: `SYSTEM_ADMIN`, `AUDITOR`
 - Create/manage users: `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`
+- User management targets are explicit, not hierarchical:
+  - `SYSTEM_ADMIN` can assign/manage `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, `CITIZEN_REPORTER`
+  - `DEPARTMENT_MANAGER` can assign/manage `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, `CITIZEN_REPORTER`
+- Dashboard access decisions prefer scoped capability keys from `GET /users/capabilities`, for example:
+  - `incident:read:department`, `incident:read:assigned`, `incident:read:own`
+  - `assignment:create:department`, `assignment:read:assigned`
+  - `audit:read:global`, `audit:export:global`
+  - `citizen:link:self`, `incident:create:self`
 - Citizen self-service flows:
   - `POST /citizens/link-me`: `CITIZEN_REPORTER`
   - `POST /incidents/report`: `CITIZEN_REPORTER`

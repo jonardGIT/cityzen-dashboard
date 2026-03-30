@@ -19,7 +19,7 @@ describe("auth navigation", () => {
     const auditorCaps = capabilities({
       role: Role.AUDITOR,
       label: "Auditor",
-      permissions: ["incident:read", "audit:export"],
+      permissions: ["incident:read:department", "audit:export:global"],
       scope: ["global"],
     });
 
@@ -48,7 +48,7 @@ describe("auth navigation", () => {
     const citizenCaps = capabilities({
       role: Role.CITIZEN_REPORTER,
       label: "Citizen Reporter",
-      permissions: ["incident:create", "incident:read", "incident:update:own"],
+      permissions: ["incident:create:self", "incident:read:own", "citizen:link:self"],
       scope: ["own"],
     });
 

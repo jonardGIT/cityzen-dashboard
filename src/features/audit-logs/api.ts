@@ -1,4 +1,3 @@
-import { AxiosError } from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { createAuthenticatedClient } from "@/lib/api/clients";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
@@ -10,7 +9,7 @@ import {
   buildListQueryParams,
   type FetchListParams,
 } from "@/lib/api/list-query-params";
-import type { ApiErrorPayload, AuditLog } from "@/types/api";
+import type { AuditLog } from "@/types/api";
 
 const auditLogsApiClient = createAuthenticatedClient("/api/dashboard");
 

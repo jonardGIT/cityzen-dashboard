@@ -37,10 +37,12 @@ Before testing user capabilities, complete environment setup in:
 
 ## Global Rules
 - Authentication required for protected pages and protected API endpoints.
-- Users can only manage users with strictly lower role level.
-- Role hierarchy: SYSTEM_ADMIN > DEPARTMENT_MANAGER > SUPERVISOR > DISPATCHER > AUDITOR > RESPONDER > CITIZEN_REPORTER.
-- User creation is limited to assignable roles below the logged-in user role.
+- User management is explicit, not based on a universal role ladder.
+- `SYSTEM_ADMIN` can assign or manage `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, and `CITIZEN_REPORTER`.
+- `DEPARTMENT_MANAGER` can assign or manage `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, and `CITIZEN_REPORTER`.
+- `AUDITOR` is read-oriented and is not an assignable subordinate role in dashboard user-management flows.
 - `GET /users/capabilities` is available to any authenticated user and returns role, label, permissions, scope, `canUpdateUser`, and `canDeleteUser`.
+- Dashboard route and navigation checks should rely on scoped capability keys such as `incident:read:department`, `assignment:read:assigned`, `audit:read:global`, and `citizen:link:self`.
 - CITIZEN_REPORTER incident access is restricted to their own records or explicit self-service flows.
 - `401` indicates missing or invalid token or API key forwarding. `403` indicates authenticated role mismatch.
 
@@ -87,18 +89,18 @@ Notes from live validation:
 - The backend already emits the new role names in login and `/auth/me` payloads.
 - `DEPARTMENT_MANAGER` currently receives `canDeleteUser: false` from `/users/capabilities`, so the frontend must honor capability flags in addition to role checks.
 - `CITIZEN_REPORTER` currently has `scope: "own"` and a successful `citizens/link-me` flow.
-- `AUDITOR` currently has `permissions: ["incident:read", "audit:export"]`, `scope: "global"`, and backend read access to both `/incidents` and `/audit-logs`.
+- The dashboard contract expects scoped capability keys for read access, for example `incident:read:global` and `audit:read:global`, even if an older environment still emits transitional broad keys.
 - The local frontend proxy at `http://localhost:3001/api/users/capabilities` was not reachable during this smoke test, so proxy behavior still requires a live frontend dev server for manual validation.
 
 ## Users Module Expected Behavior
 ### SYSTEM_ADMIN
-- Can create DEPARTMENT_MANAGER, SUPERVISOR, DISPATCHER, RESPONDER, CITIZEN_REPORTER, AUDITOR.
-- Can edit/delete all users except same-or-higher role (none higher).
+- Can create DEPARTMENT_MANAGER, SUPERVISOR, DISPATCHER, RESPONDER, and CITIZEN_REPORTER.
+- Can edit/delete only the explicit manageable roles listed above, subject to capability flags.
 - `GET /api/users/capabilities` should indicate user management is enabled.
 
 ### DEPARTMENT_MANAGER
 - Can create SUPERVISOR, DISPATCHER, RESPONDER, CITIZEN_REPORTER.
-- Cannot create SYSTEM_ADMIN or peer DEPARTMENT_MANAGER users.
+- Cannot create SYSTEM_ADMIN, AUDITOR, or peer DEPARTMENT_MANAGER users.
 - Backend currently reports update enabled and delete disabled in the local seed environment.
 
 ### DISPATCHER
@@ -138,7 +140,7 @@ Use token from each user and test:
 Expected:
 - Disallowed operations return `403`.
 - Citizen Reporter records are filtered to owner records or self-service flows.
-- User management follows role hierarchy constraints plus capability flags.
+- User management follows the explicit assignable-role contract plus capability flags.
 
 ## Source of Truth
 - `dashboard-crud-config.flat.json`

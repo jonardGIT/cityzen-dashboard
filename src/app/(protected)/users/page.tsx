@@ -17,7 +17,7 @@ import {
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { canAccessUserManagement } from "@/lib/auth/navigation";
 import { canManageRole, getAssignableRoles } from "@/lib/auth/permissions";
-import { getRoleLabel } from "@/lib/auth/roles";
+import { getRoleLabel, normalizeRole } from "@/lib/auth/roles";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import type { ApiErrorPayload, User } from "@/types/api";
 import { Role } from "@/types/auth";
@@ -85,6 +85,8 @@ export default function UsersPage() {
   ];
 
   const canEditRow = (row: User): boolean => {
+    const targetRole = normalizeRole(row.role);
+
     if (!capabilitiesQuery.data?.canUpdateUser) {
       return false;
     }
@@ -97,10 +99,16 @@ export default function UsersPage() {
       return false;
     }
 
-    return canManageRole(user.role, row.role as Role);
+    if (!targetRole) {
+      return false;
+    }
+
+    return canManageRole(user.role, targetRole);
   };
 
   const canDeleteRow = (row: User): boolean => {
+    const targetRole = normalizeRole(row.role);
+
     if (!capabilitiesQuery.data?.canDeleteUser) {
       return false;
     }
@@ -113,7 +121,11 @@ export default function UsersPage() {
       return false;
     }
 
-    return canManageRole(user.role, row.role as Role);
+    if (!targetRole) {
+      return false;
+    }
+
+    return canManageRole(user.role, targetRole);
   };
 
   const submitCreate = async () => {
@@ -149,8 +161,8 @@ export default function UsersPage() {
     editForm.setFieldsValue({
       name: row.name ?? [row.firstName, row.lastName].filter(Boolean).join(" "),
       email: row.email ?? "",
-      role: (Object.values(Role).includes(row.role as Role)
-        ? (row.role as Role)
+      role: (normalizeRole(row.role)
+        ? normalizeRole(row.role)
         : assignableRoles[0]) as Role,
       firstName: row.firstName ?? "",
       lastName: row.lastName ?? "",

@@ -127,7 +127,8 @@ export default function AuditLogsPage() {
     isAuthenticated,
   });
 
-  const rows = auditLogsQuery.data?.data ?? [];
+  const rowData = auditLogsQuery.data?.data;
+  const rows = useMemo(() => rowData ?? [], [rowData]);
   const paginationMeta = auditLogsQuery.data?.pagination;
   const timestampRange = getBetweenFilterValue(listQuery.filters, "timestamp");
   const statusCodeFilter = getFilterValue(listQuery.filters, "statusCode");

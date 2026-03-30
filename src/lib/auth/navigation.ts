@@ -24,23 +24,36 @@ export interface NavigationItemDefinition {
 }
 
 const AUDIT_PERMISSION_HINTS = [
-  "audit_logs_read",
-  "audit_read",
-  "audit",
+  "audit:read:global",
+  "audit:export:global",
 ];
 
 const USER_PERMISSION_HINTS = [
-  "users_manage",
-  "users_read",
-  "admin_users",
-  "users_capabilities",
+  "user:read:global",
+  "user:read:department",
+  "user:update:department",
+  "user:manage:global",
 ];
 
 const INCIDENT_PERMISSION_HINTS = [
-  "incident_read",
-  "incident_assign",
-  "incident_create",
-  "incident_update",
+  "incident:read:global",
+  "incident:read:department",
+  "incident:read:assigned",
+  "incident:read:own",
+];
+
+const ASSIGNMENT_PERMISSION_HINTS = [
+  "assignment:read:global",
+  "assignment:read:department",
+  "assignment:read:assigned",
+  "assignment:create:department",
+  "assignment:override:region",
+];
+
+const CITIZEN_SELF_SERVICE_PERMISSION_HINTS = [
+  "citizen:link:self",
+  "incident:create:self",
+  "incident:read:own",
 ];
 
 function permissionsAllow(
@@ -52,6 +65,24 @@ function permissionsAllow(
   }
 
   return permissionListIncludes(capabilities.permissions, hints);
+}
+
+function canAccessAssignments(context: NavigationContext): boolean {
+  const resource = getCrudResource("assignments");
+  const roleAllows = Boolean(
+    resource &&
+      canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+  );
+
+  if (roleAllows) {
+    return true;
+  }
+
+  return permissionsAllow(context.capabilities, ASSIGNMENT_PERMISSION_HINTS);
+}
+
+function canAccessCitizenSelfService(context: NavigationContext): boolean {
+  return permissionsAllow(context.capabilities, CITIZEN_SELF_SERVICE_PERMISSION_HINTS);
 }
 
 function canAccessIncidents(context: NavigationContext): boolean {
@@ -109,10 +140,12 @@ export function getNavigationItems(context: NavigationContext) {
       resource: "citizens",
       visible: () => {
         const resource = getCrudResource("citizens");
-        return Boolean(
+        const roleAllows = Boolean(
           resource &&
             canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
         );
+
+        return roleAllows || (isSelfService && canAccessCitizenSelfService(context));
       },
     },
     {
@@ -128,13 +161,7 @@ export function getNavigationItems(context: NavigationContext) {
       label: "Assignments",
       href: "/assignments",
       resource: "assignments",
-      visible: () => {
-        const resource = getCrudResource("assignments");
-        return Boolean(
-          resource &&
-            canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
-        );
-      },
+      visible: () => canAccessAssignments(context),
     },
     {
       key: "/dashboard/agencies",

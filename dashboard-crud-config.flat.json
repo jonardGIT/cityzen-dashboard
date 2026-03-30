@@ -408,7 +408,7 @@
       "path": "/assignments",
       "fullPath": "/api/v1/assignments",
       "authRequired": true,
-      "allowedRoles": []
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER", "SUPERVISOR", "DISPATCHER"]
     },
     {
       "resource": "assignments",
@@ -418,7 +418,7 @@
       "path": "/assignments/{id}",
       "fullPath": "/api/v1/assignments/{id}",
       "authRequired": true,
-      "allowedRoles": []
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER", "SUPERVISOR", "DISPATCHER"]
     },
     {
       "resource": "assignments",

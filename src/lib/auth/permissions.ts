@@ -29,35 +29,37 @@ export const CAN_MANAGE_USERS: Role[] = [
 
 export const CAN_MANAGE_MFA: Role[] = Object.values(Role);
 
-/**
- * Role hierarchy levels. Higher numbers indicate higher privilege.
- * Users can only create, edit, or delete users with strictly lower privilege levels.
- */
-export const ROLE_HIERARCHY: Record<Role, number> = {
-  [Role.SYSTEM_ADMIN]: 7,
-  [Role.DEPARTMENT_MANAGER]: 6,
-  [Role.SUPERVISOR]: 5,
-  [Role.DISPATCHER]: 4,
-  [Role.AUDITOR]: 3,
-  [Role.RESPONDER]: 2,
-  [Role.CITIZEN_REPORTER]: 1,
+const MANAGEABLE_ROLES: Record<Role, Role[]> = {
+  [Role.SYSTEM_ADMIN]: [
+    Role.DEPARTMENT_MANAGER,
+    Role.SUPERVISOR,
+    Role.DISPATCHER,
+    Role.RESPONDER,
+    Role.CITIZEN_REPORTER,
+  ],
+  [Role.DEPARTMENT_MANAGER]: [
+    Role.SUPERVISOR,
+    Role.DISPATCHER,
+    Role.RESPONDER,
+    Role.CITIZEN_REPORTER,
+  ],
+  [Role.SUPERVISOR]: [],
+  [Role.DISPATCHER]: [],
+  [Role.RESPONDER]: [],
+  [Role.CITIZEN_REPORTER]: [],
+  [Role.AUDITOR]: [],
 };
 
 /**
- * Determine if a user can manage another user based on role hierarchy.
- * @param managerRole The role attempting to manage
- * @param targetRole The role being managed
- * @returns true if manager has a higher privilege level than target
+ * Mirrors the backend's explicit user-management semantics.
  */
 export function canManageRole(managerRole: Role, targetRole: Role): boolean {
-  return ROLE_HIERARCHY[managerRole] > ROLE_HIERARCHY[targetRole];
+  return MANAGEABLE_ROLES[managerRole].includes(targetRole);
 }
 
 /**
- * Get assignable roles for a given role.
- * Users can only assign roles strictly lower than their own.
+ * Returns only the roles the current actor can assign or manage according to the backend contract.
  */
 export function getAssignableRoles(role: Role): Role[] {
-  const managerLevel = ROLE_HIERARCHY[role];
-  return Object.values(Role).filter((r) => ROLE_HIERARCHY[r] < managerLevel);
+  return [...MANAGEABLE_ROLES[role]];
 }

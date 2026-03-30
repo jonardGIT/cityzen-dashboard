@@ -24,6 +24,21 @@ describe("dynamic crud config", () => {
     }
   });
 
+  it("limits assignment reads to the operational assignment roles", () => {
+    expect(getCrudEndpoint("assignments", "list")?.allowedRoles).toEqual([
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
+      Role.SUPERVISOR,
+      Role.DISPATCHER,
+    ]);
+    expect(getCrudEndpoint("assignments", "get")?.allowedRoles).toEqual([
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
+      Role.SUPERVISOR,
+      Role.DISPATCHER,
+    ]);
+  });
+
   it("limits citizen reads and create to management roles", () => {
     expect(getCrudEndpoint("citizens", "list")?.allowedRoles).toEqual([
       Role.SYSTEM_ADMIN,

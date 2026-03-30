@@ -49,7 +49,6 @@ import type {
   ApiErrorPayload,
   Assignment,
   Incident,
-  Responder,
   Severity,
 } from "@/types/api";
 
@@ -168,8 +167,9 @@ function isAccessDeniedError(error: unknown): boolean {
 }
 
 function formatDashboardError(error: unknown): string {
-  if (error instanceof AxiosError<ApiErrorPayload>) {
-    return error.response?.data?.message ?? error.message;
+  if (error instanceof AxiosError) {
+    const payload = error.response?.data as ApiErrorPayload | undefined;
+    return payload?.message ?? error.message;
   }
 
   return String(error);

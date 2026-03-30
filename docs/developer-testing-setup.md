@@ -47,7 +47,7 @@ Run before executing manual role tests:
 ## 6. Required Config Sources (Do Not Drift)
 When validating permissions, align with:
 - `dashboard-crud-config.flat.json` (endpoint-level allowed roles)
-- `src/lib/auth/permissions.ts` (UI feature flags and role hierarchy)
+- `src/lib/auth/permissions.ts` (UI feature flags and explicit manageable-role rules)
 - `src/features/dynamic-crud/permissions.ts` (generic endpoint guard logic)
 - `src/features/users/api.ts` (`/api/users/capabilities` behavior)
 - `src/lib/auth/roles.ts` (legacy-role normalization and display labels)

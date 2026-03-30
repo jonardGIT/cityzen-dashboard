@@ -2,11 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   axiosCreateMock,
-  publicRequestUseMock,
-  publicResponseUseMock,
   authRequestUseMock,
   authResponseUseMock,
-  refreshResponseUseMock,
   authInstanceMock,
   refreshPostMock,
   clearAuthStorageMock,
@@ -47,11 +44,8 @@ const {
 
   return {
     axiosCreateMock,
-    publicRequestUseMock,
-    publicResponseUseMock,
     authRequestUseMock,
     authResponseUseMock,
-    refreshResponseUseMock,
     authInstanceMock,
     refreshPostMock,
     clearAuthStorageMock: vi.fn(),
