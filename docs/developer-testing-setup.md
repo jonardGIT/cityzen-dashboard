@@ -37,7 +37,7 @@ Known local seed coverage in this repo:
 - `dispatcher@xypes.local` -> `DISPATCHER`
 - `supervisor@xypes.local` -> `RESPONDER`
 - `analyst@xypes.local` -> `CITIZEN_REPORTER`
-- No seeded `AUDITOR` account is currently documented.
+- `auditor@xypes.local` -> `AUDITOR`
 
 ## 5. Frontend Quality Gates
 Run before executing manual role tests:

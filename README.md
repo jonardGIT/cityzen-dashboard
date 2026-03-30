@@ -135,10 +135,7 @@ with URL query parameters.
 - `dispatcher@xypes.local / Password123!` (`DISPATCHER`)
 - `supervisor@xypes.local / Password123!` (`RESPONDER`)
 - `analyst@xypes.local / Password123!` (`CITIZEN_REPORTER`)
-
-Current local seed gap:
-
-- No dedicated `AUDITOR` user is documented in this repo yet, so live Auditor-only checks require either backend seed updates or a manually created account.
+- `auditor@xypes.local / Password123!` (`AUDITOR`)
 
 ## CORS Reminder
 

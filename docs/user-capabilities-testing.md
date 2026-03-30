@@ -13,9 +13,7 @@ Before testing user capabilities, complete environment setup in:
 - DISPATCHER: dispatcher@xypes.local / Password123!
 - RESPONDER: supervisor@xypes.local / Password123!
 - CITIZEN_REPORTER: analyst@xypes.local / Password123!
-
-Current local seed gap:
-- No dedicated AUDITOR account is documented or seeded in this repo. Auditor-only dashboard behavior is implemented, but live validation requires a backend seed or a manually created Auditor user.
+- AUDITOR: auditor@xypes.local / Password123!
 
 ## Best-Fit Role Assignment (Who Should Hold Each Role)
 - SYSTEM_ADMIN: Platform owner, system architect, or lead DevOps engineer responsible for global configuration, emergency access, and account governance.
@@ -63,7 +61,7 @@ Legend:
 | Statuses create/update/delete | Y | Y | N | N | N | N | N |
 | Categories create/update/delete | Y | Y | N | N | N | N | N |
 | Severities create/update/delete | Y | Y | N | N | N | N | N |
-| Incidents list/get | Y | Y | Y | Y | Y | R | N |
+| Incidents list/get | Y | Y | Y | Y | Y | R | Y |
 | Incidents create/update/delete | Y | Y | Y | Y | Y | N | N |
 | Incidents report (`/incidents/report`) | N | N | N | N | N | Y | N |
 | Assignments list/get | Y | Y | Y | Y | Y | N | N |
@@ -83,11 +81,13 @@ Verified directly against `http://localhost:3000/api/v1` with `x-api-key: local-
 | dispatcher@xypes.local | DISPATCHER | 200 | 403 | 200 | 403 | 403 | 403 | 403 |
 | supervisor@xypes.local | RESPONDER | 200 | 403 | 200 | 403 | 403 | 403 | 403 |
 | analyst@xypes.local | CITIZEN_REPORTER | 200 | 403 | 422 | 400 | 201 | 403 | 403 |
+| auditor@xypes.local | AUDITOR | 200 | 403 | 200 | 403 | 403 | 200 | 403 |
 
 Notes from live validation:
 - The backend already emits the new role names in login and `/auth/me` payloads.
 - `DEPARTMENT_MANAGER` currently receives `canDeleteUser: false` from `/users/capabilities`, so the frontend must honor capability flags in addition to role checks.
 - `CITIZEN_REPORTER` currently has `scope: "own"` and a successful `citizens/link-me` flow.
+- `AUDITOR` currently has `permissions: ["incident:read", "audit:export"]`, `scope: "global"`, and backend read access to both `/incidents` and `/audit-logs`.
 - The local frontend proxy at `http://localhost:3001/api/users/capabilities` was not reachable during this smoke test, so proxy behavior still requires a live frontend dev server for manual validation.
 
 ## Users Module Expected Behavior
@@ -111,7 +111,7 @@ Notes from live validation:
 - No Users module access.
 
 ### AUDITOR
-- Audit log UI access only.
+- Audit log UI access and incident read access.
 - No Users module access.
 
 ## Test Checklist Per User

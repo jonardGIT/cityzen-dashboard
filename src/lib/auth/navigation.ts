@@ -36,6 +36,13 @@ const USER_PERMISSION_HINTS = [
   "users_capabilities",
 ];
 
+const INCIDENT_PERMISSION_HINTS = [
+  "incident_read",
+  "incident_assign",
+  "incident_create",
+  "incident_update",
+];
+
 function permissionsAllow(
   capabilities: UserCapabilities | null | undefined,
   hints: readonly string[],
@@ -45,6 +52,20 @@ function permissionsAllow(
   }
 
   return permissionListIncludes(capabilities.permissions, hints);
+}
+
+function canAccessIncidents(context: NavigationContext): boolean {
+  const resource = getCrudResource("incidents");
+  const roleAllows = Boolean(
+    resource &&
+      canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+  );
+
+  if (roleAllows) {
+    return true;
+  }
+
+  return permissionsAllow(context.capabilities, INCIDENT_PERMISSION_HINTS);
 }
 
 export function canAccessAuditLogs(context: NavigationContext): boolean {
@@ -100,13 +121,7 @@ export function getNavigationItems(context: NavigationContext) {
       href: "/incidents",
       selfServiceHref: "/dashboard/incidents",
       resource: "incidents",
-      visible: () => {
-        const resource = getCrudResource("incidents");
-        return Boolean(
-          resource &&
-            canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
-        );
-      },
+      visible: () => canAccessIncidents(context),
     },
     {
       key: "/assignments",
