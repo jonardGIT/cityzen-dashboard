@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { isCitizenSelfServiceUser } from "@/lib/auth/roles";
 import type { ApiErrorPayload } from "@/types/api";
 import type { LoginReason } from "@/types/auth";
 
@@ -64,7 +65,11 @@ function LoginPageContent() {
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace(
+        isCitizenSelfServiceUser(result.auth?.user.role)
+          ? "/dashboard/incidents"
+          : "/dashboard",
+      );
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorPayload>;
       setErrorMessage(

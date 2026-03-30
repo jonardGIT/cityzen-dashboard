@@ -125,7 +125,7 @@ describe("auth api clients", () => {
           id: "user-1",
           name: "Admin User",
           email: "admin@example.com",
-          role: "ADMIN",
+          role: "DEPARTMENT_MANAGER",
           mfaEnabled: true,
         },
       },

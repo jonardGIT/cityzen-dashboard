@@ -1,31 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getMock, requestUseMock, responseUseMock, getAccessTokenMock } =
+const { getMock } =
   vi.hoisted(() => ({
     getMock: vi.fn(),
-    requestUseMock: vi.fn(),
-    responseUseMock: vi.fn(),
-    getAccessTokenMock: vi.fn(),
   }));
 
-vi.mock("axios", () => ({
-  default: {
-    create: vi.fn(() => ({
-      get: getMock,
-      interceptors: {
-        request: { use: requestUseMock },
-        response: { use: responseUseMock },
-      },
-    })),
-  },
-  AxiosError: class AxiosError extends Error {},
-}));
-
-vi.mock("@/lib/auth/token-storage", () => ({
-  getAccessToken: getAccessTokenMock,
-  getRefreshToken: vi.fn(),
-  storeAuthResponse: vi.fn(),
-  clearAuthStorage: vi.fn(),
+vi.mock("@/lib/api/clients", () => ({
+  createAuthenticatedClient: vi.fn(() => ({
+    get: getMock,
+  })),
 }));
 
 import { fetchAuditLogById, fetchAuditLogs } from "@/features/audit-logs/api";
@@ -33,7 +16,6 @@ import { fetchAuditLogById, fetchAuditLogs } from "@/features/audit-logs/api";
 describe("audit log api client", () => {
   beforeEach(() => {
     getMock.mockReset();
-    getAccessTokenMock.mockReset();
   });
 
   it("requests paginated audit logs with the shared list-query contract", async () => {

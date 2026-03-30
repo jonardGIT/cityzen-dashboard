@@ -24,18 +24,18 @@ describe("dynamic crud config", () => {
     }
   });
 
-  it("limits citizen reads and create to admin roles", () => {
+  it("limits citizen reads and create to management roles", () => {
     expect(getCrudEndpoint("citizens", "list")?.allowedRoles).toEqual([
-      Role.SUPER_ADMIN,
-      Role.ADMIN,
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
     ]);
     expect(getCrudEndpoint("citizens", "get")?.allowedRoles).toEqual([
-      Role.SUPER_ADMIN,
-      Role.ADMIN,
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
     ]);
     expect(getCrudEndpoint("citizens", "create")?.allowedRoles).toEqual([
-      Role.SUPER_ADMIN,
-      Role.ADMIN,
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
     ]);
   });
 });

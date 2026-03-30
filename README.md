@@ -55,20 +55,35 @@ NEXT_PUBLIC_API_KEY=local-dev-key
 - Login shows explicit re-authentication reasons for sign-out, expired or revoked sessions, MFA changes, and other server-driven invalidations when the API provides them
 - The profile page exposes active-session management and MFA enrollment for permitted roles
 - 403 is rendered as forbidden state/page
+- `GET /users/capabilities` is fetched for any authenticated session and drives navigation, self-service routing, and user-management affordances
+- Protected `/api/v1/*` requests require both Bearer token and `x-api-key` unless the backend marks the route public
+- A `401` indicates missing or invalid authentication or API-key forwarding, while `403` indicates an authenticated role mismatch
 
 ## Roles
 
-- `SUPER_ADMIN`
-- `ADMIN`
+- `SYSTEM_ADMIN`
+- `DEPARTMENT_MANAGER`
+- `SUPERVISOR`
 - `DISPATCHER`
 - `RESPONDER`
-- `VIEWER`
+- `CITIZEN_REPORTER`
+- `AUDITOR`
+
+Legacy cached frontend role labels are normalized automatically:
+
+- `SUPER_ADMIN` -> `SYSTEM_ADMIN`
+- `ADMIN` -> `DEPARTMENT_MANAGER`
+- `VIEWER` -> `CITIZEN_REPORTER`
 
 ## Permission Matrix
 
-- Create incident: `SUPER_ADMIN`, `ADMIN`, `DISPATCHER`, `RESPONDER`
-- Create assignment: `SUPER_ADMIN`, `ADMIN`, `DISPATCHER`
-- Create/manage users: `SUPER_ADMIN`, `ADMIN`
+- Create incident: `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`, `RESPONDER`
+- Create assignment: `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`
+- View audit logs: `SYSTEM_ADMIN`, `AUDITOR`
+- Create/manage users: `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`
+- Citizen self-service flows:
+  - `POST /citizens/link-me`: `CITIZEN_REPORTER`
+  - `POST /incidents/report`: `CITIZEN_REPORTER`
 
 ## Required Routes Implemented
 
@@ -115,11 +130,15 @@ with URL query parameters.
 
 ## Seeded QA Accounts
 
-- `admin@xypes.local / Password123!` (`SUPER_ADMIN`)
-- `ops.lead@xypes.local / Password123!` (`ADMIN`)
+- `admin@xypes.local / Password123!` (`SYSTEM_ADMIN`)
+- `ops.lead@xypes.local / Password123!` (`DEPARTMENT_MANAGER`)
 - `dispatcher@xypes.local / Password123!` (`DISPATCHER`)
 - `supervisor@xypes.local / Password123!` (`RESPONDER`)
-- `analyst@xypes.local / Password123!` (`VIEWER`)
+- `analyst@xypes.local / Password123!` (`CITIZEN_REPORTER`)
+
+Current local seed gap:
+
+- No dedicated `AUDITOR` user is documented in this repo yet, so live Auditor-only checks require either backend seed updates or a manually created account.
 
 ## CORS Reminder
 

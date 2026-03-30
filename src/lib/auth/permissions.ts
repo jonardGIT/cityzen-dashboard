@@ -1,40 +1,46 @@
 import { Role } from "@/types/auth";
 
 export const CAN_CREATE_INCIDENT: Role[] = [
-  Role.SUPER_ADMIN,
-  Role.ADMIN,
+  Role.SYSTEM_ADMIN,
+  Role.DEPARTMENT_MANAGER,
+  Role.SUPERVISOR,
   Role.DISPATCHER,
   Role.RESPONDER,
 ];
 
-export const CAN_VIEW_CITIZENS: Role[] = [Role.SUPER_ADMIN, Role.ADMIN];
+export const CAN_VIEW_CITIZENS: Role[] = [
+  Role.SYSTEM_ADMIN,
+  Role.DEPARTMENT_MANAGER,
+];
 
 export const CAN_CREATE_ASSIGNMENT: Role[] = [
-  Role.SUPER_ADMIN,
-  Role.ADMIN,
+  Role.SYSTEM_ADMIN,
+  Role.DEPARTMENT_MANAGER,
+  Role.SUPERVISOR,
   Role.DISPATCHER,
 ];
 
-export const CAN_VIEW_AUDIT_LOGS: Role[] = [Role.SUPER_ADMIN, Role.ADMIN];
+export const CAN_VIEW_AUDIT_LOGS: Role[] = [Role.SYSTEM_ADMIN, Role.AUDITOR];
 
-export const CAN_MANAGE_USERS: Role[] = [Role.SUPER_ADMIN, Role.ADMIN];
-
-export const CAN_MANAGE_MFA: Role[] = [
-  Role.SUPER_ADMIN,
-  Role.ADMIN,
-  Role.DISPATCHER,
+export const CAN_MANAGE_USERS: Role[] = [
+  Role.SYSTEM_ADMIN,
+  Role.DEPARTMENT_MANAGER,
 ];
+
+export const CAN_MANAGE_MFA: Role[] = Object.values(Role);
 
 /**
  * Role hierarchy levels. Higher numbers indicate higher privilege.
  * Users can only create, edit, or delete users with strictly lower privilege levels.
  */
 export const ROLE_HIERARCHY: Record<Role, number> = {
-  [Role.SUPER_ADMIN]: 5,
-  [Role.ADMIN]: 4,
-  [Role.DISPATCHER]: 3,
+  [Role.SYSTEM_ADMIN]: 7,
+  [Role.DEPARTMENT_MANAGER]: 6,
+  [Role.SUPERVISOR]: 5,
+  [Role.DISPATCHER]: 4,
+  [Role.AUDITOR]: 3,
   [Role.RESPONDER]: 2,
-  [Role.VIEWER]: 1,
+  [Role.CITIZEN_REPORTER]: 1,
 };
 
 /**

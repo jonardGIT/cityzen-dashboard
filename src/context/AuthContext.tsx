@@ -8,8 +8,10 @@ import {
   useMemo,
   useState,
 } from "react";
+import { AxiosError } from "axios";
 import { useRouter } from "next/navigation";
 import { registerUnauthorizedHandler } from "@/lib/api/clients";
+import { normalizeCapabilities, normalizeRole } from "@/lib/auth/roles";
 import {
   clearAuthStorage,
   getAccessToken,
@@ -18,11 +20,18 @@ import {
   storeAuthResponse,
 } from "@/lib/auth/token-storage";
 import {
+  fetchCurrentUserCapabilities,
   fetchCurrentUser,
   loginWithPassword,
   logoutCurrentSession,
 } from "@/features/auth/api";
-import type { AuthUser, LoginReason, LoginResult, Role } from "@/types/auth";
+import type {
+  AuthUser,
+  LoginReason,
+  LoginResult,
+  Role,
+  UserCapabilities,
+} from "@/types/auth";
 
 interface LogoutOptions {
   revokeRemote?: boolean;
@@ -32,6 +41,7 @@ interface LogoutOptions {
 
 interface AuthContextValue {
   user: AuthUser | null;
+  capabilities: UserCapabilities | null;
   isAuthenticated: boolean;
   isRestoring: boolean;
   login: (
@@ -50,12 +60,14 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [capabilities, setCapabilities] = useState<UserCapabilities | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
   const router = useRouter();
 
   const clearLocalSession = useCallback(() => {
     clearAuthStorage();
     setUser(null);
+    setCapabilities(null);
   }, []);
 
   const logout = useCallback(
@@ -79,8 +91,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     const resolvedUser = await fetchCurrentUser();
+    const resolvedCapabilities = await fetchCurrentUserCapabilities().catch(
+      (error: unknown) => {
+        const axiosError = error as AxiosError;
+
+        if (axiosError.response?.status === 401) {
+          throw error;
+        }
+
+        return normalizeCapabilities(undefined, resolvedUser.role);
+      },
+    );
+
     setStoredUser(resolvedUser);
     setUser(resolvedUser);
+    setCapabilities(resolvedCapabilities);
   }, []);
 
   const restoreSession = useCallback(async () => {
@@ -94,7 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (storedUser) {
-      setUser(storedUser);
+      setUser({
+        ...storedUser,
+        role: normalizeRole(storedUser.role) ?? storedUser.role,
+      });
     }
 
     try {
@@ -148,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      capabilities,
       isAuthenticated: Boolean(user),
       isRestoring,
       login,
@@ -159,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       user,
+      capabilities,
       isRestoring,
       login,
       logout,

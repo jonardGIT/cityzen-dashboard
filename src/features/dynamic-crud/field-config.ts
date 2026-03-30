@@ -2,6 +2,8 @@ import type {
   CrudFieldConfig,
   CrudOperation,
 } from "@/features/dynamic-crud/types";
+import { getRoleLabel } from "@/lib/auth/roles";
+import { Role } from "@/types/auth";
 
 const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
   users: [
@@ -147,13 +149,10 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
   ],
 };
 
-export const ROLE_OPTIONS = [
-  { value: "SUPER_ADMIN", label: "SUPER_ADMIN" },
-  { value: "ADMIN", label: "ADMIN" },
-  { value: "DISPATCHER", label: "DISPATCHER" },
-  { value: "RESPONDER", label: "RESPONDER" },
-  { value: "VIEWER", label: "VIEWER" },
-];
+export const ROLE_OPTIONS = Object.values(Role).map((role) => ({
+  value: role,
+  label: getRoleLabel(role),
+}));
 
 const CREATE_REQUIRED_FIELDS: Partial<Record<string, string[]>> = {
   users: ["name", "email", "password"],

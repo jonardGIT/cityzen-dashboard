@@ -37,7 +37,13 @@ export function canShowCrudNavigationItem(
   role: Role | undefined,
   isAuthenticated: boolean,
 ): boolean {
-  if (!hasPermission(resource.endpoints.list, role, isAuthenticated)) {
+  const canList = hasPermission(resource.endpoints.list, role, isAuthenticated);
+  const canUseSelfServiceAction = [
+    resource.endpoints.linkMe,
+    resource.endpoints.report,
+  ].some((endpoint) => hasPermission(endpoint, role, isAuthenticated));
+
+  if (!canList && !canUseSelfServiceAction) {
     return false;
   }
 

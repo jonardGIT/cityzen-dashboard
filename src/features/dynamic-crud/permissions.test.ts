@@ -4,7 +4,7 @@ import { canShowCrudNavigationItem } from "@/features/dynamic-crud/permissions";
 import { Role } from "@/types/auth";
 
 describe("canShowCrudNavigationItem", () => {
-  it("hides admin-only reference tables for non-admin roles", () => {
+  it("hides management-only reference tables for operational roles", () => {
     const agencies = getCrudResource("agencies");
     const statuses = getCrudResource("statuses");
 
@@ -32,21 +32,26 @@ describe("canShowCrudNavigationItem", () => {
     ).toBe(true);
   });
 
-  it("keeps account-linked resources visible for viewer users", () => {
+  it("keeps self-service resources visible for citizen reporters", () => {
     const incidents = getCrudResource("incidents");
     const assignments = getCrudResource("assignments");
+    const citizens = getCrudResource("citizens");
 
     expect(incidents).toBeDefined();
     expect(assignments).toBeDefined();
+    expect(citizens).toBeDefined();
     expect(
-      canShowCrudNavigationItem(incidents!, Role.VIEWER, true),
+      canShowCrudNavigationItem(incidents!, Role.CITIZEN_REPORTER, true),
     ).toBe(true);
     expect(
-      canShowCrudNavigationItem(assignments!, Role.VIEWER, true),
+      canShowCrudNavigationItem(assignments!, Role.CITIZEN_REPORTER, true),
     ).toBe(false);
+    expect(
+      canShowCrudNavigationItem(citizens!, Role.CITIZEN_REPORTER, true),
+    ).toBe(true);
   });
 
-  it("hides citizens navigation for non-admin roles", () => {
+  it("hides citizens management navigation for operational roles", () => {
     const citizens = getCrudResource("citizens");
 
     expect(citizens).toBeDefined();
@@ -57,7 +62,7 @@ describe("canShowCrudNavigationItem", () => {
       canShowCrudNavigationItem(citizens!, Role.RESPONDER, true),
     ).toBe(false);
     expect(
-      canShowCrudNavigationItem(citizens!, Role.VIEWER, true),
+      canShowCrudNavigationItem(citizens!, Role.RESPONDER, true),
     ).toBe(false);
   });
 });

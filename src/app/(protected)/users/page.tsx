@@ -15,7 +15,9 @@ import {
   useUsersQuery,
 } from "@/features/users/api";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
-import { CAN_MANAGE_USERS, canManageRole, getAssignableRoles } from "@/lib/auth/permissions";
+import { canAccessUserManagement } from "@/lib/auth/navigation";
+import { canManageRole, getAssignableRoles } from "@/lib/auth/permissions";
+import { getRoleLabel } from "@/lib/auth/roles";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import type { ApiErrorPayload, User } from "@/types/api";
 import { Role } from "@/types/auth";
@@ -41,11 +43,15 @@ interface EditUserFormValues {
 
 export default function UsersPage() {
   const { message } = App.useApp();
-  const { hasRole, user } = useAuth();
-  const canManage = hasRole(...CAN_MANAGE_USERS);
+  const { capabilities, isAuthenticated, user } = useAuth();
+  const canManage = canAccessUserManagement({
+    role: user?.role,
+    capabilities,
+    isAuthenticated,
+  });
   const listQuery = useListQueryParams();
   const usersQuery = useUsersQuery(listQuery, canManage);
-  const capabilitiesQuery = useUsersCapabilitiesQuery(canManage);
+  const capabilitiesQuery = useUsersCapabilitiesQuery(isAuthenticated);
   const createMutation = useCreateUserMutation();
   const updateMutation = useUpdateUserMutation();
   const deleteMutation = useDeleteUserMutation();
@@ -66,7 +72,9 @@ export default function UsersPage() {
   const rows = usersQuery.data?.data ?? [];
   const paginationMeta = usersQuery.data?.pagination;
   const isEditingSelf = Boolean(editingUser && String(editingUser.id) === String(user?.id));
-  const roleOptions = new Map(Object.values(Role).map((role) => [role, role]));
+  const roleOptions = new Map(
+    Object.values(Role).map((role) => [role, getRoleLabel(role)]),
+  );
 
   const columns: Array<SharedTableColumn<User>> = [
     { key: "email", title: "Email", filterKind: "text" },
@@ -229,7 +237,7 @@ export default function UsersPage() {
       <Result
         status="403"
         title="Forbidden"
-        subTitle="Only SUPER_ADMIN and ADMIN can manage users."
+        subTitle="Only System Admin and Department Manager accounts can manage users."
       />
     );
   }
@@ -239,6 +247,28 @@ export default function UsersPage() {
   }
 
   if (usersQuery.error) {
+    const axiosError = usersQuery.error as AxiosError<ApiErrorPayload>;
+
+    if (axiosError.response?.status === 401) {
+      return (
+        <Result
+          status="warning"
+          title="Authentication Required"
+          subTitle="Authentication or API key forwarding failed for the user-management request. Sign in again and verify the dashboard proxy configuration."
+        />
+      );
+    }
+
+    if (axiosError.response?.status === 403) {
+      return (
+        <Result
+          status="403"
+          title="Forbidden"
+          subTitle="Your authenticated account does not have access to the user-management scope."
+        />
+      );
+    }
+
     return <ErrorState message={String(usersQuery.error)} />;
   }
 
@@ -295,6 +325,9 @@ export default function UsersPage() {
                 description={[
                   !capabilitiesQuery.data.canUpdateUser ? "Edit is not available." : null,
                   !capabilitiesQuery.data.canDeleteUser ? "Delete is not available." : null,
+                  capabilitiesQuery.data.scope.length > 0
+                    ? `Current scope: ${capabilitiesQuery.data.scope.join(", ")}.`
+                    : null,
                 ]
                   .filter(Boolean)
                   .join(" ")}
@@ -354,7 +387,7 @@ export default function UsersPage() {
             <Input.Password />
           </Form.Item>
           <Form.Item name="role" label="Role" rules={[{ required: true }]}>
-            <Select options={assignableRoles.map((role) => ({ value: role, label: role }))} />
+            <Select options={assignableRoles.map((role) => ({ value: role, label: getRoleLabel(role) }))} />
           </Form.Item>
           <Form.Item name="firstName" label="First Name">
             <Input />
@@ -382,7 +415,7 @@ export default function UsersPage() {
           <Form.Item name="role" label="Role" rules={[{ required: true }]}>
             <Select
               disabled={isEditingSelf}
-              options={assignableRoles.map((role) => ({ value: role, label: role }))}
+              options={assignableRoles.map((role) => ({ value: role, label: getRoleLabel(role) }))}
             />
           </Form.Item>
           <Form.Item name="firstName" label="First Name">

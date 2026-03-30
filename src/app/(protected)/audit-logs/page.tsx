@@ -25,7 +25,8 @@ import {
 import { useAuditLogQuery, useAuditLogsQuery } from "@/features/audit-logs/api";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import type { ListFilter } from "@/lib/api/list-query-params";
-import { CAN_VIEW_AUDIT_LOGS } from "@/lib/auth/permissions";
+import { useAuth } from "@/context/AuthContext";
+import { canAccessAuditLogs } from "@/lib/auth/navigation";
 import {
   formatDisplayDateTime,
   formatDisplayRelativeTime,
@@ -108,6 +109,7 @@ function getBetweenFilterValue(
 }
 
 export default function AuditLogsPage() {
+  const { user, capabilities, isAuthenticated } = useAuth();
   const listQuery = useListQueryParams({
     defaultPageSize: 20,
     defaultSortBy: "timestamp",
@@ -119,6 +121,11 @@ export default function AuditLogsPage() {
   );
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const detailQuery = useAuditLogQuery(selectedAuditLogId, isDetailOpen);
+  const hasAuditAccess = canAccessAuditLogs({
+    role: user?.role,
+    capabilities,
+    isAuthenticated,
+  });
 
   const rows = auditLogsQuery.data?.data ?? [];
   const paginationMeta = auditLogsQuery.data?.pagination;
@@ -234,21 +241,33 @@ export default function AuditLogsPage() {
 
   if (auditLogsQuery.isLoading && !auditLogsQuery.data) {
     return (
-      <AuthGate allowedRoles={CAN_VIEW_AUDIT_LOGS}>
+      <AuthGate>
         <LoadingState />
       </AuthGate>
     );
   }
 
+  if (!hasAuditAccess) {
+    return (
+      <AuthGate>
+        <Result
+          status="403"
+          title="Forbidden"
+          subTitle="Only System Admin and Auditor accounts can access audit logs."
+        />
+      </AuthGate>
+    );
+  }
+
   return (
-    <AuthGate allowedRoles={CAN_VIEW_AUDIT_LOGS}>
+    <AuthGate>
       <Space direction="vertical" size={16} style={{ width: "100%" }}>
         <Space direction="vertical" size={4}>
           <Title level={3} style={{ margin: 0 }}>
             Audit Logs
           </Title>
           <Text type="secondary">
-            Server-backed audit history for admin and super admin users.
+            Server-backed audit history for System Admin and Auditor users.
           </Text>
         </Space>
 
@@ -267,7 +286,9 @@ export default function AuditLogsPage() {
             description={
               <Space direction="vertical" size={8}>
                 <Text>
-                  {getErrorMessage(auditLogsQuery.error, "Request failed.")}
+                  {((auditLogsQuery.error as AxiosError<ApiErrorPayload>).response?.status === 401)
+                    ? "Authentication or API configuration is missing. Confirm your session is active and that the dashboard is forwarding the x-api-key with this request."
+                    : getErrorMessage(auditLogsQuery.error, "Request failed.")}
                 </Text>
                 <Button onClick={() => void auditLogsQuery.refetch()}>
                   Retry

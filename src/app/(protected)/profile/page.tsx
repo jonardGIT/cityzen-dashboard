@@ -26,6 +26,7 @@ import {
   useRevokeAuthSessionMutation,
 } from "@/features/auth/api";
 import { CAN_MANAGE_MFA } from "@/lib/auth/permissions";
+import { getRoleLabel } from "@/lib/auth/roles";
 import type { ApiErrorPayload } from "@/types/api";
 import type {
   AuthSessionSummary,
@@ -208,7 +209,7 @@ export default function ProfilePage() {
             {user?.email ?? "N/A"}
           </Descriptions.Item>
           <Descriptions.Item label="Role">
-            {user?.role ?? "N/A"}
+            {user?.role ? getRoleLabel(user.role) : "N/A"}
           </Descriptions.Item>
           <Descriptions.Item label="Name">
             {user?.name ?? "N/A"}

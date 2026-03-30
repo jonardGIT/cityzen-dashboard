@@ -14,7 +14,7 @@
       "path": "/citizens",
       "fullPath": "/api/v1/citizens",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "citizens",
@@ -24,7 +24,7 @@
       "path": "/citizens/{id}",
       "fullPath": "/api/v1/citizens/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "citizens",
@@ -34,7 +34,7 @@
       "path": "/citizens",
       "fullPath": "/api/v1/citizens",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "citizens",
@@ -44,8 +44,8 @@
       "path": "/citizens/link-me",
       "fullPath": "/api/v1/citizens/link-me",
       "authRequired": true,
-      "allowedRoles": ["VIEWER"],
-      "notes": "Creates or updates the authenticated viewer's linked citizen profile."
+      "allowedRoles": ["CITIZEN_REPORTER"],
+      "notes": "Creates or updates the authenticated citizen reporter's linked citizen profile."
     },
     {
       "resource": "citizens",
@@ -55,7 +55,7 @@
       "path": "/citizens/{id}",
       "fullPath": "/api/v1/citizens/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "citizens",
@@ -65,7 +65,7 @@
       "path": "/citizens/{id}",
       "fullPath": "/api/v1/citizens/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
 
     {
@@ -96,7 +96,7 @@
       "path": "/agencies",
       "fullPath": "/api/v1/agencies",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "agencies",
@@ -106,7 +106,7 @@
       "path": "/agencies/{id}",
       "fullPath": "/api/v1/agencies/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "agencies",
@@ -116,7 +116,7 @@
       "path": "/agencies/{id}",
       "fullPath": "/api/v1/agencies/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "responders",
@@ -146,7 +146,7 @@
       "path": "/responders",
       "fullPath": "/api/v1/responders",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "responders",
@@ -156,7 +156,7 @@
       "path": "/responders/{id}",
       "fullPath": "/api/v1/responders/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "responders",
@@ -166,7 +166,7 @@
       "path": "/responders/{id}",
       "fullPath": "/api/v1/responders/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
 
     {
@@ -197,7 +197,7 @@
       "path": "/statuses",
       "fullPath": "/api/v1/statuses",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "statuses",
@@ -207,7 +207,7 @@
       "path": "/statuses/{id}",
       "fullPath": "/api/v1/statuses/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "statuses",
@@ -217,7 +217,7 @@
       "path": "/statuses/{id}",
       "fullPath": "/api/v1/statuses/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
 
     {
@@ -248,7 +248,7 @@
       "path": "/categories",
       "fullPath": "/api/v1/categories",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "categories",
@@ -258,7 +258,7 @@
       "path": "/categories/{id}",
       "fullPath": "/api/v1/categories/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "categories",
@@ -268,7 +268,7 @@
       "path": "/categories/{id}",
       "fullPath": "/api/v1/categories/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
 
     {
@@ -299,7 +299,7 @@
       "path": "/severities",
       "fullPath": "/api/v1/severities",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "severities",
@@ -309,7 +309,7 @@
       "path": "/severities/{id}",
       "fullPath": "/api/v1/severities/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "severities",
@@ -319,7 +319,7 @@
       "path": "/severities/{id}",
       "fullPath": "/api/v1/severities/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
 
     {
@@ -331,13 +331,14 @@
       "fullPath": "/api/v1/incidents",
       "authRequired": true,
       "allowedRoles": [
-        "SUPER_ADMIN",
-        "ADMIN",
+        "SYSTEM_ADMIN",
+        "DEPARTMENT_MANAGER",
+        "SUPERVISOR",
         "DISPATCHER",
         "RESPONDER",
-        "VIEWER"
+        "CITIZEN_REPORTER"
       ],
-      "notes": "VIEWER users only receive their own incidents."
+      "notes": "Citizen Reporter users only receive their own incidents."
     },
     {
       "resource": "incidents",
@@ -348,13 +349,14 @@
       "fullPath": "/api/v1/incidents/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SUPER_ADMIN",
-        "ADMIN",
+        "SYSTEM_ADMIN",
+        "DEPARTMENT_MANAGER",
+        "SUPERVISOR",
         "DISPATCHER",
         "RESPONDER",
-        "VIEWER"
+        "CITIZEN_REPORTER"
       ],
-      "notes": "VIEWER users can only access their own incident IDs."
+      "notes": "Citizen Reporter users can only access their own incident IDs."
     },
     {
       "resource": "incidents",
@@ -364,7 +366,7 @@
       "path": "/incidents",
       "fullPath": "/api/v1/incidents",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN", "DISPATCHER", "RESPONDER"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER", "SUPERVISOR", "DISPATCHER", "RESPONDER"]
     },
     {
       "resource": "incidents",
@@ -374,7 +376,7 @@
       "path": "/incidents/report",
       "fullPath": "/api/v1/incidents/report",
       "authRequired": true,
-      "allowedRoles": ["VIEWER"],
+      "allowedRoles": ["CITIZEN_REPORTER"],
       "notes": "Citizen self-report endpoint. citizenId is inferred from authenticated user email."
     },
     {
@@ -385,7 +387,7 @@
       "path": "/incidents/{id}",
       "fullPath": "/api/v1/incidents/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN", "DISPATCHER", "RESPONDER"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER", "SUPERVISOR", "DISPATCHER", "RESPONDER"]
     },
     {
       "resource": "incidents",
@@ -395,7 +397,7 @@
       "path": "/incidents/{id}",
       "fullPath": "/api/v1/incidents/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN", "DISPATCHER", "RESPONDER"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER", "SUPERVISOR", "DISPATCHER", "RESPONDER"]
     },
 
     {
@@ -426,7 +428,7 @@
       "path": "/assignments",
       "fullPath": "/api/v1/assignments",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN", "DISPATCHER"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER", "SUPERVISOR", "DISPATCHER"]
     },
     {
       "resource": "assignments",
@@ -436,7 +438,7 @@
       "path": "/assignments/{id}",
       "fullPath": "/api/v1/assignments/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN", "DISPATCHER"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER", "SUPERVISOR", "DISPATCHER"]
     },
     {
       "resource": "assignments",
@@ -446,7 +448,7 @@
       "path": "/assignments/{id}",
       "fullPath": "/api/v1/assignments/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN", "DISPATCHER"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER", "SUPERVISOR", "DISPATCHER"]
     },
 
     {
@@ -457,7 +459,7 @@
       "path": "/users",
       "fullPath": "/api/v1/users",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "users",
@@ -467,7 +469,7 @@
       "path": "/users/{id}",
       "fullPath": "/api/v1/users/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "users",
@@ -477,7 +479,7 @@
       "path": "/users",
       "fullPath": "/api/v1/users",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     },
     {
       "resource": "users",
@@ -487,7 +489,7 @@
       "path": "/users/{id}",
       "fullPath": "/api/v1/users/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"],
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"],
       "notes": "Self-update is allowed by backend logic for non-role fields."
     },
     {
@@ -498,7 +500,7 @@
       "path": "/users/{id}",
       "fullPath": "/api/v1/users/{id}",
       "authRequired": true,
-      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
+      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
     }
   ]
 }
