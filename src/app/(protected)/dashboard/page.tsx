@@ -35,14 +35,18 @@ import {
   type ListFilter,
   type ListQueryState,
 } from "@/lib/api/list-query-params";
+import {
+  formatDisplayDateTime as formatDateTime,
+  formatDisplayRelativeTime as formatRelativeTime,
+} from "@/lib/format/date-time";
+import {
+  buildIncidentAddressLabel,
+  getAssignmentDisplayDate,
+  getResponderDisplayName,
+} from "@/lib/incidents/display";
 import type { Assignment, Incident, Responder, Severity } from "@/types/api";
 
 const { Text, Title } = Typography;
-
-const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const STALE_INCIDENT_HOURS = 4;
@@ -89,38 +93,6 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function formatDateTime(value: unknown): string {
-  const parsed = parseDate(value);
-  if (!parsed) {
-    return "N/A";
-  }
-
-  return DATE_TIME_FORMATTER.format(parsed);
-}
-
-function formatRelativeTime(value: unknown): string | null {
-  const parsed = parseDate(value);
-  if (!parsed) {
-    return null;
-  }
-
-  const diffMs = parsed.getTime() - Date.now();
-  const minuteMs = 60 * 1000;
-  const hourMs = 60 * minuteMs;
-  const dayMs = 24 * hourMs;
-  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  if (Math.abs(diffMs) < hourMs) {
-    return formatter.format(Math.round(diffMs / minuteMs), "minute");
-  }
-
-  if (Math.abs(diffMs) < dayMs) {
-    return formatter.format(Math.round(diffMs / hourMs), "hour");
-  }
-
-  return formatter.format(Math.round(diffMs / dayMs), "day");
-}
-
 function formatAgeHours(value: unknown, currentTime: number): string {
   const parsed = parseDate(value);
   if (!parsed) {
@@ -144,21 +116,6 @@ function formatAgeHours(value: unknown, currentTime: number): string {
   return `${diffDays}d ${diffHours % 24}h`;
 }
 
-function buildAddressLabel(incident: Incident): string {
-  const parts = [
-    incident.addressLine1,
-    incident.addressLine2,
-    incident.barangay,
-    incident.cityName,
-    incident.provinceName,
-  ].filter(
-    (value): value is string =>
-      typeof value === "string" && value.trim().length > 0,
-  );
-
-  return parts.length > 0 ? parts.join(", ") : "N/A";
-}
-
 function getIncidentDate(incident: Incident): string | undefined {
   return incident.dateReported ?? incident.createdAt;
 }
@@ -168,28 +125,6 @@ function getIncidentStatusName(
   statusLabels: Map<string, string>,
 ): string {
   return statusLabels.get(String(incident.statusId ?? "")) ?? "Unknown";
-}
-
-function getResponderName(responder: Responder | undefined): string {
-  if (!responder) {
-    return "Unassigned";
-  }
-
-  const fullName = [responder.firstName, responder.lastName]
-    .filter(
-      (value): value is string =>
-        typeof value === "string" && value.trim().length > 0,
-    )
-    .join(" ")
-    .trim();
-
-  return fullName || responder.name || responder.email || String(responder.id);
-}
-
-function getAssignmentDate(assignment: Assignment): string | undefined {
-  return (
-    assignment.assignedDate ?? assignment.createdAt ?? assignment.updatedAt
-  );
 }
 
 function getSeverityColor(value: string | undefined): string {
@@ -323,9 +258,9 @@ export default function DashboardPage() {
 
     const existing = latestAssignmentByIncident.get(incidentId);
     const existingDate =
-      parseDate(getAssignmentDate(existing ?? ({} as Assignment)))?.getTime() ??
+      parseDate(getAssignmentDisplayDate(existing ?? ({} as Assignment)))?.getTime() ??
       0;
-    const nextDate = parseDate(getAssignmentDate(assignment))?.getTime() ?? 0;
+    const nextDate = parseDate(getAssignmentDisplayDate(assignment))?.getTime() ?? 0;
 
     if (!existing || nextDate >= existingDate) {
       latestAssignmentByIncident.set(incidentId, assignment);
@@ -424,8 +359,8 @@ export default function DashboardPage() {
 
   const recentAssignments = [...assignments]
     .sort((left, right) => {
-      const rightTime = parseDate(getAssignmentDate(right))?.getTime() ?? 0;
-      const leftTime = parseDate(getAssignmentDate(left))?.getTime() ?? 0;
+      const rightTime = parseDate(getAssignmentDisplayDate(right))?.getTime() ?? 0;
+      const leftTime = parseDate(getAssignmentDisplayDate(left))?.getTime() ?? 0;
       return rightTime - leftTime;
     })
     .slice(0, 8);
@@ -569,9 +504,9 @@ export default function DashboardPage() {
           <Text
             type="secondary"
             className={styles.truncateText}
-            ellipsis={{ tooltip: buildAddressLabel(incident) }}
+            ellipsis={{ tooltip: buildIncidentAddressLabel(incident) }}
           >
-            {buildAddressLabel(incident)}
+            {buildIncidentAddressLabel(incident)}
           </Text>
         </div>
       ),
@@ -615,21 +550,21 @@ export default function DashboardPage() {
           <div className={styles.cellStack}>
             <Text
               className={styles.truncateText}
-              ellipsis={{ tooltip: getResponderName(responder) }}
+              ellipsis={{ tooltip: getResponderDisplayName(responder) }}
             >
-              {getResponderName(responder)}
+              {getResponderDisplayName(responder)}
             </Text>
             <Text
               className={`${styles.cellMeta} ${styles.truncateText}`}
               ellipsis={{
                 tooltip:
                   formatRelativeTime(
-                    getAssignmentDate(assignment ?? ({} as Assignment)),
+                    getAssignmentDisplayDate(assignment ?? ({} as Assignment)),
                   ) ?? "No recent assignment",
               }}
             >
               {formatRelativeTime(
-                getAssignmentDate(assignment ?? ({} as Assignment)),
+                getAssignmentDisplayDate(assignment ?? ({} as Assignment)),
               ) ?? "No recent assignment"}
             </Text>
           </div>
@@ -683,9 +618,9 @@ export default function DashboardPage() {
           <Text
             type="secondary"
             className={styles.truncateText}
-            ellipsis={{ tooltip: buildAddressLabel(incident) }}
+            ellipsis={{ tooltip: buildIncidentAddressLabel(incident) }}
           >
-            {buildAddressLabel(incident)}
+            {buildIncidentAddressLabel(incident)}
           </Text>
         </div>
       ),
@@ -760,7 +695,7 @@ export default function DashboardPage() {
       key: "responder",
       width: 180,
       render: (_: unknown, assignment: Assignment) => {
-        const label = getResponderName(
+        const label = getResponderDisplayName(
           assignment.responderId
             ? responderLabels.get(String(assignment.responderId))
             : undefined,
@@ -782,20 +717,20 @@ export default function DashboardPage() {
           <Text
             className={styles.truncateText}
             ellipsis={{
-              tooltip: formatDateTime(getAssignmentDate(assignment)),
+              tooltip: formatDateTime(getAssignmentDisplayDate(assignment)),
             }}
           >
-            {formatDateTime(getAssignmentDate(assignment))}
+            {formatDateTime(getAssignmentDisplayDate(assignment))}
           </Text>
           <Text
             className={`${styles.cellMeta} ${styles.truncateText}`}
             ellipsis={{
               tooltip:
-                formatRelativeTime(getAssignmentDate(assignment)) ??
+                formatRelativeTime(getAssignmentDisplayDate(assignment)) ??
                 "Assignment time unavailable",
             }}
           >
-            {formatRelativeTime(getAssignmentDate(assignment)) ??
+            {formatRelativeTime(getAssignmentDisplayDate(assignment)) ??
               "Assignment time unavailable"}
           </Text>
         </div>
@@ -1092,6 +1027,7 @@ export default function DashboardPage() {
             columns={recentIncidentColumns}
             storageKey="dashboard-recent-incidents-widths"
             showColumnVisibilitySelector
+            stickyEdgeColumnCount={{ left: 1 }}
             locale={{ emptyText: "No incidents available" }}
           />
         </Card>
@@ -1126,6 +1062,7 @@ export default function DashboardPage() {
             columns={urgentQueueColumns}
             storageKey="dashboard-urgent-queue-widths"
             showColumnVisibilitySelector
+            stickyEdgeColumnCount={{ left: 1 }}
             locale={{ emptyText: "All open incidents are assigned" }}
           />
         </Card>
@@ -1158,6 +1095,7 @@ export default function DashboardPage() {
           columns={recentAssignmentsColumns}
           storageKey="dashboard-recent-assignments-widths"
           showColumnVisibilitySelector
+          stickyEdgeColumnCount={{ left: 1 }}
           locale={{ emptyText: "No assignments available" }}
         />
       </Card>

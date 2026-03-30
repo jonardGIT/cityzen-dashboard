@@ -94,6 +94,7 @@ export function SimpleResourcePage<
             dataSource={rows}
             storageKey={`simple-resource-${title.toLowerCase().replace(/\s+/g, "-")}-widths`}
             showColumnVisibilitySelector
+            stickyEdgeColumnCount={{ left: 1 }}
             scroll={{ x: 720 }}
             pagination={{
               current: page,

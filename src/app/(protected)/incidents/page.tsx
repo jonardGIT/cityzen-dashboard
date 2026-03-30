@@ -11,15 +11,21 @@ import {
   Modal,
   Select,
   Space,
+  Statistic,
+  Tag,
   Tooltip,
   Typography,
 } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
-import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
+import {
+  SharedTable,
+  type SharedTableColumn,
+} from "@/components/crud/SharedTable";
 import { useAuth } from "@/context/AuthContext";
 import {
   defaultAssignmentsQueryState,
@@ -42,6 +48,15 @@ import {
   type ListQueryState,
 } from "@/lib/api/list-query-params";
 import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
+import {
+  formatDisplayDateTime,
+  formatDisplayRelativeTime,
+} from "@/lib/format/date-time";
+import {
+  buildIncidentAddressLabel,
+  getStatusColor,
+  joinDisplayParts,
+} from "@/lib/incidents/display";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { reverseGeocodeIncidentAddress } from "@/lib/geo/reverse-geocode";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
@@ -71,26 +86,8 @@ interface IncidentFormValues {
   landmark?: string;
 }
 
-function formatDateTime(value: unknown): string {
-  if (!value) {
-    return "N/A";
-  }
-
-  const parsed = new Date(String(value));
-  if (Number.isNaN(parsed.getTime())) {
-    return "N/A";
-  }
-
-  return parsed.toLocaleString();
-}
-
-function joinLocationParts(parts: Array<string | undefined>): string | null {
-  const filtered = parts.filter(
-    (part): part is string =>
-      typeof part === "string" && part.trim().length > 0,
-  );
-
-  return filtered.length > 0 ? filtered.join(", ") : null;
+function getIncidentAddress(incident: Incident): string {
+  return buildIncidentAddressLabel(incident);
 }
 
 function hasCoordinates(incident: Incident): boolean {
@@ -99,7 +96,7 @@ function hasCoordinates(incident: Incident): boolean {
 
 function hasAddressSnapshot(incident: Incident): boolean {
   return Boolean(
-    joinLocationParts([
+    joinDisplayParts([
       incident.addressLine1,
       incident.addressLine2,
       incident.barangay,
@@ -112,9 +109,21 @@ function hasAddressSnapshot(incident: Incident): boolean {
   );
 }
 
+function getAssignmentTimestamp(assignment: {
+  assignedDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}): number {
+  const value =
+    assignment.assignedDate ?? assignment.createdAt ?? assignment.updatedAt;
+  const parsed = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isNaN(parsed) ? -1 : parsed;
+}
+
 export default function IncidentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
+  const router = useRouter();
   const optionQueryState: ListQueryState = {
     page: 1,
     pageSize: 200,
@@ -155,6 +164,7 @@ export default function IncidentsPage() {
   const incidentsListQuery = useIncidentsQuery(listQuery);
   const rows = incidentsListQuery.data?.data ?? [];
   const pagination = incidentsListQuery.data?.pagination;
+  const totalIncidents = pagination?.total ?? rows.length;
 
   const severityOptions = useMemo(
     () =>
@@ -193,29 +203,137 @@ export default function IncidentsPage() {
     () => new Map(statusOptions.map((item) => [item.value, item.label])),
     [statusOptions],
   );
+  const responderLabels = useMemo(
+    () =>
+      new Map(
+        (respondersQuery.data?.data ?? []).map((item) => [
+          String(item.id),
+          item.name ??
+            (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() ||
+              item.email ||
+              `Responder ${item.id}`),
+        ]),
+      ),
+    [respondersQuery.data],
+  );
+  const latestAssignmentByIncident = useMemo(() => {
+    const map = new Map<string, { responderId?: string; timestamp: number }>();
+
+    for (const assignment of assignmentsQuery.data?.data ?? []) {
+      const incidentId = assignment.incidentId
+        ? String(assignment.incidentId)
+        : null;
+      if (!incidentId) {
+        continue;
+      }
+
+      const existingAssignment = map.get(incidentId);
+      const nextTimestamp = getAssignmentTimestamp(assignment);
+
+      if (
+        !existingAssignment ||
+        nextTimestamp >= existingAssignment.timestamp
+      ) {
+        map.set(incidentId, {
+          responderId: assignment.responderId
+            ? String(assignment.responderId)
+            : undefined,
+          timestamp: nextTimestamp,
+        });
+      }
+    }
+
+    return map;
+  }, [assignmentsQuery.data]);
   const columns: Array<SharedTableColumn<Incident>> = [
-    { key: "description", title: "Description", filterKind: "text" },
-    { key: "citizenId", title: "Citizen", filterKind: "select", selectOptions: citizenLabels },
-    { key: "statusId", title: "Status", filterKind: "select", selectOptions: statusLabels },
+    {
+      key: "description",
+      title: "Description",
+      filterKind: "text",
+      width: 260,
+    },
+    {
+      key: "citizenId",
+      title: "Citizen",
+      filterKind: "select",
+      selectOptions: citizenLabels,
+      width: 180,
+      render: (value) =>
+        citizenLabels.get(String(value ?? "")) ?? `Citizen ${value ?? "N/A"}`,
+    },
+    {
+      key: "addressLine1",
+      title: "Address",
+      filterKind: "text",
+      width: 260,
+      render: (_value, row) => getIncidentAddress(row),
+    },
+    {
+      key: "coordinates",
+      title: "Coordinates",
+      width: 180,
+      render: (_value, row) =>
+        hasCoordinates(row) ? `${row.latitude}, ${row.longitude}` : "N/A",
+    },
+    {
+      key: "statusId",
+      title: "Status",
+      filterKind: "select",
+      selectOptions: statusLabels,
+      width: 140,
+      render: (value) => {
+        const statusName =
+          statusLabels.get(String(value ?? "")) ?? `Status ${value ?? "N/A"}`;
+
+        return <Tag color={getStatusColor(statusName)}>{statusName}</Tag>;
+      },
+    },
+    {
+      key: "assignee",
+      title: "Assignee",
+      width: 180,
+      render: (_value, row) => {
+        const assignment = latestAssignmentByIncident.get(String(row.id));
+        const label = assignment?.responderId
+          ? (responderLabels.get(assignment.responderId) ?? "Assigned")
+          : "Unassigned";
+        const relative =
+          assignment && assignment.timestamp >= 0
+            ? formatDisplayRelativeTime(new Date(assignment.timestamp).toISOString())
+            : null;
+
+        return (
+          <div className={styles.cellStack}>
+            <Text>{label}</Text>
+            <Text className={styles.cellMeta}>
+              {relative ? `Assigned ${relative}` : "No assignment yet"}
+            </Text>
+          </div>
+        );
+      },
+    },
     {
       key: "dateReported",
       title: "Reported",
       filterKind: "date",
-      render: (value) => formatDateTime(value),
+      width: 170,
+      render: (value) => formatDisplayDateTime(value),
     },
     {
       key: "createdAt",
       title: "Created",
       filterKind: "date",
       sortable: true,
-      render: (value) => formatDateTime(value),
+      width: 170,
+      render: (value) => formatDisplayDateTime(value),
     },
     {
       key: "updatedAt",
       title: "Updated",
       filterKind: "date",
       sortable: true,
-      render: (value) => formatDateTime(value),
+      width: 170,
+      render: (value) => formatDisplayDateTime(value),
     },
   ];
 
@@ -228,7 +346,27 @@ export default function IncidentsPage() {
   }
 
   const canCreate = hasRole(...CAN_CREATE_INCIDENT);
-  const previewAddress = joinLocationParts([
+  const geocodedCount = rows.filter(hasCoordinates).length;
+  const addressSnapshotCount = rows.filter(hasAddressSnapshot).length;
+  const reportedTodayCount = rows.filter((incident) => {
+    const value = incident.dateReported ?? incident.createdAt;
+    if (!value) {
+      return false;
+    }
+
+    const parsed = new Date(String(value));
+    if (Number.isNaN(parsed.getTime())) {
+      return false;
+    }
+
+    const now = new Date();
+    return (
+      parsed.getFullYear() === now.getFullYear() &&
+      parsed.getMonth() === now.getMonth() &&
+      parsed.getDate() === now.getDate()
+    );
+  }).length;
+  const previewAddress = joinDisplayParts([
     addressLine1Value,
     addressLine2Value,
     barangayValue,
@@ -332,58 +470,201 @@ export default function IncidentsPage() {
   };
 
   return (
-    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
-      <Space style={{ width: "100%", justifyContent: "space-between" }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Incidents
-        </Title>
-        <RoleGuard allowedRoles={CAN_CREATE_INCIDENT} disableOnly>
-          <Button type="primary" onClick={() => setOpen(true)} disabled={!canCreate}>
-            Create Incident
-          </Button>
-        </RoleGuard>
-      </Space>
+    <div className={styles.pageShell}>
+      <Card className={styles.heroCard}>
+        <div className={styles.heroInner}>
+          <div className={styles.heroHeader}>
+            <div className={styles.heroCopy}>
+              <Text className={styles.eyebrow}>Incident operations</Text>
+              <Title level={3} className={styles.heroTitle}>
+                Triage, capture, and review incident reports from one workspace.
+              </Title>
+              <Text className={styles.heroDescription}>
+                Keep the live queue searchable, verify location snapshots
+                quickly, and create new incident records with the
+                backend-aligned address contract.
+              </Text>
+            </div>
+            <RoleGuard allowedRoles={CAN_CREATE_INCIDENT} disableOnly>
+              <Button
+                className={styles.heroAction}
+                type="primary"
+                size="large"
+                onClick={() => setOpen(true)}
+                disabled={!canCreate}
+              >
+                Create Incident
+              </Button>
+            </RoleGuard>
+          </div>
 
-      <SharedTable<Incident>
-        rows={rows}
-        columns={columns}
-        storageKey="incidents-shared-table"
-        loading={incidentsListQuery.isFetching}
-        page={listQuery.page}
-        pageSize={listQuery.pageSize}
-        paginationMeta={pagination}
-        onPageChange={listQuery.setPage}
-        onPageSizeChange={listQuery.setPageSize}
-        globalSearch={listQuery.search}
-        onGlobalSearchChange={listQuery.setSearch}
-        globalSearchPlaceholder="Search incidents"
-        sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
-        onSortChange={(columnKey, order) => {
-          if (columnKey === "createdAt" || columnKey === "updatedAt") {
-            listQuery.setSort(columnKey, order);
-          }
-        }}
-        serverDateFilters={{
-          createdAt: { from: listQuery.createdFrom, to: listQuery.createdTo },
-          updatedAt: { from: listQuery.updatedFrom, to: listQuery.updatedTo },
-        }}
-        onServerDateFilterChange={(columnKey, value) => {
-          if (columnKey === "createdAt") {
-            listQuery.setCreatedRange(value.from, value.to);
-            return;
-          }
+          <div className={styles.heroMetrics}>
+            <div className={styles.metricTile}>
+              <Statistic value={totalIncidents} title="Total incidents" />
+              <Text className={styles.metricLabel}>
+                Across the current server query.
+              </Text>
+            </div>
+            <div className={styles.metricTile}>
+              <Statistic value={rows.length} title="Visible rows" />
+              <Text className={styles.metricLabel}>
+                Current page after filters and search.
+              </Text>
+            </div>
+            <div className={styles.metricTile}>
+              <Statistic value={geocodedCount} title="With coordinates" />
+              <Text className={styles.metricLabel}>
+                Ready for map-based verification.
+              </Text>
+            </div>
+            <div className={styles.metricTile}>
+              <Statistic value={reportedTodayCount} title="Reported today" />
+              <Text className={styles.metricLabel}>
+                Based on reported or created timestamps.
+              </Text>
+            </div>
+          </div>
+        </div>
+      </Card>
 
-          listQuery.setUpdatedRange(value.from, value.to);
-        }}
-        topToolbar={
+      <Card className={styles.controlCard}>
+        <div className={styles.controlStack}>
+          <div className={styles.controlHeader}>
+            <Input.Search
+              allowClear
+              placeholder="Search incidents by description or record context"
+              value={listQuery.search}
+              onChange={(event) => listQuery.setSearch(event.target.value)}
+              style={{ maxWidth: 420 }}
+            />
+            <Text className={styles.controlMeta}>
+              {addressSnapshotCount} records include address snapshots in this
+              result set.
+            </Text>
+          </div>
           <FilterToolbar
             state={listQuery}
             setters={listQuery}
             loading={Boolean(incidentsListQuery.isFetching)}
           />
-        }
-        scrollX={980}
-      />
+        </div>
+      </Card>
+
+      <div className={styles.contentGrid}>
+        <Card className={styles.tableCard}>
+          <div className={styles.sectionHeader}>
+            <Title level={4} className={styles.sectionTitle}>
+              Live incident queue
+            </Title>
+            <Text className={styles.sectionDescription}>
+              Review current incident records, verify address quality, and move
+              into follow-up actions.
+            </Text>
+          </div>
+          <SharedTable<Incident>
+            rows={rows}
+            columns={columns}
+            storageKey="incidents-shared-table"
+            loading={incidentsListQuery.isFetching}
+            page={listQuery.page}
+            pageSize={listQuery.pageSize}
+            paginationMeta={pagination}
+            onPageChange={listQuery.setPage}
+            onPageSizeChange={listQuery.setPageSize}
+            globalSearch={listQuery.search}
+            sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
+            onSortChange={(columnKey, order) => {
+              if (columnKey === "createdAt" || columnKey === "updatedAt") {
+                listQuery.setSort(columnKey, order);
+              }
+            }}
+            serverDateFilters={{
+              createdAt: {
+                from: listQuery.createdFrom,
+                to: listQuery.createdTo,
+              },
+              updatedAt: {
+                from: listQuery.updatedFrom,
+                to: listQuery.updatedTo,
+              },
+            }}
+            onServerDateFilterChange={(columnKey, value) => {
+              if (columnKey === "createdAt") {
+                listQuery.setCreatedRange(value.from, value.to);
+                return;
+              }
+
+              listQuery.setUpdatedRange(value.from, value.to);
+            }}
+            topToolbar={null}
+            scrollX={1360}
+            actionColumn={{
+              title: "Actions",
+              width: 180,
+              render: (row) => (
+                <Space size={4} wrap>
+                  <Button
+                    type="link"
+                    onClick={() => router.push(`/incidents/${row.id}`)}
+                  >
+                    Open workspace
+                  </Button>
+                  {row.citizenId ? (
+                    <Button
+                      type="link"
+                      onClick={() => router.push(`/citizens/${row.citizenId}`)}
+                    >
+                      Citizen
+                    </Button>
+                  ) : null}
+                </Space>
+              ),
+            }}
+          />
+        </Card>
+
+        <Card className={styles.sidebarCard}>
+          <div className={styles.sectionHeader}>
+            <Title level={4} className={styles.sectionTitle}>
+              Capture checklist
+            </Title>
+            <Text className={styles.sectionDescription}>
+              Keep the incident payload complete before dispatch and assignment
+              workflows begin.
+            </Text>
+          </div>
+          <div className={styles.sidebarList}>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Location snapshot</Text>
+              <Text>
+                Collect coordinates plus address fields so the incident stays
+                valid even if upstream geo services change later.
+              </Text>
+            </div>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Severity and status</Text>
+              <Text>
+                Set both on creation so the dashboard can place the incident in
+                the correct queue immediately.
+              </Text>
+            </div>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Media evidence</Text>
+              <Text>
+                Add a resolvable media URL when supporting photos or attachments
+                exist.
+              </Text>
+            </div>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Current signal</Text>
+              <Text>
+                {geocodedCount} visible records already have coordinates, and{" "}
+                {addressSnapshotCount} include address snapshots.
+              </Text>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       <Modal
         title="Create Incident"
@@ -596,6 +877,6 @@ export default function IncidentsPage() {
           </div>
         </Form>
       </Modal>
-    </Space>
+    </div>
   );
 }

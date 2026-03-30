@@ -1,12 +1,27 @@
 "use client";
 
-import { App, Button, Form, Input, Modal, Select, Space, Typography } from "antd";
+import {
+  App,
+  Button,
+  Card,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Statistic,
+  Tag,
+  Typography,
+} from "antd";
 import { AxiosError } from "axios";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { RoleGuard } from "@/components/auth/RoleGuard";
-import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
+import {
+  SharedTable,
+  type SharedTableColumn,
+} from "@/components/crud/SharedTable";
 import { useAuth } from "@/context/AuthContext";
 import {
   useAssignmentsQuery,
@@ -25,7 +40,13 @@ import {
   DEFAULT_SORT_ORDER,
   type ListQueryState,
 } from "@/lib/api/list-query-params";
+import {
+  formatDisplayDateTime,
+  formatDisplayRelativeTime,
+} from "@/lib/format/date-time";
+import { getStatusColor } from "@/lib/incidents/display";
 import type { ApiErrorPayload, Assignment } from "@/types/api";
+import styles from "./page.module.css";
 
 const { Title, Text } = Typography;
 
@@ -36,53 +57,10 @@ interface AssignmentFormValues {
   notes?: string;
 }
 
-function formatDateTime(value: unknown): string {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return "N/A";
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(parsed);
-}
-
-function formatRelativeTime(value: unknown): string | null {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return null;
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  const diffMs = parsed.getTime() - Date.now();
-  const minuteMs = 60 * 1000;
-  const hourMs = 60 * minuteMs;
-  const dayMs = 24 * hourMs;
-
-  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  if (Math.abs(diffMs) < hourMs) {
-    return rtf.format(Math.round(diffMs / minuteMs), "minute");
-  }
-
-  if (Math.abs(diffMs) < dayMs) {
-    return rtf.format(Math.round(diffMs / hourMs), "hour");
-  }
-
-  return rtf.format(Math.round(diffMs / dayMs), "day");
-}
-
 export default function AssignmentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
+  const router = useRouter();
   const listQuery = useListQueryParams();
   const optionQueryState: ListQueryState = {
     page: 1,
@@ -100,41 +78,145 @@ export default function AssignmentsPage() {
   const createMutation = useCreateAssignmentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<AssignmentFormValues>();
-  const rows = assignmentsQuery.data?.data ?? [];
+  const rows = useMemo(
+    () => assignmentsQuery.data?.data ?? [],
+    [assignmentsQuery.data],
+  );
+  const visibleRows = useMemo(() => {
+    if (!listQuery.search) {
+      return rows;
+    }
+
+    const searchValue = listQuery.search.toLowerCase();
+    return rows.filter((item) =>
+      JSON.stringify(item).toLowerCase().includes(searchValue),
+    );
+  }, [listQuery.search, rows]);
 
   const pagination = assignmentsQuery.data?.pagination;
+  const incidents = incidentsQuery.data?.data ?? [];
+  const responders = respondersQuery.data?.data ?? [];
+  const statuses = statusesQuery.data?.data ?? [];
   const incidentLabels = new Map(
-    (incidentsQuery.data?.data ?? []).map((item) => [String(item.id), item.description ?? `Incident ${item.id}`]),
+    (incidentsQuery.data?.data ?? []).map((item) => [
+      String(item.id),
+      item.description ?? `Incident ${item.id}`,
+    ]),
   );
   const responderLabels = new Map(
     (respondersQuery.data?.data ?? []).map((item) => [
       String(item.id),
       item.name ??
-        (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() || `Responder ${item.id}`),
+        (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() ||
+          `Responder ${item.id}`),
     ]),
   );
   const statusLabels = new Map(
-    (statusesQuery.data?.data ?? []).map((item) => [String(item.id), item.name ?? `Status ${item.id}`]),
+    (statusesQuery.data?.data ?? []).map((item) => [
+      String(item.id),
+      item.name ?? `Status ${item.id}`,
+    ]),
   );
 
   const columns: Array<SharedTableColumn<Assignment>> = [
-    { key: "incidentId", title: "Incident", filterKind: "select", selectOptions: incidentLabels },
-    { key: "responderId", title: "Responder", filterKind: "select", selectOptions: responderLabels },
-    { key: "statusId", title: "Status", filterKind: "select", selectOptions: statusLabels },
-    { key: "notes", title: "Notes", filterKind: "text" },
+    {
+      key: "incidentId",
+      title: "Incident",
+      filterKind: "select",
+      selectOptions: incidentLabels,
+      width: 280,
+      render: (_value, row) => {
+        const incident = incidents.find(
+          (item) => String(item.id) === String(row.incidentId ?? ""),
+        );
+
+        return (
+          <div className={styles.cellStack}>
+            <Button
+              type="link"
+              style={{ paddingInline: 0, justifyContent: "flex-start" }}
+              onClick={() => {
+                if (row.incidentId) {
+                  router.push(`/incidents/${row.incidentId}`);
+                }
+              }}
+            >
+              {incident?.description ?? `Incident ${row.incidentId ?? "N/A"}`}
+            </Button>
+            <Text className={styles.cellMeta}>
+              {incident ? "Open workspace" : "Incident record unavailable"}
+            </Text>
+          </div>
+        );
+      },
+    },
+    {
+      key: "responderId",
+      title: "Responder",
+      filterKind: "select",
+      selectOptions: responderLabels,
+      width: 180,
+      render: (_value, row) => {
+        const responder = responders.find(
+          (item) => String(item.id) === String(row.responderId ?? ""),
+        );
+        const label =
+          responder?.name ??
+          (`${responder?.firstName ?? ""} ${responder?.lastName ?? ""}`.trim() ||
+            responder?.email ||
+            `Responder ${row.responderId ?? "N/A"}`);
+
+        return (
+          <div className={styles.cellStack}>
+            <Text>{label}</Text>
+            <Text className={styles.cellMeta}>
+              {responder?.role ?? "Responder"}
+            </Text>
+          </div>
+        );
+      },
+    },
+    {
+      key: "statusId",
+      title: "Status",
+      filterKind: "select",
+      selectOptions: statusLabels,
+      width: 140,
+      render: (_value, row) => {
+        const status = statuses.find(
+          (item) => String(item.id) === String(row.statusId ?? ""),
+        );
+        const label = status?.name ?? "Status not set";
+
+        return <Tag color={getStatusColor(label)}>{label}</Tag>;
+      },
+    },
+    {
+      key: "notes",
+      title: "Notes",
+      filterKind: "text",
+      width: 240,
+      render: (value) =>
+        typeof value === "string" && value.trim().length > 0
+          ? value
+          : "No notes",
+    },
     {
       key: "assignedDate",
       title: "Assigned",
       filterKind: "date",
+      width: 180,
       render: (value) => {
-        const formatted = formatDateTime(value);
-        const relative = formatRelativeTime(value);
+        const formatted = formatDisplayDateTime(value);
+        const relative = formatDisplayRelativeTime(value);
 
         return (
-          <Space direction="vertical" size={0}>
+          <div className={styles.cellStack}>
             <Text>{formatted}</Text>
-            {relative ? <Text type="secondary">{relative}</Text> : null}
-          </Space>
+            <Text className={styles.cellMeta}>
+              {relative ?? "Assignment time unavailable"}
+            </Text>
+          </div>
         );
       },
     },
@@ -143,15 +225,18 @@ export default function AssignmentsPage() {
       title: "Created",
       filterKind: "date",
       sortable: true,
+      width: 180,
       render: (value) => {
-        const formatted = formatDateTime(value);
-        const relative = formatRelativeTime(value);
+        const formatted = formatDisplayDateTime(value);
+        const relative = formatDisplayRelativeTime(value);
 
         return (
-          <Space direction="vertical" size={0}>
+          <div className={styles.cellStack}>
             <Text>{formatted}</Text>
-            {relative ? <Text type="secondary">{relative}</Text> : null}
-          </Space>
+            <Text className={styles.cellMeta}>
+              {relative ?? "Created time unavailable"}
+            </Text>
+          </div>
         );
       },
     },
@@ -166,6 +251,12 @@ export default function AssignmentsPage() {
   }
 
   const canCreate = hasRole(...CAN_CREATE_ASSIGNMENT);
+  const linkedIncidentCount = visibleRows.filter((item) =>
+    Boolean(item.incidentId),
+  ).length;
+  const unassignedStatusCount = visibleRows.filter(
+    (item) => !item.statusId,
+  ).length;
 
   const submit = async () => {
     try {
@@ -186,58 +277,181 @@ export default function AssignmentsPage() {
   };
 
   return (
-    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
-      <Space style={{ width: "100%", justifyContent: "space-between" }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Assignments
-        </Title>
-        <RoleGuard allowedRoles={CAN_CREATE_ASSIGNMENT} disableOnly>
-          <Button type="primary" onClick={() => setOpen(true)} disabled={!canCreate}>
-            Create Assignment
-          </Button>
-        </RoleGuard>
-      </Space>
+    <div className={styles.pageShell}>
+      <Card className={styles.heroCard}>
+        <div className={styles.heroInner}>
+          <div className={styles.heroHeader}>
+            <div className={styles.heroCopy}>
+              <Text className={styles.eyebrow}>Dispatch assignments</Text>
+              <Title level={3} className={styles.heroTitle}>
+                Coordinate incident handoff and field response from one queue.
+              </Title>
+              <Text className={styles.heroDescription}>
+                Review assignment records with responder, status, and timing
+                context so dispatch activity is readable at a glance.
+              </Text>
+            </div>
+            <RoleGuard allowedRoles={CAN_CREATE_ASSIGNMENT} disableOnly>
+              <Button
+                className={styles.heroAction}
+                type="primary"
+                size="large"
+                onClick={() => setOpen(true)}
+                disabled={!canCreate}
+              >
+                Create Assignment
+              </Button>
+            </RoleGuard>
+          </div>
 
-      <SharedTable<Assignment>
-        rows={rows}
-        columns={columns}
-        storageKey="assignments-shared-table"
-        loading={assignmentsQuery.isFetching}
-        page={listQuery.page}
-        pageSize={listQuery.pageSize}
-        paginationMeta={pagination}
-        onPageChange={listQuery.setPage}
-        onPageSizeChange={listQuery.setPageSize}
-        globalSearch={listQuery.search}
-        onGlobalSearchChange={listQuery.setSearch}
-        globalSearchPlaceholder="Search assignments"
-        sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
-        onSortChange={(columnKey, order) => {
-          if (columnKey === "createdAt" || columnKey === "updatedAt") {
-            listQuery.setSort(columnKey, order);
-          }
-        }}
-        serverDateFilters={{
-          createdAt: { from: listQuery.createdFrom, to: listQuery.createdTo },
-          updatedAt: { from: listQuery.updatedFrom, to: listQuery.updatedTo },
-        }}
-        onServerDateFilterChange={(columnKey, value) => {
-          if (columnKey === "createdAt") {
-            listQuery.setCreatedRange(value.from, value.to);
-            return;
-          }
+          <div className={styles.heroMetrics}>
+            <div className={styles.metricTile}>
+              <Statistic
+                title="Assignments"
+                value={pagination?.total ?? rows.length}
+              />
+              <Text className={styles.metricLabel}>
+                Current server-backed queue size.
+              </Text>
+            </div>
+            <div className={styles.metricTile}>
+              <Statistic title="Visible rows" value={visibleRows.length} />
+              <Text className={styles.metricLabel}>
+                Current page after search and filters.
+              </Text>
+            </div>
+            <div className={styles.metricTile}>
+              <Statistic title="Linked incidents" value={linkedIncidentCount} />
+              <Text className={styles.metricLabel}>
+                Assignments that resolve to incident records.
+              </Text>
+            </div>
+            <div className={styles.metricTile}>
+              <Statistic title="Missing status" value={unassignedStatusCount} />
+              <Text className={styles.metricLabel}>
+                Assignments needing explicit dispatch state.
+              </Text>
+            </div>
+          </div>
+        </div>
+      </Card>
 
-          listQuery.setUpdatedRange(value.from, value.to);
-        }}
-        topToolbar={
+      <Card className={styles.controlCard}>
+        <div className={styles.controlStack}>
+          <div className={styles.controlHeader}>
+            <Input.Search
+              allowClear
+              placeholder="Search assignments"
+              value={listQuery.search}
+              onChange={(event) => listQuery.setSearch(event.target.value)}
+              style={{ maxWidth: 420 }}
+            />
+            <Text className={styles.controlMeta}>
+              {visibleRows.length} assignment
+              {visibleRows.length === 1 ? "" : "s"} in the current view.
+            </Text>
+          </div>
           <FilterToolbar
             state={listQuery}
             setters={listQuery}
             loading={Boolean(assignmentsQuery.isFetching)}
           />
-        }
-        scrollX={920}
-      />
+        </div>
+      </Card>
+
+      <div className={styles.contentGrid}>
+        <Card className={`${styles.tableCard} ${styles.compactTable}`}>
+          <div className={styles.sectionHeader}>
+            <Title level={4} className={styles.sectionTitle}>
+              Assignment queue
+            </Title>
+            <Text className={styles.sectionDescription}>
+              Inspect dispatch records with incident, responder, status, and
+              timing metadata in one table.
+            </Text>
+          </div>
+          <SharedTable<Assignment>
+            rows={rows}
+            columns={columns}
+            storageKey="assignments-shared-table"
+            loading={assignmentsQuery.isFetching}
+            page={listQuery.page}
+            pageSize={listQuery.pageSize}
+            paginationMeta={pagination}
+            onPageChange={listQuery.setPage}
+            onPageSizeChange={listQuery.setPageSize}
+            globalSearch={listQuery.search}
+            sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
+            onSortChange={(columnKey, order) => {
+              if (columnKey === "createdAt" || columnKey === "updatedAt") {
+                listQuery.setSort(columnKey, order);
+              }
+            }}
+            serverDateFilters={{
+              createdAt: {
+                from: listQuery.createdFrom,
+                to: listQuery.createdTo,
+              },
+              updatedAt: {
+                from: listQuery.updatedFrom,
+                to: listQuery.updatedTo,
+              },
+            }}
+            onServerDateFilterChange={(columnKey, value) => {
+              if (columnKey === "createdAt") {
+                listQuery.setCreatedRange(value.from, value.to);
+                return;
+              }
+
+              listQuery.setUpdatedRange(value.from, value.to);
+            }}
+            topToolbar={null}
+            scrollX={1080}
+          />
+        </Card>
+
+        <Card className={styles.sidebarCard}>
+          <div className={styles.sectionHeader}>
+            <Title level={4} className={styles.sectionTitle}>
+              Dispatch guidance
+            </Title>
+            <Text className={styles.sectionDescription}>
+              Keep assignment records clean enough that the dashboard and
+              incident workspace can reflect them immediately.
+            </Text>
+          </div>
+          <div className={styles.sidebarList}>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Incident link</Text>
+              <Text>
+                Assignments should point to the exact incident so workspace
+                navigation stays precise.
+              </Text>
+            </div>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Dispatch status</Text>
+              <Text>
+                Set a status when possible so operators can scan active versus
+                completed handoff records.
+              </Text>
+            </div>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Notes</Text>
+              <Text>
+                Add context that explains the handoff, expected response, or
+                operational blockers.
+              </Text>
+            </div>
+            <div className={styles.sidebarItem}>
+              <Text className={styles.sidebarLabel}>Current signal</Text>
+              <Text>
+                {unassignedStatusCount} visible assignments still need an
+                explicit assignment status.
+              </Text>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       <Modal
         title="Create Assignment"
@@ -295,6 +509,6 @@ export default function AssignmentsPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </Space>
+    </div>
   );
 }

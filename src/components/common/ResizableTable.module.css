@@ -87,6 +87,19 @@
   width: 100%;
 }
 
+.table :global(.ant-table-sticky-scroll) {
+  height: 14px !important;
+  border-radius: 999px;
+  background: rgba(16, 36, 63, 0.1);
+  box-shadow: 0 0 0 1px rgba(16, 36, 63, 0.08);
+}
+
+.table :global(.ant-table-sticky-scroll-bar) {
+  height: 14px !important;
+  border-radius: 999px;
+  background: rgba(16, 36, 63, 0.34) !important;
+}
+
 .headerCell {
   position: relative;
 }

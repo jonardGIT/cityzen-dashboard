@@ -1,33 +1,69 @@
 "use client";
 
-import { LockOutlined, MailOutlined } from "@ant-design/icons";
+import {
+  LockOutlined,
+  MailOutlined,
+  SafetyCertificateOutlined,
+} from "@ant-design/icons";
 import { Alert, Button, Card, Form, Input, Typography } from "antd";
 import { AxiosError } from "axios";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import type { ApiErrorPayload } from "@/types/api";
+import type { LoginReason } from "@/types/auth";
 
 const { Title, Text } = Typography;
 
 interface LoginFormValues {
   email: string;
   password: string;
+  mfaCode?: string;
 }
 
-export default function LoginPage() {
+const LOGIN_REASON_MESSAGES: Record<LoginReason, string> = {
+  "signed-out": "You have been signed out.",
+  "session-expired":
+    "Your session is no longer active. Sign in again to continue.",
+  "session-revoked": "That session was revoked. Sign in again to continue.",
+  "mfa-updated":
+    "Security settings changed and all active sessions were closed. Sign in again.",
+  "password-changed":
+    "Your password changed and this session was closed. Sign in again.",
+  "role-changed":
+    "Your account access changed and this session was closed. Sign in again.",
+};
+
+function LoginPageContent() {
   const [form] = Form.useForm<LoginFormValues>();
   const [submitting, setSubmitting] = useState(false);
+  const [requiresMfa, setRequiresMfa] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const loginReason = searchParams.get("reason") as LoginReason | null;
+  const loginInfoMessage = loginReason
+    ? (LOGIN_REASON_MESSAGES[loginReason] ?? null)
+    : null;
 
   const onFinish = async (values: LoginFormValues) => {
     setErrorMessage(null);
     setSubmitting(true);
 
     try {
-      await login(values.email, values.password);
+      const result = await login(values.email, values.password, values.mfaCode);
+
+      if (result.mfaRequired) {
+        setRequiresMfa(true);
+        setErrorMessage(
+          "This account requires a valid MFA code. Enter the 6-digit code from your authenticator app.",
+        );
+        return;
+      }
+
       router.replace("/dashboard");
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorPayload>;
@@ -55,6 +91,16 @@ export default function LoginPage() {
           LGU Incident Dashboard
         </Title>
         <Text type="secondary">Sign in with your authorized account.</Text>
+
+        {loginInfoMessage ? (
+          <Alert
+            style={{ marginTop: 16 }}
+            type="info"
+            showIcon
+            message="Sign-in required"
+            description={loginInfoMessage}
+          />
+        ) : null}
 
         {errorMessage ? (
           <Alert
@@ -95,11 +141,45 @@ export default function LoginPage() {
             />
           </Form.Item>
 
+          {requiresMfa ? (
+            <Form.Item
+              name="mfaCode"
+              label="Authentication code"
+              rules={[
+                { required: true, message: "Authentication code is required" },
+                {
+                  len: 6,
+                  message: "Enter the 6-digit code from your authenticator app",
+                },
+              ]}
+            >
+              <Input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                prefix={<SafetyCertificateOutlined />}
+                placeholder="Enter 6-digit MFA code"
+                maxLength={6}
+              />
+            </Form.Item>
+          ) : null}
+
           <Button type="primary" htmlType="submit" loading={submitting} block>
-            Sign In
+            {requiresMfa ? "Verify And Sign In" : "Sign In"}
           </Button>
+
+          <div style={{ marginTop: 16, textAlign: "right" }}>
+            <Link href="/forgot-password">Forgot password?</Link>
+          </div>
         </Form>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

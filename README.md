@@ -29,18 +29,31 @@ NEXT_PUBLIC_API_KEY=local-dev-key
 
 ## API Client Architecture
 
-- `publicClient`: API-key only, used for login
-- `authClient`: API-key + Bearer token
+- `publicClient`: API-key only, used for login and token refresh
+- `authClient`: API-key + Bearer token with one refresh retry on `401`
 - Both clients are in `src/lib/api/clients.ts`
-- 401 responses clear auth state and redirect to `/login`
+- Unauthorized sessions are cleared only after refresh is unavailable or rejected
 
 ## Auth and Session Behavior
 
 - Login endpoint: `POST /auth/login`
-- Session endpoint: `GET /auth/me`
-- Access token and user are stored in local storage
+- Password reset request endpoint: `POST /auth/password-reset/request`
+- Password reset confirm endpoint: `POST /auth/password-reset/confirm`
+- Refresh endpoint: `POST /auth/refresh`
+- Current user endpoint: `GET /auth/me`
+- Session inventory endpoint: `GET /auth/sessions`
+- Session revoke endpoint: `DELETE /auth/sessions/:id`
+- MFA endpoints:
+  - `POST /auth/mfa/setup`
+  - `POST /auth/mfa/enable`
+  - `POST /auth/mfa/disable`
+- Access token, refresh token, user, and session metadata are stored in local storage
+- Forgot-password and reset-password public flows are available from the login experience
+- In non-production environments, password reset request responses may expose `resetToken` and `resetExpiresAt` for local development testing
 - On app boot, session restore is attempted via `/auth/me`
-- 401 redirects to `/login`
+- Protected API calls attempt a refresh before redirecting to `/login`
+- Login shows explicit re-authentication reasons for sign-out, expired or revoked sessions, MFA changes, and other server-driven invalidations when the API provides them
+- The profile page exposes active-session management and MFA enrollment for permitted roles
 - 403 is rendered as forbidden state/page
 
 ## Roles

@@ -2,7 +2,10 @@ import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAccessToken } from "@/lib/auth/token-storage";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
-import { adaptPaginatedResponse, type PaginatedResponse } from "@/lib/api/pagination";
+import {
+  adaptPaginatedResponse,
+  type PaginatedResponse,
+} from "@/lib/api/pagination";
 import {
   buildListQueryParams,
   DEFAULT_SORT_BY,
@@ -58,7 +61,11 @@ export async function fetchUsers(
     params: buildListQueryParams(fetchParams),
     signal,
   });
-  return adaptPaginatedResponse<User>(response.data, fetchParams.page, fetchParams.pageSize);
+  return adaptPaginatedResponse<User>(
+    response.data,
+    fetchParams.page,
+    fetchParams.pageSize,
+  );
 }
 
 export async function createUser(payload: CreateUserDto) {
@@ -67,7 +74,10 @@ export async function createUser(payload: CreateUserDto) {
 }
 
 export async function updateUser(userId: string, payload: UpdateUserDto) {
-  const response = await usersApiClient.patch<unknown>(`/users/${userId}`, payload);
+  const response = await usersApiClient.patch<unknown>(
+    `/users/${userId}`,
+    payload,
+  );
   return unwrapEntityResponse<User>(response.data);
 }
 
@@ -76,7 +86,9 @@ export async function deleteUser(userId: string) {
 }
 
 export async function fetchUsersCapabilities() {
-  const response = await usersApiClient.get<UsersCapabilities>("/users/capabilities");
+  const response = await usersApiClient.get<UsersCapabilities>(
+    "/users/capabilities",
+  );
   return response.data;
 }
 
@@ -90,7 +102,9 @@ export function useUsersQuery(state: ListQueryState, enabled = true) {
   });
 }
 
-export function defaultUsersQueryState(overrides?: Partial<ListQueryState>): ListQueryState {
+export function defaultUsersQueryState(
+  overrides?: Partial<ListQueryState>,
+): ListQueryState {
   return {
     page: 1,
     pageSize: 20,
@@ -122,8 +136,13 @@ export function useCreateUserMutation() {
 export function useUpdateUserMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, payload }: { userId: string; payload: UpdateUserDto }) =>
-      updateUser(userId, payload),
+    mutationFn: ({
+      userId,
+      payload,
+    }: {
+      userId: string;
+      payload: UpdateUserDto;
+    }) => updateUser(userId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
   });
 }

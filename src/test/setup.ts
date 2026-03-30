@@ -20,6 +20,15 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
+const originalGetComputedStyle = window.getComputedStyle.bind(window);
+
+Object.defineProperty(window, "getComputedStyle", {
+  writable: true,
+  value: vi.fn().mockImplementation((element: Element, pseudoElt?: string) => {
+    return originalGetComputedStyle(element, pseudoElt ? undefined : pseudoElt);
+  }),
+});
+
 class ResizeObserverMock {
   observe() {}
   unobserve() {}

@@ -155,6 +155,59 @@ export const ROLE_OPTIONS = [
   { value: "VIEWER", label: "VIEWER" },
 ];
 
+const CREATE_REQUIRED_FIELDS: Partial<Record<string, string[]>> = {
+  users: ["name", "email", "password"],
+  citizens: ["name", "contactInfo", "preferredChannel"],
+  responders: ["name", "agencyId", "role", "contactInfo"],
+  agencies: ["name"],
+  statuses: ["name"],
+  categories: ["name"],
+  severities: ["level"],
+  incidents: [
+    "description",
+    "statusId",
+    "citizenId",
+    "categoryId",
+    "severityId",
+  ],
+  assignments: ["incidentId", "responderId"],
+};
+
+const OPERATION_REQUIRED_FIELDS: Partial<
+  Record<CrudOperation, Partial<Record<string, string[]>>>
+> = {
+  create: CREATE_REQUIRED_FIELDS,
+  report: {
+    incidents: ["description", "categoryId", "severityId"],
+  },
+  linkMe: {
+    citizens: [],
+  },
+  update: {
+    users: [],
+    citizens: [],
+    responders: [],
+    agencies: [],
+    statuses: [],
+    categories: [],
+    severities: [],
+    incidents: [],
+    assignments: [],
+  },
+};
+
+function withRequiredFields(
+  fields: CrudFieldConfig[],
+  requiredFieldNames?: string[],
+): CrudFieldConfig[] {
+  const requiredNames = new Set(requiredFieldNames ?? []);
+
+  return fields.map((field) => ({
+    ...field,
+    required: requiredNames.has(field.name),
+  }));
+}
+
 export function getResourceFields(resourceName: string): CrudFieldConfig[] {
   return RESOURCE_FIELD_CONFIG[resourceName] ?? [];
 }
@@ -163,11 +216,18 @@ export function getResourceFieldsForOperation(
   resourceName: string,
   operation: CrudOperation,
 ): CrudFieldConfig[] {
-  const base = getResourceFields(resourceName);
+  const base = withRequiredFields(
+    getResourceFields(resourceName),
+    OPERATION_REQUIRED_FIELDS[operation]?.[resourceName] ??
+      CREATE_REQUIRED_FIELDS[resourceName],
+  );
 
   if (resourceName === "citizens" && operation === "linkMe") {
-    return base.filter(
-      (field) => field.name === "name" || field.name === "preferredChannel",
+    return withRequiredFields(
+      base.filter(
+        (field) => field.name === "name" || field.name === "preferredChannel",
+      ),
+      OPERATION_REQUIRED_FIELDS.linkMe?.citizens,
     );
   }
 
@@ -191,17 +251,20 @@ export function getResourceFieldsForOperation(
       "severityId",
     ];
 
-    return [
-      {
-        name: "dateReported",
-        label: "Date Reported",
-        type: "datetime",
-      },
-      ...base.filter(
-        (field) =>
-          reportFields.includes(field.name) && field.name !== "dateReported",
-      ),
-    ];
+    return withRequiredFields(
+      [
+        {
+          name: "dateReported",
+          label: "Date Reported",
+          type: "datetime",
+        },
+        ...base.filter(
+          (field) =>
+            reportFields.includes(field.name) && field.name !== "dateReported",
+        ),
+      ],
+      OPERATION_REQUIRED_FIELDS.report?.incidents,
+    );
   }
 
   return base;

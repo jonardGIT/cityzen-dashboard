@@ -38,6 +38,10 @@ type ResizableTableProps<RecordType extends AnyObject> =
     storageKey?: string;
     minColumnWidth?: number;
     showColumnVisibilitySelector?: boolean;
+    stickyEdgeColumnCount?: {
+      left?: number;
+      right?: number;
+    };
   };
 
 const DEFAULT_COLUMN_WIDTH = 180;
@@ -119,6 +123,8 @@ export function ResizableTable<RecordType extends AnyObject>({
   className,
   columns,
   scroll,
+  sticky,
+  stickyEdgeColumnCount,
   storageKey,
   minColumnWidth = DEFAULT_MIN_COLUMN_WIDTH,
   showColumnVisibilitySelector = false,
@@ -126,6 +132,8 @@ export function ResizableTable<RecordType extends AnyObject>({
   components,
   ...props
 }: ResizableTableProps<RecordType>) {
+  const isJsdomEnvironment =
+    typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent);
   const visibleColumnsStorageKey = storageKey
     ? `${storageKey}-visible-columns`
     : undefined;
@@ -421,7 +429,7 @@ export function ResizableTable<RecordType extends AnyObject>({
 
   const resolvedColumns = useMemo<ColumnsType<RecordType>>(() => {
     const allowedIds = new Set(visibleColumnIds);
-    return orderedColumnIds.reduce<ColumnsType<RecordType>>(
+    const nextColumns = orderedColumnIds.reduce<ColumnsType<RecordType>>(
       (accumulator, columnId) => {
         if (!allowedIds.has(columnId)) {
           return accumulator;
@@ -459,12 +467,43 @@ export function ResizableTable<RecordType extends AnyObject>({
       },
       [],
     );
+
+    const leftPinnedCount = Math.max(0, stickyEdgeColumnCount?.left ?? 0);
+    const rightPinnedCount = Math.max(0, stickyEdgeColumnCount?.right ?? 0);
+    const rightPinnedStartIndex = Math.max(
+      leftPinnedCount,
+      nextColumns.length - rightPinnedCount,
+    );
+
+    return nextColumns.map((column, index) => {
+      if (!column || isColumnGroup(column) || column.fixed != null) {
+        return column;
+      }
+
+      if (index < leftPinnedCount) {
+        return {
+          ...column,
+          fixed: "left",
+        };
+      }
+
+      if (index >= rightPinnedStartIndex) {
+        return {
+          ...column,
+          fixed: "right",
+        };
+      }
+
+      return column;
+    });
   }, [
     availableColumnsById,
     initialWidths,
     orderedColumnIds,
     resizingColumnId,
     startResize,
+    stickyEdgeColumnCount?.left,
+    stickyEdgeColumnCount?.right,
     visibleColumnIds,
     widths,
   ]);
@@ -641,6 +680,7 @@ export function ResizableTable<RecordType extends AnyObject>({
               ? Math.max(scroll.x, totalWidth)
               : (scroll?.x ?? totalWidth),
         }}
+        sticky={sticky ?? !isJsdomEnvironment}
         tableLayout={tableLayout ?? "fixed"}
       />
     </div>

@@ -7,12 +7,11 @@ import dayjs from "dayjs";
 import React, { useState, type ReactNode } from "react";
 import { ResizableTable } from "@/components/common/ResizableTable";
 import type { PaginationMeta } from "@/lib/api/pagination";
+import {
+  formatDisplayValue,
+  humanizeKey,
+} from "@/lib/format/display";
 import type { BaseEntity } from "@/types/api";
-
-const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 type ColumnFilterKind = "text" | "select" | "date";
 type SortOrder = "asc" | "desc";
@@ -61,93 +60,8 @@ interface SharedTableProps<T extends BaseEntity> {
   onServerDateFilterChange?: (columnKey: "createdAt" | "updatedAt", value: DateRangeValue) => void;
 }
 
-function camelCaseToTitleCase(value: string): string {
-  return value
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (char) => char.toUpperCase())
-    .replace(/\bId\b/i, "ID")
-    .trim();
-}
-
-function formatDateLikeString(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const isDateLike =
-    /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(trimmed);
-
-  if (!isDateLike) {
-    return null;
-  }
-
-  const parsed = new Date(trimmed);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return DATE_TIME_FORMATTER.format(parsed);
-}
-
-function formatCellValue(value: unknown, optionLabels?: Map<string, string>): string {
-  if (value === null || value === undefined || value === "") {
-    return "N/A";
-  }
-
-  if (Array.isArray(value)) {
-    const items = value
-      .map((item) => formatCellValue(item, optionLabels))
-      .filter((item) => item !== "N/A");
-    return items.length > 0 ? items.join(", ") : "N/A";
-  }
-
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const fullName = [record.firstName, record.lastName]
-      .filter((part): part is string => typeof part === "string" && part.length > 0)
-      .join(" ");
-
-    if (typeof record.name === "string" && record.name.length > 0) {
-      return record.name;
-    }
-
-    if (fullName.length > 0) {
-      return fullName;
-    }
-
-    if (typeof record.label === "string" && record.label.length > 0) {
-      return record.label;
-    }
-
-    if (typeof record.description === "string" && record.description.length > 0) {
-      return record.description;
-    }
-
-    if (typeof record.email === "string" && record.email.length > 0) {
-      return record.email;
-    }
-
-    return JSON.stringify(value);
-  }
-
-  if (typeof value === "string") {
-    if (optionLabels?.has(value)) {
-      return optionLabels.get(value) ?? value;
-    }
-
-    return formatDateLikeString(value) ?? value;
-  }
-
-  if (typeof value === "number" && optionLabels?.has(String(value))) {
-    return optionLabels.get(String(value)) ?? String(value);
-  }
-
-  return String(value);
-}
-
 function normalizeText(value: unknown, optionLabels?: Map<string, string>): string {
-  return formatCellValue(value, optionLabels).toLowerCase();
+  return formatDisplayValue(value, optionLabels).toLowerCase();
 }
 
 function matchesDateRange(value: unknown, range: DateRangeValue): boolean {
@@ -260,7 +174,7 @@ export function SharedTable<T extends BaseEntity>({
         <Space direction="vertical" style={{ width: 240 }}>
           <Input
             allowClear
-            placeholder={`Filter ${column.title ?? camelCaseToTitleCase(column.key)}`}
+            placeholder={`Filter ${column.title ?? humanizeKey(column.key)}`}
             value={typeof columnFilters[column.key] === "string" ? String(columnFilters[column.key]) : ""}
             onChange={(event) => setColumnFilter(column.key, event.target.value || undefined)}
           />
@@ -273,7 +187,7 @@ export function SharedTable<T extends BaseEntity>({
         <Space direction="vertical" style={{ width: 240 }}>
           <Select
             allowClear
-            placeholder={`Filter ${column.title ?? camelCaseToTitleCase(column.key)}`}
+            placeholder={`Filter ${column.title ?? humanizeKey(column.key)}`}
             value={typeof columnFilters[column.key] === "string" ? columnFilters[column.key] : undefined}
             onChange={(value) => setColumnFilter(column.key, value)}
             options={Array.from(column.selectOptions?.entries() ?? []).map(([value, label]) => ({
@@ -357,7 +271,7 @@ export function SharedTable<T extends BaseEntity>({
       return {
         title: (
           <Space size={4} wrap>
-            <Typography.Text>{column.title ?? camelCaseToTitleCase(column.key)}</Typography.Text>
+            <Typography.Text>{column.title ?? humanizeKey(column.key)}</Typography.Text>
             {column.sortable && onSortChange ? (
               <Button
                 size="small"
@@ -385,7 +299,7 @@ export function SharedTable<T extends BaseEntity>({
         key: column.key,
         width: column.width,
         render: (value: unknown, row: T) =>
-          column.render ? column.render(value, row) : formatCellValue(value, column.selectOptions),
+          column.render ? column.render(value, row) : formatDisplayValue(value, column.selectOptions),
       };
     }),
   ];
@@ -408,6 +322,7 @@ export function SharedTable<T extends BaseEntity>({
         columns={tableColumns}
         storageKey={storageKey}
         showColumnVisibilitySelector
+        stickyEdgeColumnCount={{ left: actionColumn ? 2 : 1 }}
         scroll={{ x: scrollX }}
         locale={{ emptyText }}
         pagination={{
