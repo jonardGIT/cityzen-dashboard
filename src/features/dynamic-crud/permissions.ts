@@ -1,4 +1,7 @@
-import type { CrudEndpoint } from "@/features/dynamic-crud/types";
+import type {
+  CrudEndpoint,
+  ParsedCrudResource,
+} from "@/features/dynamic-crud/types";
 import type { Role } from "@/types/auth";
 
 export function hasPermission(
@@ -27,4 +30,22 @@ export function hasPermission(
   }
 
   return endpoint.allowedRoles.includes(role);
+}
+
+export function canShowCrudNavigationItem(
+  resource: ParsedCrudResource,
+  role: Role | undefined,
+  isAuthenticated: boolean,
+): boolean {
+  if (!hasPermission(resource.endpoints.list, role, isAuthenticated)) {
+    return false;
+  }
+
+  return [
+    resource.endpoints.create,
+    resource.endpoints.linkMe,
+    resource.endpoints.report,
+    resource.endpoints.update,
+    resource.endpoints.delete,
+  ].some((endpoint) => hasPermission(endpoint, role, isAuthenticated));
 }

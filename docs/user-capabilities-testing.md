@@ -46,7 +46,7 @@ Legend:
 | Capability | SUPER_ADMIN | ADMIN | DISPATCHER | RESPONDER | VIEWER |
 | --- | --- | --- | --- | --- | --- |
 | Dashboard access | Y | Y | Y | Y | Y |
-| Citizens list/get/create | Y | Y | Y | Y | Y |
+| Citizens list/get/create | Y | Y | N | N | N |
 | Citizens update/delete | Y | Y | N | N | N |
 | Citizens link profile (`/citizens/link-me`) | N | N | N | N | Y |
 | Agencies create/update/delete | Y | Y | N | N | N |

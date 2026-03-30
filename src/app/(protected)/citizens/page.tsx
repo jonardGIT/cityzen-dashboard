@@ -3,11 +3,13 @@
 import { Card, Input, Space, Typography } from "antd";
 import Link from "next/link";
 import { useMemo } from "react";
+import { AuthGate } from "@/components/auth/AuthGate";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { ResizableTable } from "@/components/common/ResizableTable";
 import { useCitizensQuery } from "@/features/reference-data/api";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
+import { CAN_VIEW_CITIZENS } from "@/lib/auth/permissions";
 
 const { Title } = Typography;
 
@@ -38,70 +40,72 @@ export default function CitizensPage() {
   }
 
   return (
-    <Space orientation="vertical" size={16} style={{ width: "100%" }}>
-      <Title level={3} style={{ margin: 0 }}>
-        Citizens
-      </Title>
+    <AuthGate allowedRoles={CAN_VIEW_CITIZENS}>
+      <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Citizens
+        </Title>
 
-      <Card>
-        <Space orientation="vertical" style={{ width: "100%" }}>
-          <Input.Search
-            allowClear
-            placeholder="Search citizens"
-            value={listQuery.search}
-            onChange={(event) => listQuery.setSearch(event.target.value)}
-          />
-          <FilterToolbar
-            state={listQuery}
-            setters={listQuery}
-            loading={Boolean(citizensQuery.isFetching)}
-          />
-          <ResizableTable
-            rowKey="id"
-            loading={citizensQuery.isFetching}
-            dataSource={rows}
-            storageKey="citizens-table-widths"
-            showColumnVisibilitySelector
-            stickyEdgeColumnCount={{ left: 1 }}
-            scroll={{ x: 720 }}
-            pagination={{
-              current: listQuery.page,
-              pageSize: listQuery.pageSize,
-              total: paginationMeta?.total ?? rows.length,
-              onChange: (nextPage, nextPageSize) => {
-                if (nextPageSize !== listQuery.pageSize) {
-                  listQuery.setPageSize(nextPageSize);
-                  return;
-                }
+        <Card>
+          <Space orientation="vertical" style={{ width: "100%" }}>
+            <Input.Search
+              allowClear
+              placeholder="Search citizens"
+              value={listQuery.search}
+              onChange={(event) => listQuery.setSearch(event.target.value)}
+            />
+            <FilterToolbar
+              state={listQuery}
+              setters={listQuery}
+              loading={Boolean(citizensQuery.isFetching)}
+            />
+            <ResizableTable
+              rowKey="id"
+              loading={citizensQuery.isFetching}
+              dataSource={rows}
+              storageKey="citizens-table-widths"
+              showColumnVisibilitySelector
+              stickyEdgeColumnCount={{ left: 1 }}
+              scroll={{ x: 720 }}
+              pagination={{
+                current: listQuery.page,
+                pageSize: listQuery.pageSize,
+                total: paginationMeta?.total ?? rows.length,
+                onChange: (nextPage, nextPageSize) => {
+                  if (nextPageSize !== listQuery.pageSize) {
+                    listQuery.setPageSize(nextPageSize);
+                    return;
+                  }
 
-                listQuery.setPage(nextPage);
-              },
-            }}
-            columns={[
-              {
-                title: "Name",
-                dataIndex: "name",
-                key: "name",
-                render: (value: string | undefined, record: { id: string }) => (
-                  <Link href={`/citizens/${record.id}`}>
-                    {value || `Citizen ${record.id}`}
-                  </Link>
-                ),
-              },
-              {
-                title: "Contact",
-                dataIndex: "contactInfo",
-                key: "contactInfo",
-              },
-              {
-                title: "Preferred Channel",
-                dataIndex: "preferredChannel",
-                key: "preferredChannel",
-              },
-            ]}
-          />
-        </Space>
-      </Card>
-    </Space>
+                  listQuery.setPage(nextPage);
+                },
+              }}
+              columns={[
+                {
+                  title: "Name",
+                  dataIndex: "name",
+                  key: "name",
+                  render: (value: string | undefined, record: { id: string }) => (
+                    <Link href={`/citizens/${record.id}`}>
+                      {value || `Citizen ${record.id}`}
+                    </Link>
+                  ),
+                },
+                {
+                  title: "Contact",
+                  dataIndex: "contactInfo",
+                  key: "contactInfo",
+                },
+                {
+                  title: "Preferred Channel",
+                  dataIndex: "preferredChannel",
+                  key: "preferredChannel",
+                },
+              ]}
+            />
+          </Space>
+        </Card>
+      </Space>
+    </AuthGate>
   );
 }

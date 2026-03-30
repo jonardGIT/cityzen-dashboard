@@ -7,6 +7,8 @@ export const CAN_CREATE_INCIDENT: Role[] = [
   Role.RESPONDER,
 ];
 
+export const CAN_VIEW_CITIZENS: Role[] = [Role.SUPER_ADMIN, Role.ADMIN];
+
 export const CAN_CREATE_ASSIGNMENT: Role[] = [
   Role.SUPER_ADMIN,
   Role.ADMIN,

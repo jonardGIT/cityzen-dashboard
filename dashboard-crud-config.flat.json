@@ -14,7 +14,7 @@
       "path": "/citizens",
       "fullPath": "/api/v1/citizens",
       "authRequired": true,
-      "allowedRoles": []
+      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
     },
     {
       "resource": "citizens",
@@ -24,7 +24,7 @@
       "path": "/citizens/{id}",
       "fullPath": "/api/v1/citizens/{id}",
       "authRequired": true,
-      "allowedRoles": []
+      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
     },
     {
       "resource": "citizens",
@@ -34,7 +34,7 @@
       "path": "/citizens",
       "fullPath": "/api/v1/citizens",
       "authRequired": true,
-      "allowedRoles": []
+      "allowedRoles": ["SUPER_ADMIN", "ADMIN"]
     },
     {
       "resource": "citizens",

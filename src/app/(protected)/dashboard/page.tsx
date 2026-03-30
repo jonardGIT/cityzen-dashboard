@@ -15,6 +15,7 @@ import {
 } from "antd";
 import type { TableProps } from "antd";
 import { useQueries } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ResizableTable } from "@/components/common/ResizableTable";
@@ -44,7 +45,13 @@ import {
   getAssignmentDisplayDate,
   getResponderDisplayName,
 } from "@/lib/incidents/display";
-import type { Assignment, Incident, Responder, Severity } from "@/types/api";
+import type {
+  ApiErrorPayload,
+  Assignment,
+  Incident,
+  Responder,
+  Severity,
+} from "@/types/api";
 
 const { Text, Title } = Typography;
 
@@ -151,6 +158,23 @@ function getSeverityColor(value: string | undefined): string {
   return "default";
 }
 
+function isAccessDeniedError(error: unknown): boolean {
+  if (!(error instanceof AxiosError)) {
+    return false;
+  }
+
+  const status = error.response?.status;
+  return status === 401 || status === 403;
+}
+
+function formatDashboardError(error: unknown): string {
+  if (error instanceof AxiosError<ApiErrorPayload>) {
+    return error.response?.data?.message ?? error.message;
+  }
+
+  return String(error);
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [currentTime] = useState(() => Date.now());
@@ -207,24 +231,47 @@ export default function DashboardPage() {
     categoriesQ,
   ] = results;
 
+  const assignmentsRestricted = isAccessDeniedError(assignmentsQ.error);
+  const respondersRestricted = isAccessDeniedError(respondersQ.error);
+  const statusesRestricted = isAccessDeniedError(statusesQ.error);
+  const severitiesRestricted = isAccessDeniedError(severitiesQ.error);
+  const categoriesRestricted = isAccessDeniedError(categoriesQ.error);
+  const optionalRestrictions = [
+    assignmentsRestricted ? "assignments" : null,
+    respondersRestricted ? "responders" : null,
+    statusesRestricted ? "statuses" : null,
+    severitiesRestricted ? "severities" : null,
+    categoriesRestricted ? "categories" : null,
+  ].filter((value): value is string => Boolean(value));
+
   if (results.some((query) => query.isLoading)) {
     return <LoadingState />;
   }
 
-  const firstError = results.find((query) => query.error)?.error;
-  if (firstError) {
-    return <ErrorState message={String(firstError)} />;
+  const firstBlockingError =
+    incidentsQ.error ??
+    [assignmentsQ, respondersQ, statusesQ, severitiesQ, categoriesQ].find(
+      (query) => query.error && !isAccessDeniedError(query.error),
+    )?.error;
+  if (firstBlockingError) {
+    return <ErrorState message={formatDashboardError(firstBlockingError)} />;
   }
 
   const incidents = incidentsQ.data?.data ?? [];
-  const assignments = assignmentsQ.data?.data ?? [];
-  const responders = respondersQ.data?.data ?? [];
-  const statuses = statusesQ.data?.data ?? [];
-  const severities = severitiesQ.data?.data ?? [];
-  const categories = categoriesQ.data?.data ?? [];
+  const assignments = assignmentsRestricted ? [] : assignmentsQ.data?.data ?? [];
+  const responders = respondersRestricted ? [] : respondersQ.data?.data ?? [];
+  const statuses = statusesRestricted ? [] : statusesQ.data?.data ?? [];
+  const severities = severitiesRestricted ? [] : severitiesQ.data?.data ?? [];
+  const categories = categoriesRestricted ? [] : categoriesQ.data?.data ?? [];
   const incidentsTotal = incidentsQ.data?.pagination.total ?? incidents.length;
   const respondersTotal =
     respondersQ.data?.pagination.total ?? responders.length;
+  const canUseLifecycle = !statusesRestricted;
+  const canUseAssignments = !assignmentsRestricted;
+  const canUseResponders = !respondersRestricted;
+  const canUseSeverities = !severitiesRestricted;
+  const canUseCategories = !categoriesRestricted;
+  const effectiveScope = canUseLifecycle ? scope : "all";
   const statusLabels = new Map(
     statuses.map((status) => [
       String(status.id),
@@ -269,37 +316,44 @@ export default function DashboardPage() {
 
   const openIncidents = incidents.filter(
     (incident) =>
+      !canUseLifecycle ||
       !isClosedStatus(getIncidentStatusName(incident, statusLabels)),
   );
-  const unassignedIncidents = openIncidents.filter(
-    (incident) => !latestAssignmentByIncident.has(String(incident.id)),
-  );
-  const staleIncidents = openIncidents.filter((incident) => {
-    const reportedAt = parseDate(getIncidentDate(incident));
-    if (!reportedAt) {
-      return false;
-    }
+  const unassignedIncidents = canUseAssignments
+    ? openIncidents.filter(
+        (incident) => !latestAssignmentByIncident.has(String(incident.id)),
+      )
+    : [];
+  const staleIncidents = canUseLifecycle
+    ? openIncidents.filter((incident) => {
+        const reportedAt = parseDate(getIncidentDate(incident));
+        if (!reportedAt) {
+          return false;
+        }
 
-    return (
-      currentTime - reportedAt.getTime() >=
-      STALE_INCIDENT_HOURS * 60 * 60 * 1000
-    );
-  });
-  const openStatusIds = statuses
-    .filter((status) => !isClosedStatus(status.name))
-    .map((status) => String(status.id));
+        return (
+          currentTime - reportedAt.getTime() >=
+          STALE_INCIDENT_HOURS * 60 * 60 * 1000
+        );
+      })
+    : [];
+  const openStatusIds = canUseLifecycle
+    ? statuses
+        .filter((status) => !isClosedStatus(status.name))
+        .map((status) => String(status.id))
+    : [];
 
   const scopedIncidentsSource =
-    scope === "all"
+    effectiveScope === "all"
       ? incidents
-      : scope === "open"
+      : effectiveScope === "open"
         ? openIncidents
-        : scope === "unassigned"
+        : effectiveScope === "unassigned"
           ? unassignedIncidents
           : staleIncidents;
 
   const filteredIncidents = scopedIncidentsSource.filter((incident) => {
-    if (selectedSeverityId === "all") {
+    if (!canUseSeverities || selectedSeverityId === "all") {
       return true;
     }
 
@@ -309,37 +363,43 @@ export default function DashboardPage() {
   const filteredIncidentIdSet = new Set(
     filteredIncidents.map((incident) => String(incident.id)),
   );
-  const filteredOpenIncidents = filteredIncidents.filter(
-    (incident) =>
-      !isClosedStatus(getIncidentStatusName(incident, statusLabels)),
-  );
-  const filteredInProgressIncidents = filteredOpenIncidents.filter((incident) =>
-    isInProgressStatus(getIncidentStatusName(incident, statusLabels)),
-  );
-  const filteredUnassignedIncidents = filteredOpenIncidents.filter(
-    (incident) => !latestAssignmentByIncident.has(String(incident.id)),
-  );
-  const filteredIncidentsReportedToday = filteredIncidents.filter(
-    (incident) => {
-      const reportedAt = parseDate(getIncidentDate(incident));
-      if (!reportedAt) {
-        return false;
-      }
-
-      return currentTime - reportedAt.getTime() <= DAY_IN_MS;
-    },
-  );
-  const filteredStaleIncidents = filteredOpenIncidents.filter((incident) => {
+  const filteredOpenIncidents = canUseLifecycle
+    ? filteredIncidents.filter(
+        (incident) =>
+          !isClosedStatus(getIncidentStatusName(incident, statusLabels)),
+      )
+    : filteredIncidents;
+  const filteredInProgressIncidents = canUseLifecycle
+    ? filteredOpenIncidents.filter((incident) =>
+        isInProgressStatus(getIncidentStatusName(incident, statusLabels)),
+      )
+    : [];
+  const filteredUnassignedIncidents = canUseAssignments
+    ? filteredOpenIncidents.filter(
+        (incident) => !latestAssignmentByIncident.has(String(incident.id)),
+      )
+    : [];
+  const filteredIncidentsReportedToday = filteredIncidents.filter((incident) => {
     const reportedAt = parseDate(getIncidentDate(incident));
     if (!reportedAt) {
       return false;
     }
 
-    return (
-      currentTime - reportedAt.getTime() >=
-      STALE_INCIDENT_HOURS * 60 * 60 * 1000
-    );
+    return currentTime - reportedAt.getTime() <= DAY_IN_MS;
   });
+  const filteredStaleIncidents = canUseLifecycle
+    ? filteredOpenIncidents.filter((incident) => {
+        const reportedAt = parseDate(getIncidentDate(incident));
+        if (!reportedAt) {
+          return false;
+        }
+
+        return (
+          currentTime - reportedAt.getTime() >=
+          STALE_INCIDENT_HOURS * 60 * 60 * 1000
+        );
+      })
+    : [];
 
   const recentIncidents = [...filteredIncidents]
     .sort((left, right) => {
@@ -349,76 +409,86 @@ export default function DashboardPage() {
     })
     .slice(0, 8);
 
-  const urgentQueue = [...filteredUnassignedIncidents]
-    .sort((left, right) => {
-      const leftTime = parseDate(getIncidentDate(left))?.getTime() ?? 0;
-      const rightTime = parseDate(getIncidentDate(right))?.getTime() ?? 0;
-      return leftTime - rightTime;
-    })
-    .slice(0, 6);
+  const urgentQueue = canUseAssignments
+    ? [...filteredUnassignedIncidents]
+        .sort((left, right) => {
+          const leftTime = parseDate(getIncidentDate(left))?.getTime() ?? 0;
+          const rightTime = parseDate(getIncidentDate(right))?.getTime() ?? 0;
+          return leftTime - rightTime;
+        })
+        .slice(0, 6)
+    : [];
 
-  const recentAssignments = [...assignments]
-    .sort((left, right) => {
-      const rightTime = parseDate(getAssignmentDisplayDate(right))?.getTime() ?? 0;
-      const leftTime = parseDate(getAssignmentDisplayDate(left))?.getTime() ?? 0;
-      return rightTime - leftTime;
-    })
-    .slice(0, 8);
+  const recentAssignments = canUseAssignments
+    ? [...assignments]
+        .sort((left, right) => {
+          const rightTime =
+            parseDate(getAssignmentDisplayDate(right))?.getTime() ?? 0;
+          const leftTime =
+            parseDate(getAssignmentDisplayDate(left))?.getTime() ?? 0;
+          return rightTime - leftTime;
+        })
+        .slice(0, 8)
+    : [];
   const filteredAssignments = recentAssignments.filter((assignment) =>
     filteredIncidentIdSet.has(String(assignment.incidentId ?? "")),
   );
-  const agingBuckets = AGING_BUCKETS.map((bucket) => {
-    const createdFrom =
-      bucket.maxHours === undefined
-        ? undefined
-        : new Date(
-            currentTime - bucket.maxHours * 60 * 60 * 1000,
-          ).toISOString();
-    const createdTo = new Date(
-      currentTime - bucket.minHours * 60 * 60 * 1000,
-    ).toISOString();
-    const incidentsInBucket = filteredOpenIncidents.filter((incident) => {
-      const reportedAt = parseDate(getIncidentDate(incident));
-      if (!reportedAt) {
-        return false;
-      }
+  const agingBuckets = canUseLifecycle
+    ? AGING_BUCKETS.map((bucket) => {
+        const createdFrom =
+          bucket.maxHours === undefined
+            ? undefined
+            : new Date(
+                currentTime - bucket.maxHours * 60 * 60 * 1000,
+              ).toISOString();
+        const createdTo = new Date(
+          currentTime - bucket.minHours * 60 * 60 * 1000,
+        ).toISOString();
+        const incidentsInBucket = filteredOpenIncidents.filter((incident) => {
+          const reportedAt = parseDate(getIncidentDate(incident));
+          if (!reportedAt) {
+            return false;
+          }
 
-      const ageHours = Math.max(
-        0,
-        (currentTime - reportedAt.getTime()) / (60 * 60 * 1000),
-      );
+          const ageHours = Math.max(
+            0,
+            (currentTime - reportedAt.getTime()) / (60 * 60 * 1000),
+          );
 
-      if (bucket.maxHours === undefined) {
-        return ageHours >= bucket.minHours;
-      }
+          if (bucket.maxHours === undefined) {
+            return ageHours >= bucket.minHours;
+          }
 
-      return ageHours >= bucket.minHours && ageHours < bucket.maxHours;
-    });
+          return ageHours >= bucket.minHours && ageHours < bucket.maxHours;
+        });
 
-    return {
-      ...bucket,
-      count: incidentsInBucket.length,
-      createdFrom,
-      createdTo,
-    };
-  });
-  const topCategories = Array.from(
-    filteredIncidents.reduce<Map<string, number>>((accumulator, incident) => {
-      const key = String(incident.categoryId ?? "unknown");
-      accumulator.set(key, (accumulator.get(key) ?? 0) + 1);
-      return accumulator;
-    }, new Map()),
-  )
-    .map(([categoryId, count]) => ({
-      categoryId,
-      count,
-      label: categoryLabels.get(categoryId) ?? "Uncategorized",
-    }))
-    .sort((left, right) => right.count - left.count)
-    .slice(0, 5);
+        return {
+          ...bucket,
+          count: incidentsInBucket.length,
+          createdFrom,
+          createdTo,
+        };
+      })
+    : [];
+  const topCategories = canUseCategories
+    ? Array.from(
+        filteredIncidents.reduce<Map<string, number>>((accumulator, incident) => {
+          const key = String(incident.categoryId ?? "unknown");
+          accumulator.set(key, (accumulator.get(key) ?? 0) + 1);
+          return accumulator;
+        }, new Map()),
+      )
+        .map(([categoryId, count]) => ({
+          categoryId,
+          count,
+          label: categoryLabels.get(categoryId) ?? "Uncategorized",
+        }))
+        .sort((left, right) => right.count - left.count)
+        .slice(0, 5)
+    : [];
 
   const openIncidentsList = ({
-    scopeOverride = scope,
+    scopeOverride = effectiveScope,
     incidentId,
     extraFilters = [],
     createdFrom,
@@ -431,7 +501,7 @@ export default function DashboardPage() {
 
     const filters: ListFilter[] = [];
 
-    if (selectedSeverityId !== "all") {
+    if (canUseSeverities && selectedSeverityId !== "all") {
       filters.push({
         field: "severityId",
         operator: "equals",
@@ -440,6 +510,7 @@ export default function DashboardPage() {
     }
 
     if (
+      canUseLifecycle &&
       (scopeOverride === "open" ||
         scopeOverride === "unassigned" ||
         scopeOverride === "stale") &&
@@ -761,7 +832,16 @@ export default function DashboardPage() {
             </Button>
           </div>
 
-          {filteredUnassignedIncidents.length > 0 ? (
+          {optionalRestrictions.length > 0 ? (
+            <Alert
+              type="info"
+              showIcon
+              message="Some dashboard panels are hidden for this account."
+              description={`Unavailable data: ${optionalRestrictions.join(", ")}.`}
+            />
+          ) : null}
+
+          {canUseLifecycle && canUseAssignments && filteredUnassignedIncidents.length > 0 ? (
             <Alert
               type="warning"
               showIcon
@@ -771,31 +851,35 @@ export default function DashboardPage() {
 
           <div className={styles.controlBar}>
             <Space wrap size={12}>
-              <Segmented<DashboardScope>
-                value={scope}
-                onChange={(value) => setScope(value)}
-                options={[
-                  { label: "Open", value: "open" },
-                  { label: "All", value: "all" },
-                  { label: "Unassigned", value: "unassigned" },
-                  { label: "Stale", value: "stale" },
-                ]}
-              />
-              <Select
-                value={selectedSeverityId}
-                onChange={setSelectedSeverityId}
-                style={{ minWidth: 220 }}
-                options={[
-                  { value: "all", label: "All severities" },
-                  ...severities.map((severity: Severity) => ({
-                    value: String(severity.id),
-                    label:
-                      severity.level?.trim() ||
-                      severity.name?.trim() ||
-                      `Severity ${severity.id}`,
-                  })),
-                ]}
-              />
+              {canUseLifecycle ? (
+                <Segmented<DashboardScope>
+                  value={scope}
+                  onChange={(value) => setScope(value)}
+                  options={[
+                    { label: "Open", value: "open" },
+                    { label: "All", value: "all" },
+                    { label: "Unassigned", value: "unassigned" },
+                    { label: "Stale", value: "stale" },
+                  ]}
+                />
+              ) : null}
+              {canUseSeverities ? (
+                <Select
+                  value={selectedSeverityId}
+                  onChange={setSelectedSeverityId}
+                  style={{ minWidth: 220 }}
+                  options={[
+                    { value: "all", label: "All severities" },
+                    ...severities.map((severity: Severity) => ({
+                      value: String(severity.id),
+                      label:
+                        severity.level?.trim() ||
+                        severity.name?.trim() ||
+                        `Severity ${severity.id}`,
+                    })),
+                  ]}
+                />
+              ) : null}
             </Space>
             <Text className={styles.controlMeta}>
               Showing {filteredIncidents.length} incident
@@ -806,6 +890,7 @@ export default function DashboardPage() {
       </Card>
 
       <div className={styles.primaryRow}>
+        {canUseLifecycle ? (
         <Card
           className={`${styles.metricCard} ${styles.primaryMetric} ${styles.clickableCard}`}
           variant="borderless"
@@ -819,8 +904,20 @@ export default function DashboardPage() {
             Immediate workload across the current dashboard scope.
           </Text>
         </Card>
+        ) : (
+        <Card
+          className={`${styles.metricCard} ${styles.primaryMetric}`}
+          variant="borderless"
+        >
+          <Statistic title="Incidents In View" value={filteredIncidents.length} />
+          <Text className={styles.primaryMetricText}>
+            Dashboard metrics are limited to incident data for this account.
+          </Text>
+        </Card>
+        )}
 
         <div className={styles.summaryPanel}>
+          {canUseAssignments ? (
           <Card
             className={`${styles.metricCard} ${styles.clickableCard}`}
             variant="borderless"
@@ -832,6 +929,8 @@ export default function DashboardPage() {
             />
             <Text className={styles.metricLabel}>Awaiting dispatch</Text>
           </Card>
+          ) : null}
+          {canUseLifecycle ? (
           <Card
             className={`${styles.metricCard} ${styles.clickableCard}`}
             variant="borderless"
@@ -856,6 +955,7 @@ export default function DashboardPage() {
             />
             <Text className={styles.metricLabel}>Active field response</Text>
           </Card>
+          ) : null}
           <Card
             className={`${styles.metricCard} ${styles.clickableCard}`}
             variant="borderless"
@@ -871,6 +971,7 @@ export default function DashboardPage() {
             />
             <Text className={styles.metricLabel}>Fresh incident volume</Text>
           </Card>
+          {canUseLifecycle ? (
           <Card
             className={`${styles.metricCard} ${styles.clickableCard}`}
             variant="borderless"
@@ -882,14 +983,18 @@ export default function DashboardPage() {
             />
             <Text className={styles.metricLabel}>At-risk backlog</Text>
           </Card>
+          ) : null}
         </div>
       </div>
 
       <div className={styles.summaryPanel}>
+        {canUseResponders ? (
         <Card className={styles.metricCard} variant="borderless">
           <Statistic title="Responders" value={respondersTotal} />
           <Text className={styles.metricLabel}>Available roster</Text>
         </Card>
+        ) : null}
+        {canUseAssignments ? (
         <Card className={styles.metricCard} variant="borderless">
           <Statistic
             title="Assignments In View"
@@ -897,19 +1002,23 @@ export default function DashboardPage() {
           />
           <Text className={styles.metricLabel}>Recent dispatch activity</Text>
         </Card>
+        ) : null}
         <Card className={styles.metricCard} variant="borderless">
           <Statistic title="Incidents Loaded" value={incidentsTotal} />
           <Text className={styles.metricLabel}>
             Fetched from the current list query
           </Text>
         </Card>
+        {canUseCategories ? (
         <Card className={styles.metricCard} variant="borderless">
           <Statistic title="Active Categories" value={topCategories.length} />
           <Text className={styles.metricLabel}>Dominant issue clusters</Text>
         </Card>
+        ) : null}
       </div>
 
       <Row gutter={[16, 16]}>
+        {canUseLifecycle ? (
         <Col xs={24} xl={12}>
           <Card className={styles.sectionCard} variant="borderless">
             <div className={styles.sectionHeading}>
@@ -948,6 +1057,8 @@ export default function DashboardPage() {
             </div>
           </Card>
         </Col>
+        ) : null}
+        {canUseCategories ? (
         <Col xs={24} xl={12}>
           <Card className={styles.sectionCard} variant="borderless">
             <div className={styles.sectionHeading}>
@@ -996,6 +1107,7 @@ export default function DashboardPage() {
             </div>
           </Card>
         </Col>
+        ) : null}
       </Row>
 
       <div className={styles.activityGrid}>
@@ -1032,6 +1144,7 @@ export default function DashboardPage() {
           />
         </Card>
 
+        {canUseAssignments ? (
         <Card
           className={`${styles.sectionCard} ${styles.tableCard} ${styles.compactTable}`}
           variant="borderless"
@@ -1066,8 +1179,10 @@ export default function DashboardPage() {
             locale={{ emptyText: "All open incidents are assigned" }}
           />
         </Card>
+        ) : null}
       </div>
 
+      {canUseAssignments ? (
       <Card
         className={`${styles.sectionCard} ${styles.tableCard} ${styles.compactTable}`}
         variant="borderless"
@@ -1099,6 +1214,7 @@ export default function DashboardPage() {
           locale={{ emptyText: "No assignments available" }}
         />
       </Card>
+      ) : null}
     </div>
   );
 }

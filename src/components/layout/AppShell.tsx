@@ -19,7 +19,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAllCrudResources } from "@/features/dynamic-crud/config";
-import { hasPermission } from "@/features/dynamic-crud/permissions";
+import { canShowCrudNavigationItem } from "@/features/dynamic-crud/permissions";
 import { CAN_VIEW_AUDIT_LOGS } from "@/lib/auth/permissions";
 
 const { Header, Sider, Content } = Layout;
@@ -31,6 +31,23 @@ type AppMenuItem = {
   label: string;
   canView?: () => boolean;
 };
+
+const RESOURCE_ROUTES: Partial<Record<string, string>> = {
+  assignments: "/assignments",
+  auditLogs: "/audit-logs",
+  categories: "/categories",
+  citizens: "/citizens",
+  incidents: "/incidents",
+  profile: "/profile",
+  responders: "/responders",
+  severities: "/severities",
+  statuses: "/statuses",
+  users: "/users",
+};
+
+function getResourceRoute(resource: string): string {
+  return RESOURCE_ROUTES[resource] ?? `/dashboard/${resource}`;
+}
 
 function iconForResource(resource: string) {
   switch (resource) {
@@ -101,11 +118,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const items: AppMenuItem[] = [
       { key: "/dashboard", icon: <AppstoreOutlined />, label: "Dashboard" },
       ...resources.map((resource) => ({
-        key: `/dashboard/${resource.resource}`,
+        key: getResourceRoute(resource.resource),
         icon: iconForResource(resource.resource),
         label: resource.label,
         canView: () =>
-          hasPermission(resource.endpoints.list, user?.role, isAuthenticated),
+          canShowCrudNavigationItem(resource, user?.role, isAuthenticated),
       })),
       {
         key: "/audit-logs",
