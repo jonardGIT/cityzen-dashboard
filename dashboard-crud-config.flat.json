@@ -75,7 +75,7 @@
       "method": "GET",
       "path": "/agencies",
       "fullPath": "/api/v1/agencies",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -85,7 +85,7 @@
       "method": "GET",
       "path": "/agencies/{id}",
       "fullPath": "/api/v1/agencies/{id}",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -125,7 +125,7 @@
       "method": "GET",
       "path": "/responders",
       "fullPath": "/api/v1/responders",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -135,7 +135,7 @@
       "method": "GET",
       "path": "/responders/{id}",
       "fullPath": "/api/v1/responders/{id}",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -176,7 +176,7 @@
       "method": "GET",
       "path": "/statuses",
       "fullPath": "/api/v1/statuses",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -186,7 +186,7 @@
       "method": "GET",
       "path": "/statuses/{id}",
       "fullPath": "/api/v1/statuses/{id}",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -227,7 +227,7 @@
       "method": "GET",
       "path": "/categories",
       "fullPath": "/api/v1/categories",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -237,7 +237,7 @@
       "method": "GET",
       "path": "/categories/{id}",
       "fullPath": "/api/v1/categories/{id}",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -278,7 +278,7 @@
       "method": "GET",
       "path": "/severities",
       "fullPath": "/api/v1/severities",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -288,7 +288,7 @@
       "method": "GET",
       "path": "/severities/{id}",
       "fullPath": "/api/v1/severities/{id}",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -405,7 +405,7 @@
       "method": "GET",
       "path": "/assignments",
       "fullPath": "/api/v1/assignments",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
@@ -415,7 +415,7 @@
       "method": "GET",
       "path": "/assignments/{id}",
       "fullPath": "/api/v1/assignments/{id}",
-      "authRequired": false,
+      "authRequired": true,
       "allowedRoles": []
     },
     {
