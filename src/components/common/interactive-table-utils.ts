@@ -203,7 +203,8 @@ export function matchesFilter<T extends { id: string; [key: string]: unknown }>(
   const value = getColumnValue(row, entry.column, entry.id);
 
   if (kind === "date") {
-    const candidate = typeof value === "string" ? Date.parse(value) : Number.NaN;
+    const candidate =
+      typeof value === "string" ? Date.parse(value) : Number.NaN;
     if (Number.isNaN(candidate)) {
       return false;
     }
@@ -301,8 +302,10 @@ export function compareValues<T extends { id: string; [key: string]: unknown }>(
   const rightValue = getColumnValue(right, entry.column, entry.id);
 
   if (kind === "date") {
-    const leftDate = typeof leftValue === "string" ? Date.parse(leftValue) : Number.NaN;
-    const rightDate = typeof rightValue === "string" ? Date.parse(rightValue) : Number.NaN;
+    const leftDate =
+      typeof leftValue === "string" ? Date.parse(leftValue) : Number.NaN;
+    const rightDate =
+      typeof rightValue === "string" ? Date.parse(rightValue) : Number.NaN;
 
     if (Number.isNaN(leftDate) && Number.isNaN(rightDate)) {
       return 0;
@@ -366,14 +369,17 @@ export function createOptionLabelsByField<
   return new Map(
     columnEntries
       .filter((entry) => entry.column.filterOptions?.length)
-      .map((entry) => [
-        entry.id,
-        new Map(
-          (entry.column.filterOptions ?? []).map((option) => [
-            option.value,
-            option.label,
-          ]),
-        ),
-      ] as const),
+      .map(
+        (entry) =>
+          [
+            entry.id,
+            new Map(
+              (entry.column.filterOptions ?? []).map((option) => [
+                option.value,
+                option.label,
+              ]),
+            ),
+          ] as const,
+      ),
   );
 }
