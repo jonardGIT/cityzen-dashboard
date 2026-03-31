@@ -1,6 +1,5 @@
-import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAccessToken } from "@/lib/auth/token-storage";
+import { createAuthenticatedClient } from "@/lib/api/clients";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
 import {
   adaptPaginatedResponse,
@@ -13,8 +12,9 @@ import {
   type FetchListParams,
   type ListQueryState,
 } from "@/lib/api/list-query-params";
+import { normalizeCapabilities } from "@/lib/auth/roles";
 import type { User } from "@/types/api";
-import type { Role } from "@/types/auth";
+import type { Role, UserCapabilities } from "@/types/auth";
 
 export interface CreateUserDto {
   name: string;
@@ -33,25 +33,9 @@ export interface UpdateUserDto {
   lastName?: string;
 }
 
-export interface UsersCapabilities {
-  canUpdateUser: boolean;
-  canDeleteUser: boolean;
-}
+export type UsersCapabilities = UserCapabilities;
 
-const usersApiClient = axios.create({
-  baseURL: "/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-usersApiClient.interceptors.request.use((config) => {
-  const token = getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+const usersApiClient = createAuthenticatedClient("/api");
 
 export async function fetchUsers(
   fetchParams: FetchListParams,
@@ -86,10 +70,10 @@ export async function deleteUser(userId: string) {
 }
 
 export async function fetchUsersCapabilities() {
-  const response = await usersApiClient.get<UsersCapabilities>(
+  const response = await usersApiClient.get<unknown>(
     "/users/capabilities",
   );
-  return response.data;
+  return normalizeCapabilities(response.data);
 }
 
 export function useUsersQuery(state: ListQueryState, enabled = true) {

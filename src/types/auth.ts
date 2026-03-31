@@ -1,10 +1,14 @@
 export enum Role {
-  SUPER_ADMIN = "SUPER_ADMIN",
-  ADMIN = "ADMIN",
+  SYSTEM_ADMIN = "SYSTEM_ADMIN",
+  DEPARTMENT_MANAGER = "DEPARTMENT_MANAGER",
+  SUPERVISOR = "SUPERVISOR",
   DISPATCHER = "DISPATCHER",
   RESPONDER = "RESPONDER",
-  VIEWER = "VIEWER",
+  CITIZEN_REPORTER = "CITIZEN_REPORTER",
+  AUDITOR = "AUDITOR",
 }
+
+export type LegacyRole = "SUPER_ADMIN" | "ADMIN" | "VIEWER";
 
 export interface AuthUser {
   id: string;
@@ -15,6 +19,15 @@ export interface AuthUser {
   role: Role;
   mfaEnabled: boolean;
   mfaEnabledAt?: string | null;
+}
+
+export interface UserCapabilities {
+  role: Role;
+  label: string;
+  permissions: string[];
+  scope: string[];
+  canUpdateUser: boolean;
+  canDeleteUser: boolean;
 }
 
 export interface LoginRequest {

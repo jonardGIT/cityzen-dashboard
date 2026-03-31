@@ -18,9 +18,8 @@ import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { getAllCrudResources } from "@/features/dynamic-crud/config";
-import { hasPermission } from "@/features/dynamic-crud/permissions";
-import { CAN_VIEW_AUDIT_LOGS } from "@/lib/auth/permissions";
+import { getNavigationItems } from "@/lib/auth/navigation";
+import { getRoleLabel } from "@/lib/auth/roles";
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -29,15 +28,18 @@ type AppMenuItem = {
   key: string;
   icon: React.ReactNode;
   label: string;
-  canView?: () => boolean;
 };
 
 function iconForResource(resource: string) {
   switch (resource) {
+    case "dashboard":
+      return <AppstoreOutlined />;
     case "incidents":
       return <ExclamationCircleOutlined />;
     case "assignments":
       return <ApartmentOutlined />;
+    case "agencies":
+      return <TeamOutlined />;
     case "citizens":
       return <TeamOutlined />;
     case "responders":
@@ -50,6 +52,10 @@ function iconForResource(resource: string) {
       return <ProfileOutlined />;
     case "users":
       return <UserOutlined />;
+    case "audit-logs":
+      return <FileSearchOutlined />;
+    case "profile":
+      return <UserOutlined />;
     default:
       return <AppstoreOutlined />;
   }
@@ -59,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, capabilities, logout, isAuthenticated } = useAuth();
 
   const displayName = useMemo(() => {
     if (!user) {
@@ -83,48 +89,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [identityLabel]);
 
   const roleLabel = useMemo(() => {
-    if (!user?.role) {
-      return "No role";
-    }
-
-    return String(user.role)
-      .toLowerCase()
-      .split("_")
-      .filter((part) => part.length > 0)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ");
-  }, [user]);
+    return getRoleLabel(capabilities?.role ?? user?.role);
+  }, [capabilities?.role, user?.role]);
 
   const menuItems = useMemo<NonNullable<MenuProps["items"]>>(() => {
-    const resources = getAllCrudResources();
+    const items: AppMenuItem[] = getNavigationItems({
+      role: user?.role,
+      capabilities,
+      isAuthenticated,
+    }).map((item) => ({
+      key: item.href,
+      icon: iconForResource(item.resource ?? item.key.replace(/^\//, "")),
+      label: item.label,
+    }));
 
-    const items: AppMenuItem[] = [
-      { key: "/dashboard", icon: <AppstoreOutlined />, label: "Dashboard" },
-      ...resources.map((resource) => ({
-        key: `/dashboard/${resource.resource}`,
-        icon: iconForResource(resource.resource),
-        label: resource.label,
-        canView: () =>
-          hasPermission(resource.endpoints.list, user?.role, isAuthenticated),
-      })),
-      {
-        key: "/audit-logs",
-        icon: <FileSearchOutlined />,
-        label: "Audit Logs",
-        canView: () =>
-          Boolean(user?.role && CAN_VIEW_AUDIT_LOGS.includes(user.role)),
-      },
-      {
-        key: "/profile",
-        icon: <UserOutlined />,
-        label: "Account Security",
-      },
-    ];
-
-    return items
-      .filter((item) => (item.canView ? item.canView() : true))
-      .map(({ key, icon, label }) => ({ key, icon, label }));
-  }, [isAuthenticated, user]);
+    return items.map(({ key, icon, label }) => ({ key, icon, label }));
+  }, [capabilities, isAuthenticated, user?.role]);
 
   const selectedKey = useMemo(() => {
     const exact = menuItems.find((item) => item?.key === pathname)?.key;

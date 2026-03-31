@@ -16,7 +16,12 @@ export default function SeveritiesPage() {
       query={query}
       columns={[
         { title: "ID", dataIndex: "id", key: "id" },
-        { title: "Name", dataIndex: "name", key: "name" },
+        { title: "Level", dataIndex: "level", key: "level" },
+        {
+          title: "Definition",
+          dataIndex: "definition",
+          key: "definition",
+        },
       ]}
     />
   );

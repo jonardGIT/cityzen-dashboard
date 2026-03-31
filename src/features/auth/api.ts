@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { authClient, publicClient } from "@/lib/api/clients";
+import { normalizeAuthResponse, normalizeAuthUser, normalizeCapabilities } from "@/lib/auth/roles";
 import type { ApiErrorPayload } from "@/types/api";
 import type {
   AuthResponse,
@@ -15,6 +16,7 @@ import type {
   PasswordResetRequestRequest,
   PasswordResetRequestResponse,
   RefreshRequest,
+  UserCapabilities,
 } from "@/types/auth";
 
 const AUTH_SESSIONS_QUERY_KEY = ["auth", "sessions"] as const;
@@ -38,9 +40,10 @@ export async function loginWithPassword(
       "/auth/login",
       payload,
     );
+    const auth = normalizeAuthResponse(response.data);
     return {
-      mfaRequired: Boolean(response.data.mfaRequired),
-      auth: response.data,
+      mfaRequired: Boolean(auth.mfaRequired),
+      auth,
     };
   } catch (error) {
     if (isMfaRequiredError(error)) {
@@ -58,7 +61,7 @@ export async function refreshAuthSession(
     "/auth/refresh",
     payload,
   );
-  return response.data;
+  return normalizeAuthResponse(response.data);
 }
 
 export async function requestPasswordReset(
@@ -85,7 +88,16 @@ export async function fetchCurrentUser(
   signal?: AbortSignal,
 ): Promise<AuthUser> {
   const response = await authClient.get<AuthUser>("/auth/me", { signal });
-  return response.data;
+  return normalizeAuthUser(response.data);
+}
+
+export async function fetchCurrentUserCapabilities(
+  signal?: AbortSignal,
+): Promise<UserCapabilities> {
+  const response = await authClient.get<unknown>("/users/capabilities", {
+    signal,
+  });
+  return normalizeCapabilities(response.data);
 }
 
 export async function logoutCurrentSession(): Promise<void> {

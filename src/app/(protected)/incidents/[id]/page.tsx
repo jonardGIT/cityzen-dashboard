@@ -54,7 +54,6 @@ import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
 import type { ApiErrorPayload } from "@/types/api";
-import type { Assignment, Incident, Responder } from "@/types/api";
 import styles from "./page.module.css";
 
 const { Link, Text, Title } = Typography;

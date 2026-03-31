@@ -17,7 +17,6 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
-import { RoleGuard } from "@/components/auth/RoleGuard";
 import {
   SharedTable,
   type SharedTableColumn,
@@ -291,17 +290,16 @@ export default function AssignmentsPage() {
                 context so dispatch activity is readable at a glance.
               </Text>
             </div>
-            <RoleGuard allowedRoles={CAN_CREATE_ASSIGNMENT} disableOnly>
+            {canCreate ? (
               <Button
                 className={styles.heroAction}
                 type="primary"
                 size="large"
                 onClick={() => setOpen(true)}
-                disabled={!canCreate}
               >
                 Create Assignment
               </Button>
-            </RoleGuard>
+            ) : null}
           </div>
 
           <div className={styles.heroMetrics}>

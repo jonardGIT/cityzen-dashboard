@@ -3,6 +3,7 @@ const REFRESH_TOKEN_KEY = "xypes_refresh_token";
 const AUTH_SESSION_KEY = "xypes_auth_session";
 const AUTH_USER_KEY = "xypes_auth_user";
 
+import { normalizeAuthUser } from "@/lib/auth/roles";
 import type { AuthResponse, StoredAuthSession } from "@/types/auth";
 
 function canUseStorage(): boolean {
@@ -93,6 +94,8 @@ export function clearStoredAuthSession(): void {
 }
 
 export function storeAuthResponse(response: AuthResponse): void {
+  const normalizedUser = normalizeAuthUser(response.user);
+
   setAccessToken(response.token);
   setRefreshToken(response.refreshToken);
   setStoredAuthSession({
@@ -101,7 +104,7 @@ export function storeAuthResponse(response: AuthResponse): void {
     expiresAt: response.expiresAt,
     refreshExpiresAt: response.refreshExpiresAt,
   });
-  setStoredUser(response.user);
+  setStoredUser(normalizedUser);
 }
 
 export function getStoredUser<T>(): T | null {

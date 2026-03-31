@@ -1,4 +1,5 @@
 import flatConfig from "../../../dashboard-crud-config.flat.json";
+import { normalizeRoleList } from "@/lib/auth/roles";
 import type { CrudConfigFlat, CrudEndpoint, CrudOperation, ParsedCrudResource } from "@/features/dynamic-crud/types";
 
 const parsedConfig = flatConfig as CrudConfigFlat;
@@ -6,7 +7,7 @@ const parsedConfig = flatConfig as CrudConfigFlat;
 function ensureEndpointOperationShape(endpoint: CrudEndpoint): CrudEndpoint {
   return {
     ...endpoint,
-    allowedRoles: endpoint.allowedRoles ?? [],
+    allowedRoles: normalizeRoleList(endpoint.allowedRoles ?? []),
   };
 }
 

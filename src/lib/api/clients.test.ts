@@ -2,11 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   axiosCreateMock,
-  publicRequestUseMock,
-  publicResponseUseMock,
   authRequestUseMock,
   authResponseUseMock,
-  refreshResponseUseMock,
   authInstanceMock,
   refreshPostMock,
   clearAuthStorageMock,
@@ -47,11 +44,8 @@ const {
 
   return {
     axiosCreateMock,
-    publicRequestUseMock,
-    publicResponseUseMock,
     authRequestUseMock,
     authResponseUseMock,
-    refreshResponseUseMock,
     authInstanceMock,
     refreshPostMock,
     clearAuthStorageMock: vi.fn(),
@@ -125,7 +119,7 @@ describe("auth api clients", () => {
           id: "user-1",
           name: "Admin User",
           email: "admin@example.com",
-          role: "ADMIN",
+          role: "DEPARTMENT_MANAGER",
           mfaEnabled: true,
         },
       },

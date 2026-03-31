@@ -55,8 +55,12 @@ function notifyUnauthorized(reason: LoginReason) {
 }
 
 function createBaseConfig() {
+  return createBaseConfigFor(API_BASE_URL);
+}
+
+function createBaseConfigFor(baseURL: string) {
   return {
-    baseURL: API_BASE_URL,
+    baseURL,
     headers: {
       "Content-Type": "application/json",
       "x-api-key": API_KEY,
@@ -91,8 +95,8 @@ async function refreshAuthenticatedSession(): Promise<AuthResponse | null> {
   }
 }
 
-function buildClient(includeAuth: boolean) {
-  const client = axios.create(createBaseConfig());
+function buildClient(baseURL: string, includeAuth: boolean) {
+  const client = axios.create(createBaseConfigFor(baseURL));
 
   if (includeAuth) {
     client.interceptors.request.use((config) => {
@@ -170,5 +174,13 @@ refreshClient.interceptors.response.use(
   },
 );
 
-export const publicClient = buildClient(false);
-export const authClient = buildClient(true);
+export function createPublicClient(baseURL = API_BASE_URL) {
+  return buildClient(baseURL, false);
+}
+
+export function createAuthenticatedClient(baseURL = API_BASE_URL) {
+  return buildClient(baseURL, true);
+}
+
+export const publicClient = createPublicClient();
+export const authClient = createAuthenticatedClient();

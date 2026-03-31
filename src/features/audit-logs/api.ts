@@ -1,5 +1,5 @@
-import axios, { AxiosError } from "axios";
 import { useQuery } from "@tanstack/react-query";
+import { createAuthenticatedClient } from "@/lib/api/clients";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
 import {
   adaptPaginatedResponse,
@@ -9,41 +9,9 @@ import {
   buildListQueryParams,
   type FetchListParams,
 } from "@/lib/api/list-query-params";
-import { clearAuthStorage, getAccessToken } from "@/lib/auth/token-storage";
-import type { ApiErrorPayload, AuditLog } from "@/types/api";
+import type { AuditLog } from "@/types/api";
 
-const auditLogsApiClient = axios.create({
-  baseURL: "/api/dashboard",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-auditLogsApiClient.interceptors.request.use((config) => {
-  const token = getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
-
-auditLogsApiClient.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError<ApiErrorPayload>) => {
-    if (error.response?.status === 401) {
-      clearAuthStorage();
-      if (
-        typeof window !== "undefined" &&
-        window.location.pathname !== "/login"
-      ) {
-        window.location.replace("/login");
-      }
-    }
-
-    return Promise.reject(error);
-  },
-);
+const auditLogsApiClient = createAuthenticatedClient("/api/dashboard");
 
 export async function fetchAuditLogs(
   fetchParams: FetchListParams,

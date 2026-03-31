@@ -56,6 +56,7 @@ import type {
 import { useAuth } from "@/context/AuthContext";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { buildListQueryParams } from "@/lib/api/list-query-params";
+import { isCitizenSelfServiceUser } from "@/lib/auth/roles";
 import type { ApiErrorPayload, BaseEntity } from "@/types/api";
 import { Role } from "@/types/auth";
 
@@ -207,7 +208,7 @@ function applyValidationErrors(
 
 export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   const { message } = App.useApp();
-  const { user, isAuthenticated } = useAuth();
+  const { user, capabilities, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [linkMeOpen, setLinkMeOpen] = useState(false);
@@ -283,6 +284,8 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     user?.role,
     isAuthenticated,
   );
+  const canUseSelfService = canLinkMe || canReport;
+  const isSelfServiceUser = isCitizenSelfServiceUser(user?.role, capabilities);
 
   const specialMutation = useMutation({
     mutationFn: async ({
@@ -594,7 +597,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   );
   const rows =
     resourceName === "incidents" &&
-    user?.role === Role.VIEWER &&
+    user?.role === Role.CITIZEN_REPORTER &&
     hasOwnershipField
       ? sourceRows.filter((row) =>
           ownershipFields.some(
@@ -767,7 +770,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     );
   }
 
-  if (!canList) {
+  if (!canList && !canUseSelfService) {
     return (
       <Result
         status="403"
@@ -784,27 +787,38 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           {resource.label}
         </Title>
         <Space>
-          {resource?.endpoints.linkMe ? (
-            <Button onClick={() => setLinkMeOpen(true)} disabled={!canLinkMe}>
+          {canLinkMe ? (
+            <Button onClick={() => setLinkMeOpen(true)}>
               Link Profile
             </Button>
           ) : null}
-          {resource?.endpoints.report ? (
-            <Button onClick={() => setReportOpen(true)} disabled={!canReport}>
+          {canReport ? (
+            <Button onClick={() => setReportOpen(true)}>
               Report Incident
             </Button>
           ) : null}
-          <Button
-            type="primary"
-            onClick={() => setCreateOpen(true)}
-            disabled={!canCreate}
-          >
-            Create {resource.label.slice(0, -1)}
-          </Button>
+          {canCreate ? (
+            <Button type="primary" onClick={() => setCreateOpen(true)}>
+              Create {resource.label.slice(0, -1)}
+            </Button>
+          ) : null}
         </Space>
       </Space>
 
-      {!canCreate || !canUpdate || !canDelete ? (
+      {!canList && canUseSelfService ? (
+        <Alert
+          showIcon
+          type="info"
+          message="Your access is limited to self-service actions"
+          description={
+            isSelfServiceUser
+              ? "Use the available actions on this page to report incidents or link your citizen profile. Record browsing is intentionally disabled for your scope."
+              : "Only self-service actions are currently available for this resource."
+          }
+        />
+      ) : null}
+
+      {canList && (!canCreate || !canUpdate || !canDelete) ? (
         <Alert
           showIcon
           type="info"
@@ -813,7 +827,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         />
       ) : null}
 
-      <Card>
+      {canList ? <Card>
         {listQuery.isLoading ? <LoadingState /> : null}
         {hasFatalListError ? (
           <Space orientation="vertical" style={{ width: "100%" }}>
@@ -916,7 +930,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
             }}
           />
         ) : null}
-      </Card>
+      </Card> : null}
 
       <CrudFormModal
         title={`Create ${resource.label.slice(0, -1)}`}

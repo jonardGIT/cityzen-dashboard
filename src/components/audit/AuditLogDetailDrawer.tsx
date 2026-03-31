@@ -82,7 +82,7 @@ export function AuditLogDetailDrawer({
         <Alert
           type="warning"
           showIcon
-          message="Sensitive admin data"
+          message="Sensitive audit data"
           description="Audit logs may contain operational metadata. Handle exports and screenshots carefully."
         />
 
