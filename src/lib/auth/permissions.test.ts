@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getAssignableRoles, canManageRole } from "@/lib/auth/permissions";
+import {
+  CAN_MANAGE_MFA,
+  getAssignableRoles,
+  canManageRole,
+} from "@/lib/auth/permissions";
 import { Role } from "@/types/auth";
 
 describe("auth permissions", () => {
@@ -34,5 +38,13 @@ describe("auth permissions", () => {
     expect(getAssignableRoles(Role.DISPATCHER)).toEqual([]);
     expect(canManageRole(Role.AUDITOR, Role.CITIZEN_REPORTER)).toBe(false);
     expect(canManageRole(Role.SUPERVISOR, Role.RESPONDER)).toBe(false);
+  });
+
+  it("limits MFA management to privileged roles", () => {
+    expect(CAN_MANAGE_MFA).toEqual([
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
+      Role.DISPATCHER,
+    ]);
   });
 });

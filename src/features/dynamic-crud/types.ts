@@ -7,12 +7,35 @@ export type CrudOperation =
   | "linkMe"
   | "report"
   | "update"
-  | "delete";
+  | "delete"
+  | "restore"
+  | "capabilities"
+  | "mediaAccess"
+  | "mediaUpload"
+  | (string & {});
 
 export interface CrudAuthConfig {
   type: "bearer";
   tokenHeader: string;
   tokenPrefix: string;
+  optionalEndpoints?: CrudAuthOptionalEndpoint[];
+}
+
+export interface CrudFeatureGate {
+  feature: string;
+  requires?: string;
+  requiresAnyOf?: string[];
+}
+
+export interface CrudAuthOptionalEndpoint {
+  operation: string;
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+  path: string;
+  fullPath: string;
+  authRequired: boolean;
+  allowedRoles?: Role[];
+  featureGate?: CrudFeatureGate;
+  notes?: string;
 }
 
 export interface CrudEndpoint {
@@ -24,6 +47,7 @@ export interface CrudEndpoint {
   fullPath: string;
   authRequired: boolean;
   allowedRoles: Role[];
+  featureGate?: CrudFeatureGate;
   notes?: string;
 }
 
@@ -36,7 +60,7 @@ export interface CrudConfigFlat {
 export interface ParsedCrudResource {
   resource: string;
   label: string;
-  endpoints: Partial<Record<CrudOperation, CrudEndpoint>> & Record<string, CrudEndpoint | undefined>;
+  endpoints: Record<string, CrudEndpoint | undefined>;
 }
 
 export interface NormalizedApiError {
@@ -51,7 +75,13 @@ export interface NormalizedApiResult<T> {
   error: NormalizedApiError | null;
 }
 
-export type CrudFieldType = "text" | "textarea" | "email" | "password" | "select" | "datetime";
+export type CrudFieldType =
+  | "text"
+  | "textarea"
+  | "email"
+  | "password"
+  | "select"
+  | "datetime";
 
 export interface CrudFieldOptionSource {
   resource: string;

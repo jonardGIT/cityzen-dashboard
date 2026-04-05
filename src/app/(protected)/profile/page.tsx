@@ -35,6 +35,8 @@ import {
   useEnableMfaMutation,
   useRevokeAuthSessionMutation,
 } from "@/features/auth/api";
+import { getAuthOptionalEndpoint } from "@/features/dynamic-crud/config";
+import { useCrudEndpointAvailability } from "@/features/dynamic-crud/openapi";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import type {
   ListFilter,
@@ -124,8 +126,77 @@ function formatDateTime(value?: string | null) {
   }).format(new Date(timestamp));
 }
 
+function getSessionPlatformLabel(userAgent?: string | null) {
+  const value = userAgent?.toLowerCase() ?? "";
+
+  if (value.includes("iphone") || value.includes("ipad") || value.includes("ios")) {
+    return "iPhone or iPad";
+  }
+
+  if (value.includes("android")) {
+    return "Android device";
+  }
+
+  if (value.includes("windows")) {
+    return "Windows";
+  }
+
+  if (value.includes("mac os") || value.includes("macintosh")) {
+    return "macOS";
+  }
+
+  if (value.includes("linux")) {
+    return "Linux";
+  }
+
+  return null;
+}
+
+function getSessionBrowserLabel(userAgent?: string | null) {
+  const value = userAgent?.toLowerCase() ?? "";
+
+  if (value.includes("edg/")) {
+    return "Microsoft Edge";
+  }
+
+  if (value.includes("chrome/") && !value.includes("edg/")) {
+    return "Google Chrome";
+  }
+
+  if (value.includes("firefox/")) {
+    return "Mozilla Firefox";
+  }
+
+  if (value.includes("safari/") && !value.includes("chrome/")) {
+    return "Safari";
+  }
+
+  return null;
+}
+
+function getSessionDisplayLabel(session: AuthSessionSummary) {
+  const browser = getSessionBrowserLabel(session.userAgent);
+  const platform = getSessionPlatformLabel(session.userAgent);
+  const rawUserAgent = session.userAgent?.trim();
+
+  if (browser && platform) {
+    return `${browser} on ${platform}`;
+  }
+
+  return browser ?? platform ?? rawUserAgent ?? `Session ${session.id}`;
+}
+
+function getSessionMetaLabel(session: AuthSessionSummary) {
+  const details = [
+    session.isCurrent ? "Current device" : null,
+    session.ipAddress?.trim() || null,
+  ].filter((value): value is string => Boolean(value));
+
+  return details.join(" • ");
+}
+
 function getSessionTitle(session: AuthSessionSummary) {
-  return session.userAgent?.trim() || `Session ${session.id}`;
+  return getSessionDisplayLabel(session);
 }
 
 function getSessionActionLabel(session: AuthSessionSummary) {
@@ -341,7 +412,7 @@ function compareSessionValues(
 function MfaSetupCard({ setup }: { setup: MfaSetupResponse }) {
   return (
     <Card size="small" style={{ marginTop: 16 }}>
-      <Space direction="vertical" size={16} style={{ width: "100%" }}>
+      <Space orientation="vertical" size={16} style={{ width: "100%" }}>
         <Text strong>Scan this code in your authenticator app</Text>
         <QRCode value={setup.otpauthUrl} size={180} />
         <Descriptions column={1} size="small">
@@ -379,7 +450,24 @@ export default function ProfilePage() {
     defaultSortOrder: DEFAULT_SORT_ORDER,
   });
   const { user, logout } = useAuth();
-  const sessionsQuery = useAuthSessionsQuery(Boolean(user));
+  const sessionsEndpointAvailability = useCrudEndpointAvailability(
+    getAuthOptionalEndpoint("sessions"),
+  );
+  const revokeSessionAvailability = useCrudEndpointAvailability(
+    getAuthOptionalEndpoint("revokeSession"),
+  );
+  const mfaSetupAvailability = useCrudEndpointAvailability(
+    getAuthOptionalEndpoint("mfaSetup"),
+  );
+  const mfaEnableAvailability = useCrudEndpointAvailability(
+    getAuthOptionalEndpoint("mfaEnable"),
+  );
+  const mfaDisableAvailability = useCrudEndpointAvailability(
+    getAuthOptionalEndpoint("mfaDisable"),
+  );
+  const sessionsQuery = useAuthSessionsQuery(
+    Boolean(user) && sessionsEndpointAvailability.isAvailable,
+  );
   const revokeSessionMutation = useRevokeAuthSessionMutation();
   const createMfaSetupMutation = useCreateMfaSetupMutation();
   const enableMfaMutation = useEnableMfaMutation();
@@ -389,6 +477,11 @@ export default function ProfilePage() {
   const canManageMfa = Boolean(
     user?.role && CAN_MANAGE_MFA.includes(user.role),
   );
+  const canViewSessions = sessionsEndpointAvailability.isAvailable;
+  const canRevokeSessions = revokeSessionAvailability.isAvailable;
+  const canCreateMfaSetup = canManageMfa && mfaSetupAvailability.isAvailable;
+  const canEnableMfa = canManageMfa && mfaEnableAvailability.isAvailable;
+  const canDisableMfa = canManageMfa && mfaDisableAvailability.isAvailable;
   const sessionSortBy = (
     Object.hasOwn(SESSION_COLUMN_LABELS, sessionListQuery.sortBy)
       ? sessionListQuery.sortBy
@@ -453,6 +546,13 @@ export default function ProfilePage() {
     sessionSortOrder !== DEFAULT_SORT_ORDER;
 
   const handleRevokeSession = async (session: AuthSessionSummary) => {
+    if (!canRevokeSessions) {
+      message.info(
+        "Session revocation is unavailable for the current backend feature profile.",
+      );
+      return;
+    }
+
     try {
       await revokeSessionMutation.mutateAsync(session.id);
 
@@ -563,7 +663,7 @@ export default function ProfilePage() {
         <Popover
           trigger="click"
           content={
-            <Space direction="vertical" size={8} style={{ minWidth: 240 }}>
+            <Space orientation="vertical" size={8} style={{ minWidth: 240 }}>
               <Select
                 value={selectedOperator}
                 options={getSessionFilterOptions(kind)}
@@ -698,8 +798,11 @@ export default function ProfilePage() {
       key: "userAgent",
       width: 320,
       render: (_value: string | null, session: AuthSessionSummary) => (
-        <Space direction="vertical" size={2} style={{ width: "100%" }}>
+        <Space orientation="vertical" size={2} style={{ width: "100%" }}>
           <Text strong>{getSessionTitle(session)}</Text>
+          {getSessionMetaLabel(session) ? (
+            <Text type="secondary">{getSessionMetaLabel(session)}</Text>
+          ) : null}
           <Text type="secondary">{session.id}</Text>
         </Space>
       ),
@@ -769,7 +872,7 @@ export default function ProfilePage() {
           <Button
             danger
             loading={isRevoking}
-            disabled={Boolean(session.revokedAt)}
+            disabled={Boolean(session.revokedAt) || !canRevokeSessions}
             title={getSessionActionDescription(session)}
             onClick={() => void handleRevokeSession(session)}
           >
@@ -781,6 +884,13 @@ export default function ProfilePage() {
   ];
 
   const handleCreateMfaSetup = async () => {
+    if (!canCreateMfaSetup) {
+      message.info(
+        "MFA setup is unavailable for the current backend feature profile.",
+      );
+      return;
+    }
+
     setMfaSetupIssue(null);
 
     try {
@@ -803,6 +913,13 @@ export default function ProfilePage() {
   };
 
   const handleEnableMfa = async (values: MfaCodeRequest) => {
+    if (!canEnableMfa) {
+      message.info(
+        "MFA enable is unavailable for the current backend feature profile.",
+      );
+      return;
+    }
+
     try {
       const response = await enableMfaMutation.mutateAsync(values);
       message.success(response.message || "MFA enabled.");
@@ -817,6 +934,13 @@ export default function ProfilePage() {
   };
 
   const handleDisableMfa = async (values: MfaCodeRequest) => {
+    if (!canDisableMfa) {
+      message.info(
+        "MFA disable is unavailable for the current backend feature profile.",
+      );
+      return;
+    }
+
     try {
       const response = await disableMfaMutation.mutateAsync(values);
       message.success(response.message || "MFA disabled.");
@@ -866,112 +990,139 @@ export default function ProfilePage() {
       <Card
         title="Device Sessions"
         extra={
-          <Button
-            onClick={() => void sessionsQuery.refetch()}
-            loading={sessionsQuery.isFetching}
-          >
-            Refresh
-          </Button>
+          canViewSessions ? (
+            <Button
+              onClick={() => void sessionsQuery.refetch()}
+              loading={sessionsQuery.isFetching}
+            >
+              Refresh
+            </Button>
+          ) : null
         }
       >
-        <Alert
-          style={{ marginBottom: 16 }}
-          type="warning"
-          showIcon
-          message="Session controls affect live access"
-          description="Revoking another session ends access on that device immediately. Signing out the current session returns you to the login screen."
-        />
-
-        {sessionsQuery.isError ? (
+        {!canViewSessions ? (
           <Alert
-            type="error"
+            type="info"
             showIcon
-            message="Unable to load sessions"
-            description={getDisplayError(
-              sessionsQuery.error,
-              "Failed to load account sessions.",
-            )}
+            title="Session inventory is unavailable"
+            description="The current backend feature profile does not expose session inventory endpoints."
           />
         ) : (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
-            {sessionFilters.length > 0 || hasCustomSort ? (
-              <Space wrap>
-                {sessionFilters.map((filter) => (
-                  <Tag
-                    key={filter.field}
-                    closable
-                    color="blue"
-                    onClose={() =>
-                      removeSessionFilter(filter.field as SessionField)
-                    }
-                  >
-                    {SESSION_COLUMN_LABELS[filter.field as SessionField]}:{" "}
-                    {formatSessionFilterTagValue(filter)}
-                  </Tag>
-                ))}
-                {hasCustomSort ? (
-                  <Tag closable color="processing" onClose={clearSessionSort}>
-                    Sorted by {SESSION_COLUMN_LABELS[sessionSortBy]} (
-                    {sessionSortOrder === "asc" ? "ascending" : "descending"})
-                  </Tag>
-                ) : null}
-                <Button
-                  size="small"
-                  onClick={() => {
-                    sessionListQuery.clearFilters();
-                    clearSessionSort();
-                  }}
-                >
-                  Clear column filters
-                </Button>
-              </Space>
-            ) : null}
-            <Input.Search
-              allowClear
-              placeholder="Search device sessions"
-              value={sessionListQuery.search}
-              onChange={(event) => {
-                sessionListQuery.setSearch(event.target.value);
-              }}
+          <>
+            <Alert
+              style={{ marginBottom: 16 }}
+              type="warning"
+              showIcon
+              title="Session controls affect live access"
+              description="Revoking another session ends access on that device immediately. Signing out the current session returns you to the login screen."
             />
-            <ResizableTable
-              rowKey="id"
-              loading={sessionsQuery.isLoading || sessionsQuery.isFetching}
-              dataSource={sessionRows}
-              columns={sessionColumns}
-              storageKey="profile-device-sessions-table-widths"
-              showColumnVisibilitySelector
-              stickyEdgeColumnCount={{ left: 1, right: 1 }}
-              scroll={{ x: 1450 }}
-              locale={{
-                emptyText: sessionListQuery.search
-                  ? "No device sessions match your search."
-                  : "No server-side sessions found.",
-              }}
-              pagination={{
-                current: sessionListQuery.page,
-                pageSize: sessionListQuery.pageSize,
-                total: sessionRows.length,
-                onChange: (nextPage, nextPageSize) => {
-                  if (nextPageSize !== sessionListQuery.pageSize) {
-                    sessionListQuery.setPageSize(nextPageSize);
-                    return;
-                  }
 
-                  sessionListQuery.setPage(nextPage);
-                },
-              }}
-            />
-          </Space>
+            {sessionsQuery.isError ? (
+              <Alert
+                type="error"
+                showIcon
+                title="Unable to load sessions"
+                description={getDisplayError(
+                  sessionsQuery.error,
+                  "Failed to load account sessions.",
+                )}
+              />
+            ) : (
+              <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+                {sessionFilters.length > 0 || hasCustomSort ? (
+                  <Space wrap>
+                    {sessionFilters.map((filter) => (
+                      <Tag
+                        key={filter.field}
+                        closable
+                        color="blue"
+                        onClose={() =>
+                          removeSessionFilter(filter.field as SessionField)
+                        }
+                      >
+                        {SESSION_COLUMN_LABELS[filter.field as SessionField]}:{" "}
+                        {formatSessionFilterTagValue(filter)}
+                      </Tag>
+                    ))}
+                    {hasCustomSort ? (
+                      <Tag
+                        closable
+                        color="processing"
+                        onClose={clearSessionSort}
+                      >
+                        Sorted by {SESSION_COLUMN_LABELS[sessionSortBy]} (
+                        {sessionSortOrder === "asc"
+                          ? "ascending"
+                          : "descending"}
+                        )
+                      </Tag>
+                    ) : null}
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        sessionListQuery.clearFilters();
+                        clearSessionSort();
+                      }}
+                    >
+                      Clear column filters
+                    </Button>
+                  </Space>
+                ) : null}
+                {!canRevokeSessions ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    title="Session revocation is unavailable for the current backend feature profile."
+                  />
+                ) : null}
+                <Input.Search
+                  allowClear
+                  placeholder="Search device sessions"
+                  value={sessionListQuery.search}
+                  onChange={(event) => {
+                    sessionListQuery.setSearch(event.target.value);
+                  }}
+                />
+                <ResizableTable
+                  rowKey="id"
+                  loading={sessionsQuery.isLoading || sessionsQuery.isFetching}
+                  dataSource={sessionRows}
+                  columns={sessionColumns}
+                  storageKey="profile-device-sessions-table-widths"
+                  showColumnVisibilitySelector
+                  stickyEdgeColumnCount={{ left: 1, right: 1 }}
+                  scroll={{ x: 1450 }}
+                  locale={{
+                    emptyText: sessionListQuery.search
+                      ? "No device sessions match your search."
+                      : "No server-side sessions found.",
+                  }}
+                  pagination={{
+                    current: sessionListQuery.page,
+                    pageSize: sessionListQuery.pageSize,
+                    total: sessionRows.length,
+                    onChange: (nextPage, nextPageSize) => {
+                      if (nextPageSize !== sessionListQuery.pageSize) {
+                        sessionListQuery.setPageSize(nextPageSize);
+                        return;
+                      }
+
+                      sessionListQuery.setPage(nextPage);
+                    },
+                  }}
+                />
+              </Space>
+            )}
+          </>
         )}
       </Card>
 
       <Card title="Multi-Factor Authentication">
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space orientation="vertical" size={16} style={{ width: "100%" }}>
           <Alert
             type={user?.mfaEnabled ? "success" : "info"}
             showIcon
-            message={user?.mfaEnabled ? "MFA is enabled" : "MFA is not enabled"}
+            title={user?.mfaEnabled ? "MFA is enabled" : "MFA is not enabled"}
             description={
               canManageMfa
                 ? "Privileged accounts can enroll an authenticator app and must sign in again after security settings change."
@@ -983,8 +1134,20 @@ export default function ProfilePage() {
             <Alert
               type="warning"
               showIcon
-              message="Security changes will sign out all active sessions"
+              title="Security changes will sign out all active sessions"
               description="After MFA is enabled or disabled, the backend revokes active sessions and you must sign in again with the updated security settings."
+            />
+          ) : null}
+
+          {canManageMfa &&
+          !canCreateMfaSetup &&
+          !canEnableMfa &&
+          !canDisableMfa ? (
+            <Alert
+              type="info"
+              showIcon
+              title="MFA management is unavailable"
+              description="The current backend feature profile does not expose MFA enrollment endpoints."
             />
           ) : null}
 
@@ -992,7 +1155,7 @@ export default function ProfilePage() {
             <Alert
               type="error"
               showIcon
-              message="MFA setup is unavailable on the API"
+              title="MFA setup is unavailable on the API"
               description={`${mfaSetupIssue} Operator action is required on the backend before MFA enrollment can be used.`}
             />
           ) : null}
@@ -1032,6 +1195,7 @@ export default function ProfilePage() {
                   danger
                   htmlType="submit"
                   loading={disableMfaMutation.isPending}
+                  disabled={!canDisableMfa}
                 >
                   Disable MFA
                 </Button>
@@ -1043,6 +1207,7 @@ export default function ProfilePage() {
                     type="primary"
                     onClick={() => void handleCreateMfaSetup()}
                     loading={createMfaSetupMutation.isPending}
+                    disabled={!canCreateMfaSetup}
                   >
                     {pendingSetup ? "Regenerate Setup" : "Generate Setup"}
                   </Button>
@@ -1084,6 +1249,7 @@ export default function ProfilePage() {
                       type="primary"
                       htmlType="submit"
                       loading={enableMfaMutation.isPending}
+                      disabled={!canEnableMfa}
                     >
                       Enable MFA
                     </Button>

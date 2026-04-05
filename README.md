@@ -16,6 +16,22 @@ npm install
 npm run dev
 ```
 
+To compare the dashboard CRUD config against the live backend OpenAPI document:
+
+```bash
+npm run check:openapi-drift
+```
+
+By default this uses `NEXT_PUBLIC_API_BASE_URL` from `.env.local` and requests `/openapi.json`. You can override that with `OPENAPI_URL`.
+
+When the backend is offline, validate against a saved spec file instead:
+
+```bash
+npm run check:openapi-drift -- --spec-file /tmp/xypes-openapi.json
+```
+
+Feature-gated config operations are reported separately. They do not fail the check when the live OpenAPI omits them, which is expected for disabled backend feature profiles.
+
 App URL: `http://localhost:3001`
 
 ## Environment Variables
@@ -47,6 +63,8 @@ NEXT_PUBLIC_API_KEY=local-dev-key
   - `POST /auth/mfa/setup`
   - `POST /auth/mfa/enable`
   - `POST /auth/mfa/disable`
+- MFA management UI is exposed only to `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`, and `DISPATCHER`
+- `POST /auth/mfa/setup` may return `503` when backend MFA encryption/configuration is unavailable; the profile screen surfaces that as an operator-facing configuration issue
 - Access token, refresh token, user, and session metadata are stored in local storage
 - Forgot-password and reset-password public flows are available from the login experience
 - In non-production environments, password reset request responses may expose `resetToken` and `resetExpiresAt` for local development testing
@@ -105,7 +123,6 @@ Legacy cached frontend role labels are normalized automatically:
 - `/statuses`
 - `/categories`
 - `/severities`
-- `/locations`
 - `/users`
 - `/profile`
 - `/forbidden`

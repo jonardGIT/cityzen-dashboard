@@ -1,7 +1,7 @@
 "use client";
 
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   App,
@@ -15,7 +15,10 @@ import {
   Typography,
 } from "antd";
 import type { FormInstance } from "antd";
+import { getCrudEndpoint } from "@/features/dynamic-crud/config";
+import { useCrudEndpointAvailability } from "@/features/dynamic-crud/openapi";
 import type { CrudFieldConfig } from "@/features/dynamic-crud/types";
+import { uploadIncidentMedia } from "@/features/incidents/api";
 import { reverseGeocodeIncidentAddress } from "@/lib/geo/reverse-geocode";
 
 const { Link, Text } = Typography;
@@ -23,6 +26,7 @@ const { Link, Text } = Typography;
 type SelectFieldOption = { value: string; label: string; description?: string };
 
 interface CrudFormModalProps {
+  resourceName?: string;
   title: string;
   open: boolean;
   submitting?: boolean;
@@ -47,6 +51,7 @@ function joinLocationParts(parts: Array<string | undefined>): string | null {
 }
 
 export function CrudFormModal({
+  resourceName,
   title,
   open,
   submitting,
@@ -61,10 +66,19 @@ export function CrudFormModal({
   onRetrySubmitDependency,
 }: CrudFormModalProps) {
   const { message } = App.useApp();
+  const mediaInputRef = useRef<HTMLInputElement | null>(null);
   const [locationLookupPending, setLocationLookupPending] = useState(false);
   const [locationLookupError, setLocationLookupError] = useState<string | null>(
     null,
   );
+  const [mediaUploadPending, setMediaUploadPending] = useState(false);
+  const [mediaUploadError, setMediaUploadError] = useState<string | null>(null);
+  const mediaUploadEndpoint =
+    resourceName === "incidents"
+      ? getCrudEndpoint("incidents", "mediaUpload")
+      : undefined;
+  const mediaUploadAvailability =
+    useCrudEndpointAvailability(mediaUploadEndpoint);
   const latitudeValue = Form.useWatch("latitude", form);
   const longitudeValue = Form.useWatch("longitude", form);
   const addressLine1Value = Form.useWatch("addressLine1", form);
@@ -80,6 +94,10 @@ export function CrudFormModal({
   const supportsLocationAssist = fields.some(
     (field) => field.name === "latitude" || field.name === "longitude",
   );
+  const supportsIncidentMediaUpload =
+    resourceName === "incidents" &&
+    fields.some((field) => field.name === "mediaUrl") &&
+    mediaUploadAvailability.isAvailable;
   const previewAddress = joinLocationParts([
     typeof addressLine1Value === "string" ? addressLine1Value : undefined,
     typeof addressLine2Value === "string" ? addressLine2Value : undefined,
@@ -108,6 +126,11 @@ export function CrudFormModal({
     if (!open) {
       setLocationLookupError(null);
       setLocationLookupPending(false);
+      setMediaUploadError(null);
+      setMediaUploadPending(false);
+      if (mediaInputRef.current) {
+        mediaInputRef.current.value = "";
+      }
     }
   }, [open]);
 
@@ -156,6 +179,38 @@ export function CrudFormModal({
       message.error(errorMessage);
     } finally {
       setLocationLookupPending(false);
+    }
+  };
+
+  const handleMediaFileSelection = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setMediaUploadPending(true);
+    setMediaUploadError(null);
+
+    try {
+      const mediaUrl = await uploadIncidentMedia(file);
+      form.setFieldValue("mediaUrl", mediaUrl);
+      message.success("Media uploaded and attached to the form.");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to upload incident media.";
+
+      setMediaUploadError(errorMessage);
+      message.error(errorMessage);
+    } finally {
+      setMediaUploadPending(false);
+      if (event.target) {
+        event.target.value = "";
+      }
     }
   };
 
@@ -240,6 +295,60 @@ export function CrudFormModal({
                 </Button>
               ) : undefined
             }
+          />
+        ) : null}
+        {supportsIncidentMediaUpload ? (
+          <>
+            <input
+              ref={mediaInputRef}
+              type="file"
+              accept="image/*,video/*,.pdf"
+              style={{ display: "none" }}
+              onChange={(event) => void handleMediaFileSelection(event)}
+            />
+            <Card
+              size="small"
+              title="Media Upload"
+              style={{ marginBottom: 16 }}
+            >
+              <div style={{ display: "grid", gap: 8 }}>
+                <Text>
+                  Upload evidence through the configured incident media
+                  endpoint. The returned URL will populate the media field
+                  automatically.
+                </Text>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <Button
+                    onClick={() => mediaInputRef.current?.click()}
+                    loading={mediaUploadPending}
+                  >
+                    Upload Media
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      form.setFieldValue("mediaUrl", undefined);
+                      setMediaUploadError(null);
+                    }}
+                    disabled={mediaUploadPending}
+                  >
+                    Clear Media URL
+                  </Button>
+                </div>
+                {mediaUploadError ? (
+                  <Alert showIcon type="warning" message={mediaUploadError} />
+                ) : null}
+              </div>
+            </Card>
+          </>
+        ) : null}
+        {resourceName === "incidents" &&
+        fields.some((field) => field.name === "mediaUrl") &&
+        !mediaUploadAvailability.isAvailable ? (
+          <Alert
+            showIcon
+            type="info"
+            style={{ marginBottom: 16 }}
+            message="Media upload is unavailable for the current backend feature profile."
           />
         ) : null}
         {fields.map((field) => {

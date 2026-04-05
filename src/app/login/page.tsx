@@ -5,7 +5,7 @@ import {
   MailOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
-import { Alert, Button, Card, Form, Input, Typography } from "antd";
+import { Alert, Button, Card, Form, Input, Space, Typography } from "antd";
 import { AxiosError } from "axios";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -49,6 +49,13 @@ function LoginPageContent() {
   const loginInfoMessage = loginReason
     ? (LOGIN_REASON_MESSAGES[loginReason] ?? null)
     : null;
+  const emailValue = Form.useWatch("email", form);
+
+  const resetMfaStep = () => {
+    setRequiresMfa(false);
+    setErrorMessage(null);
+    form.setFieldValue("mfaCode", undefined);
+  };
 
   const onFinish = async (values: LoginFormValues) => {
     setErrorMessage(null);
@@ -102,7 +109,7 @@ function LoginPageContent() {
             style={{ marginTop: 16 }}
             type="info"
             showIcon
-            message="Sign-in required"
+            title="Sign-in required"
             description={loginInfoMessage}
           />
         ) : null}
@@ -147,30 +154,51 @@ function LoginPageContent() {
           </Form.Item>
 
           {requiresMfa ? (
-            <Form.Item
-              name="mfaCode"
-              label="Authentication code"
-              rules={[
-                { required: true, message: "Authentication code is required" },
-                {
-                  len: 6,
-                  message: "Enter the 6-digit code from your authenticator app",
-                },
-              ]}
+            <Space
+              orientation="vertical"
+              size={12}
+              style={{ width: "100%", marginBottom: 16 }}
             >
-              <Input
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                prefix={<SafetyCertificateOutlined />}
-                placeholder="Enter 6-digit MFA code"
-                maxLength={6}
+              <Alert
+                type="success"
+                showIcon
+                title="Step 2 of 2: Verify your sign-in"
+                description={`Enter the 6-digit code from the authenticator app for ${emailValue?.trim() || "this account"}.`}
               />
-            </Form.Item>
+              <Form.Item
+                name="mfaCode"
+                label="Authentication code"
+                rules={[
+                  { required: true, message: "Authentication code is required" },
+                  {
+                    len: 6,
+                    message: "Enter the 6-digit code from your authenticator app",
+                  },
+                ]}
+                style={{ marginBottom: 0 }}
+              >
+                <Input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  prefix={<SafetyCertificateOutlined />}
+                  placeholder="Enter 6-digit MFA code"
+                  maxLength={6}
+                />
+              </Form.Item>
+            </Space>
           ) : null}
 
-          <Button type="primary" htmlType="submit" loading={submitting} block>
-            {requiresMfa ? "Verify And Sign In" : "Sign In"}
-          </Button>
+          <Space orientation="vertical" size={12} style={{ width: "100%" }}>
+            <Button type="primary" htmlType="submit" loading={submitting} block>
+              {requiresMfa ? "Verify And Sign In" : "Sign In"}
+            </Button>
+
+            {requiresMfa ? (
+              <Button onClick={resetMfaStep} disabled={submitting} block>
+                Use A Different Account
+              </Button>
+            ) : null}
+          </Space>
 
           <div style={{ marginTop: 16, textAlign: "right" }}>
             <Link href="/forgot-password">Forgot password?</Link>

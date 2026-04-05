@@ -42,16 +42,12 @@ export function canShowCrudNavigationItem(
     resource.endpoints.linkMe,
     resource.endpoints.report,
   ].some((endpoint) => hasPermission(endpoint, role, isAuthenticated));
-
-  if (!canList && !canUseSelfServiceAction) {
-    return false;
-  }
-
-  return [
+  const canUseManagementAction = [
     resource.endpoints.create,
-    resource.endpoints.linkMe,
-    resource.endpoints.report,
     resource.endpoints.update,
     resource.endpoints.delete,
+    resource.endpoints.restore,
   ].some((endpoint) => hasPermission(endpoint, role, isAuthenticated));
+
+  return canList || canUseSelfServiceAction || canUseManagementAction;
 }

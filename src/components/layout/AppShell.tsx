@@ -13,11 +13,21 @@ import {
   ProfileOutlined,
   ApartmentOutlined,
 } from "@ant-design/icons";
-import { Avatar, Button, Layout, Menu, Space, Typography } from "antd";
+import {
+  Avatar,
+  Button,
+  Layout,
+  Menu,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
 import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useBackendFeatureSurface } from "@/features/dynamic-crud/feature-surface";
 import { getNavigationItems } from "@/lib/auth/navigation";
 import { getRoleLabel } from "@/lib/auth/roles";
 
@@ -66,6 +76,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, capabilities, logout, isAuthenticated } = useAuth();
+  const { features, isLoading: featureSurfaceLoading } =
+    useBackendFeatureSurface();
 
   const displayName = useMemo(() => {
     if (!user) {
@@ -184,6 +196,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Logout
           </Button>
         </Header>
+        {isAuthenticated ? (
+          <div
+            style={{
+              background: "#fff",
+              padding: "10px 20px",
+              borderBottom: "1px solid #f0f0f0",
+            }}
+          >
+            <Space size={[8, 8]} wrap>
+              <Text type="secondary">Backend features</Text>
+              {features.map((feature) => (
+                <Tooltip key={feature.key} title={feature.description}>
+                  <Tag color={feature.isAvailable ? "green" : "gold"}>
+                    {feature.label}: {feature.isAvailable ? "On" : "Off"}
+                  </Tag>
+                </Tooltip>
+              ))}
+              {featureSurfaceLoading ? (
+                <Text type="secondary">Checking active feature profile...</Text>
+              ) : null}
+            </Space>
+          </div>
+        ) : null}
         <Content style={{ padding: 20 }}>{children}</Content>
       </Layout>
     </Layout>

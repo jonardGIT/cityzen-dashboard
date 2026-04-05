@@ -25,6 +25,8 @@ import {
 } from "@/features/assignments/api";
 import {
   defaultIncidentsQueryState,
+  fetchIncidentMediaAccessUrl,
+  getIncidentMediaReference,
   useIncidentQuery,
   useUpdateIncidentMutation,
 } from "@/features/incidents/api";
@@ -56,7 +58,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { ApiErrorPayload } from "@/types/api";
 import styles from "./page.module.css";
 
-const { Link, Text, Title } = Typography;
+const { Text, Title } = Typography;
 
 interface AssignmentQuickActionValues {
   responderId: string;
@@ -123,6 +125,7 @@ export default function IncidentWorkspacePage() {
   const categoriesQuery = useCategoriesQuery(optionQueryState);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [mediaAccessPending, setMediaAccessPending] = useState(false);
   const [assignForm] = Form.useForm<AssignmentQuickActionValues>();
   const [statusForm] = Form.useForm<StatusQuickActionValues>();
 
@@ -142,7 +145,9 @@ export default function IncidentWorkspacePage() {
   const assignments = [...(assignmentsQuery.data?.data ?? [])].sort(
     (left, right) => {
       const leftTime = new Date(getAssignmentDisplayDate(left) ?? 0).getTime();
-      const rightTime = new Date(getAssignmentDisplayDate(right) ?? 0).getTime();
+      const rightTime = new Date(
+        getAssignmentDisplayDate(right) ?? 0,
+      ).getTime();
       return rightTime - leftTime;
     },
   );
@@ -185,6 +190,7 @@ export default function IncidentWorkspacePage() {
     incident.latitude !== undefined && incident.longitude !== undefined
       ? `https://www.openstreetmap.org/?mlat=${encodeURIComponent(String(incident.latitude))}&mlon=${encodeURIComponent(String(incident.longitude))}#map=18/${encodeURIComponent(String(incident.latitude))}/${encodeURIComponent(String(incident.longitude))}`
       : null;
+  const mediaReference = getIncidentMediaReference(incident);
 
   const submitAssignment = async () => {
     try {
@@ -233,6 +239,52 @@ export default function IncidentWorkspacePage() {
           message.error(axiosError.response.data.message);
         }
       }
+    }
+  };
+
+  const openIncidentMedia = async () => {
+    if (mediaAccessPending) {
+      return;
+    }
+
+    try {
+      setMediaAccessPending(true);
+
+      const resolvedUrl = mediaReference.mediaId
+        ? await fetchIncidentMediaAccessUrl(
+            String(incident.id),
+            mediaReference.mediaId,
+          )
+        : mediaReference.fallbackUrl;
+
+      if (!resolvedUrl) {
+        message.info("No media attachment is available for this incident.");
+        return;
+      }
+
+      window.open(resolvedUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      if (mediaReference.fallbackUrl) {
+        window.open(
+          mediaReference.fallbackUrl,
+          "_blank",
+          "noopener,noreferrer",
+        );
+        message.warning(
+          error instanceof Error
+            ? `${error.message} Falling back to the stored media URL.`
+            : "Falling back to the stored media URL.",
+        );
+        return;
+      }
+
+      message.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to open incident media.",
+      );
+    } finally {
+      setMediaAccessPending(false);
     }
   };
 
@@ -365,15 +417,18 @@ export default function IncidentWorkspacePage() {
               <Descriptions.Item label="Updated">
                 {formatDateTime(incident.updatedAt)}
               </Descriptions.Item>
-              <Descriptions.Item label="Media URL">
-                {incident.mediaUrl ? (
-                  <Link
-                    href={incident.mediaUrl}
-                    target="_blank"
-                    rel="noreferrer"
+              <Descriptions.Item label="Media evidence">
+                {mediaReference.mediaId || mediaReference.fallbackUrl ? (
+                  <Button
+                    type="link"
+                    style={{ paddingInline: 0 }}
+                    loading={mediaAccessPending}
+                    onClick={() => void openIncidentMedia()}
                   >
-                    Open media
-                  </Link>
+                    {mediaReference.mediaId
+                      ? "Open secured media"
+                      : "Open media"}
+                  </Button>
                 ) : (
                   "N/A"
                 )}
@@ -433,11 +488,13 @@ export default function IncidentWorkspacePage() {
                         </Tag>
                       </Space>
                       <Text type="secondary">
-                        Assigned {formatDateTime(getAssignmentDisplayDate(assignment))}
+                        Assigned{" "}
+                        {formatDateTime(getAssignmentDisplayDate(assignment))}
                       </Text>
                       <Text className={styles.assignmentMeta}>
-                        {formatRelativeTime(getAssignmentDisplayDate(assignment)) ??
-                          "Assignment time unavailable"}
+                        {formatRelativeTime(
+                          getAssignmentDisplayDate(assignment),
+                        ) ?? "Assignment time unavailable"}
                       </Text>
                       <Text>
                         {assignment.notes?.trim() || "No notes provided."}

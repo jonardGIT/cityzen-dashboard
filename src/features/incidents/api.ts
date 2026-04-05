@@ -6,6 +6,11 @@ import {
   type PaginatedResponse,
 } from "@/lib/api/pagination";
 import {
+  assertCrudSuccess,
+  requestCrudEndpoint,
+} from "@/features/dynamic-crud/api-client";
+import { getCrudEndpoint } from "@/features/dynamic-crud/config";
+import {
   buildListQueryParams,
   DEFAULT_SORT_BY,
   DEFAULT_SORT_ORDER,
@@ -13,6 +18,108 @@ import {
   type ListQueryState,
 } from "@/lib/api/list-query-params";
 import type { Incident } from "@/types/api";
+
+type UnknownRecord = Record<string, unknown>;
+
+export interface IncidentMediaReference {
+  mediaId?: string;
+  fallbackUrl?: string;
+}
+
+function asRecord(value: unknown): UnknownRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as UnknownRecord;
+}
+
+function firstNonEmptyString(values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value !== "string") {
+      continue;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+
+  return undefined;
+}
+
+export function getIncidentMediaReference(
+  incident: Incident,
+): IncidentMediaReference {
+  const record = incident as UnknownRecord;
+  const nestedMedia = asRecord(record.media);
+  const collectionCandidates = [
+    record.mediaItems,
+    record.attachments,
+    record.media,
+  ];
+  const firstCollectionItem = collectionCandidates
+    .find((value) => Array.isArray(value))
+    ?.find((value) => asRecord(value)) as UnknownRecord | undefined;
+
+  return {
+    mediaId: firstNonEmptyString([
+      record.mediaId,
+      nestedMedia?.id,
+      firstCollectionItem?.id,
+    ]),
+    fallbackUrl: firstNonEmptyString([
+      record.mediaUrl,
+      nestedMedia?.url,
+      nestedMedia?.mediaUrl,
+      nestedMedia?.accessUrl,
+      firstCollectionItem?.url,
+      firstCollectionItem?.mediaUrl,
+      firstCollectionItem?.accessUrl,
+    ]),
+  };
+}
+
+export function normalizeIncidentMediaAccessUrl(
+  payload: unknown,
+): string | null {
+  if (typeof payload === "string") {
+    const trimmed = payload.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (Array.isArray(payload)) {
+    for (const entry of payload) {
+      const url = normalizeIncidentMediaAccessUrl(entry);
+      if (url) {
+        return url;
+      }
+    }
+
+    return null;
+  }
+
+  const record = asRecord(payload);
+  if (!record) {
+    return null;
+  }
+
+  const directUrl = firstNonEmptyString([
+    record.url,
+    record.accessUrl,
+    record.mediaUrl,
+    record.signedUrl,
+    record.downloadUrl,
+    record.href,
+  ]);
+
+  if (directUrl) {
+    return directUrl;
+  }
+
+  return normalizeIncidentMediaAccessUrl(record.data);
+}
 
 export interface CreateIncidentDto {
   description: string;
@@ -86,6 +193,55 @@ export async function createIncident(payload: CreateIncidentDto) {
 export async function updateIncident(id: string, payload: UpdateIncidentDto) {
   const response = await authClient.patch<unknown>(`/incidents/${id}`, payload);
   return unwrapEntityResponse<Incident>(response.data);
+}
+
+export async function fetchIncidentMediaAccessUrl(
+  incidentId: string,
+  mediaId: string,
+): Promise<string> {
+  const endpoint = getCrudEndpoint("incidents", "mediaAccess");
+
+  if (!endpoint) {
+    throw new Error("Incident media access is not configured.");
+  }
+
+  const result = await requestCrudEndpoint<unknown>(endpoint, {
+    pathParams: {
+      id: incidentId,
+      mediaId,
+    },
+  });
+  const payload = assertCrudSuccess(result);
+  const url = normalizeIncidentMediaAccessUrl(payload);
+
+  if (!url) {
+    throw new Error("Incident media access did not return a usable URL.");
+  }
+
+  return url;
+}
+
+export async function uploadIncidentMedia(file: File): Promise<string> {
+  const endpoint = getCrudEndpoint("incidents", "mediaUpload");
+
+  if (!endpoint) {
+    throw new Error("Incident media upload is not configured.");
+  }
+
+  const body = new FormData();
+  body.append("file", file);
+
+  const result = await requestCrudEndpoint<unknown>(endpoint, {
+    body,
+  });
+  const payload = assertCrudSuccess(result);
+  const url = normalizeIncidentMediaAccessUrl(payload);
+
+  if (!url) {
+    throw new Error("Incident media upload did not return a usable URL.");
+  }
+
+  return url;
 }
 
 export function useIncidentsQuery(state: ListQueryState) {

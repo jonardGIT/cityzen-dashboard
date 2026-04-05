@@ -1,6 +1,11 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import { useEffect, useMemo, useState } from "react";
 import {
   useMutation,
@@ -25,9 +30,15 @@ import type { FormInstance } from "antd";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { ACTION_BUTTON_STYLES } from "@/components/crud/action-button-styles";
-import { CrudFormModal, toInitialFormValues } from "@/components/crud/CrudFormModal";
+import {
+  CrudFormModal,
+  toInitialFormValues,
+} from "@/components/crud/CrudFormModal";
 import { DeleteConfirmModal } from "@/components/crud/DeleteConfirmModal";
-import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
+import {
+  SharedTable,
+  type SharedTableColumn,
+} from "@/components/crud/SharedTable";
 import { extractListQueryValidation } from "@/components/crud/list-query-validation";
 import { adaptPaginatedResponse } from "@/lib/api/pagination";
 import {
@@ -43,6 +54,7 @@ import {
   getCrudEndpoint,
   getCrudResource,
 } from "@/features/dynamic-crud/config";
+import { useCrudEndpointAvailability } from "@/features/dynamic-crud/openapi";
 import {
   getResourceFieldsForOperation,
   ROLE_OPTIONS,
@@ -84,7 +96,10 @@ function discoverTableKeys(rows: BaseEntity[]): string[] {
   const dateSlots = Math.min(dateColumnReserve, dateKeys.length);
   const nonDateSlots = Math.max(0, maxColumns - dateSlots);
 
-  return [...nonDateKeys.slice(0, nonDateSlots), ...dateKeys.slice(0, dateSlots)];
+  return [
+    ...nonDateKeys.slice(0, nonDateSlots),
+    ...dateKeys.slice(0, dateSlots),
+  ];
 }
 
 function normalizeFormValues(
@@ -183,6 +198,14 @@ function messageForStatus(status: number, fallback: string): string {
   return fallback;
 }
 
+function isRestorableRow(row: BaseEntity): boolean {
+  if (typeof row.deletedAt === "string") {
+    return row.deletedAt.trim().length > 0;
+  }
+
+  return Boolean(row.deletedAt ?? row.deleted ?? row.isDeleted);
+}
+
 function applyValidationErrors(
   form: FormInstance<Record<string, unknown>>,
   details: unknown,
@@ -215,6 +238,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   const [reportOpen, setReportOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selected, setSelected] = useState<BaseEntity | null>(null);
 
@@ -225,6 +249,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   const tableState = useListQueryParams();
 
   const resource = getCrudResource(resourceName);
+  const restoreAvailability = useCrudEndpointAvailability(
+    resource?.endpoints.restore,
+  );
   const resourceLabelPlural = resource?.label ?? "Records";
   const resourceLabelSingular = resourceLabelPlural.endsWith("s")
     ? resourceLabelPlural.slice(0, -1)
@@ -246,8 +273,14 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     [resourceName],
   );
 
-  const { listQuery, getById, createMutation, updateMutation, deleteMutation } =
-    useCrudResource(resourceName, tableState);
+  const {
+    listQuery,
+    getById,
+    createMutation,
+    updateMutation,
+    deleteMutation,
+    restoreMutation,
+  } = useCrudResource(resourceName, tableState);
 
   const canList = hasPermission(
     resource?.endpoints.list,
@@ -281,6 +314,11 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   );
   const canDelete = hasPermission(
     resource?.endpoints.delete,
+    user?.role,
+    isAuthenticated,
+  );
+  const canRestore = hasPermission(
+    restoreAvailability.isAvailable ? resource?.endpoints.restore : undefined,
     user?.role,
     isAuthenticated,
   );
@@ -731,6 +769,22 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     }
   };
 
+  const handleRestore = async () => {
+    if (!selected?.id) {
+      return;
+    }
+
+    try {
+      await restoreMutation.mutateAsync(selected.id);
+      message.success(`${resourceLabelSingular} restored successfully.`);
+      setRestoreOpen(false);
+      setSelected(null);
+    } catch (error) {
+      const parsed = extractErrorDetails(error);
+      message.error(messageForStatus(parsed.status, parsed.message));
+    }
+  };
+
   const handleSpecialOperation = async (
     operation: "linkMe" | "report",
     form: FormInstance<Record<string, unknown>>,
@@ -788,14 +842,10 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         </Title>
         <Space>
           {canLinkMe ? (
-            <Button onClick={() => setLinkMeOpen(true)}>
-              Link Profile
-            </Button>
+            <Button onClick={() => setLinkMeOpen(true)}>Link Profile</Button>
           ) : null}
           {canReport ? (
-            <Button onClick={() => setReportOpen(true)}>
-              Report Incident
-            </Button>
+            <Button onClick={() => setReportOpen(true)}>Report Incident</Button>
           ) : null}
           {canCreate ? (
             <Button type="primary" onClick={() => setCreateOpen(true)}>
@@ -818,121 +868,150 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         />
       ) : null}
 
-      {canList && (!canCreate || !canUpdate || !canDelete) ? (
+      {canList && (!canCreate || !canUpdate || !canDelete || !canRestore) ? (
         <Alert
           showIcon
           type="info"
           title="Some actions are unavailable"
-          description="Permissions for create, update, and delete are role-based and endpoint-driven."
+          description="Permissions for create, update, delete, and restore are role-based and endpoint-driven."
         />
       ) : null}
 
-      {canList ? <Card>
-        {listQuery.isLoading ? <LoadingState /> : null}
-        {hasFatalListError ? (
-          <Space orientation="vertical" style={{ width: "100%" }}>
-            <ErrorState message={String(listQuery.error)} />
-            <Button onClick={() => void listQuery.refetch()}>Retry</Button>
-          </Space>
-        ) : null}
-        {!listQuery.isLoading && !listQuery.error ? (
-          <SharedTable<BaseEntity>
-            rows={rows}
-            columns={tableColumns}
-            storageKey={`crud-${resourceName}-shared-table`}
-            loading={listQuery.isFetching}
-            page={tableState.page}
-            pageSize={tableState.pageSize}
-            paginationMeta={paginationMeta}
-            onPageChange={tableState.setPage}
-            onPageSizeChange={tableState.setPageSize}
-            globalSearch={tableState.search}
-            onGlobalSearchChange={tableState.setSearch}
-            globalSearchPlaceholder="Search records"
-            sortState={{ key: tableState.sortBy, order: tableState.sortOrder }}
-            onSortChange={(columnKey, order) => {
-              if (columnKey === "createdAt" || columnKey === "updatedAt") {
-                tableState.setSort(columnKey, order);
-              }
-            }}
-            serverDateFilters={{
-              createdAt: { from: tableState.createdFrom, to: tableState.createdTo },
-              updatedAt: { from: tableState.updatedFrom, to: tableState.updatedTo },
-            }}
-            onServerDateFilterChange={(columnKey, value) => {
-              if (columnKey === "createdAt") {
-                tableState.setCreatedRange(value.from, value.to);
-                return;
-              }
+      {canList ? (
+        <Card>
+          {listQuery.isLoading ? <LoadingState /> : null}
+          {hasFatalListError ? (
+            <Space orientation="vertical" style={{ width: "100%" }}>
+              <ErrorState message={String(listQuery.error)} />
+              <Button onClick={() => void listQuery.refetch()}>Retry</Button>
+            </Space>
+          ) : null}
+          {!listQuery.isLoading && !listQuery.error ? (
+            <SharedTable<BaseEntity>
+              rows={rows}
+              columns={tableColumns}
+              storageKey={`crud-${resourceName}-shared-table`}
+              loading={listQuery.isFetching}
+              page={tableState.page}
+              pageSize={tableState.pageSize}
+              paginationMeta={paginationMeta}
+              onPageChange={tableState.setPage}
+              onPageSizeChange={tableState.setPageSize}
+              globalSearch={tableState.search}
+              onGlobalSearchChange={tableState.setSearch}
+              globalSearchPlaceholder="Search records"
+              sortState={{
+                key: tableState.sortBy,
+                order: tableState.sortOrder,
+              }}
+              onSortChange={(columnKey, order) => {
+                if (columnKey === "createdAt" || columnKey === "updatedAt") {
+                  tableState.setSort(columnKey, order);
+                }
+              }}
+              serverDateFilters={{
+                createdAt: {
+                  from: tableState.createdFrom,
+                  to: tableState.createdTo,
+                },
+                updatedAt: {
+                  from: tableState.updatedFrom,
+                  to: tableState.updatedTo,
+                },
+              }}
+              onServerDateFilterChange={(columnKey, value) => {
+                if (columnKey === "createdAt") {
+                  tableState.setCreatedRange(value.from, value.to);
+                  return;
+                }
 
-              tableState.setUpdatedRange(value.from, value.to);
-            }}
-            topToolbar={
-              <FilterToolbar
-                state={tableState}
-                setters={tableState}
-                loading={Boolean(listQuery.isFetching)}
-              />
-            }
-            actionColumn={{
-              render: (row) => (
-                <Space>
-                  {canGet ? (
-                    <Tooltip title="View">
-                      <Button
-                        size="small"
-                        shape="circle"
-                        icon={<EyeOutlined />}
-                        aria-label="View"
-                        style={ACTION_BUTTON_STYLES.view}
-                        onClick={() => {
-                          setSelected(row);
-                          setDetailsOpen(true);
-                        }}
-                      />
-                    </Tooltip>
-                  ) : null}
-                  {canUpdate ? (
-                    <Tooltip title="Edit">
-                      <Button
-                        size="small"
-                        shape="circle"
-                        icon={<EditOutlined />}
-                        aria-label="Edit"
-                        style={ACTION_BUTTON_STYLES.edit}
-                        onClick={() => {
-                          setSelected(row);
-                          editForm.setFieldsValue(
-                            toInitialFormValues(row as Record<string, unknown>, updateFields) as never,
-                          );
-                          setEditOpen(true);
-                        }}
-                      />
-                    </Tooltip>
-                  ) : null}
-                  {canDelete ? (
-                    <Tooltip title="Delete">
-                      <Button
-                        size="small"
-                        shape="circle"
-                        icon={<DeleteOutlined />}
-                        aria-label="Delete"
-                        style={ACTION_BUTTON_STYLES.delete}
-                        onClick={() => {
-                          setSelected(row);
-                          setDeleteOpen(true);
-                        }}
-                      />
-                    </Tooltip>
-                  ) : null}
-                </Space>
-              ),
-            }}
-          />
-        ) : null}
-      </Card> : null}
+                tableState.setUpdatedRange(value.from, value.to);
+              }}
+              topToolbar={
+                <FilterToolbar
+                  state={tableState}
+                  setters={tableState}
+                  loading={Boolean(listQuery.isFetching)}
+                />
+              }
+              actionColumn={{
+                render: (row) => (
+                  <Space>
+                    {canGet ? (
+                      <Tooltip title="View">
+                        <Button
+                          size="small"
+                          shape="circle"
+                          icon={<EyeOutlined />}
+                          aria-label="View"
+                          style={ACTION_BUTTON_STYLES.view}
+                          onClick={() => {
+                            setSelected(row);
+                            setDetailsOpen(true);
+                          }}
+                        />
+                      </Tooltip>
+                    ) : null}
+                    {canUpdate ? (
+                      <Tooltip title="Edit">
+                        <Button
+                          size="small"
+                          shape="circle"
+                          icon={<EditOutlined />}
+                          aria-label="Edit"
+                          style={ACTION_BUTTON_STYLES.edit}
+                          onClick={() => {
+                            setSelected(row);
+                            editForm.setFieldsValue(
+                              toInitialFormValues(
+                                row as Record<string, unknown>,
+                                updateFields,
+                              ) as never,
+                            );
+                            setEditOpen(true);
+                          }}
+                        />
+                      </Tooltip>
+                    ) : null}
+                    {canDelete ? (
+                      <Tooltip title="Delete">
+                        <Button
+                          size="small"
+                          shape="circle"
+                          icon={<DeleteOutlined />}
+                          aria-label="Delete"
+                          style={ACTION_BUTTON_STYLES.delete}
+                          onClick={() => {
+                            setSelected(row);
+                            setDeleteOpen(true);
+                          }}
+                        />
+                      </Tooltip>
+                    ) : null}
+                    {canRestore && isRestorableRow(row) ? (
+                      <Tooltip title="Restore">
+                        <Button
+                          size="small"
+                          shape="circle"
+                          icon={<ReloadOutlined />}
+                          aria-label="Restore"
+                          onClick={() => {
+                            setSelected(row);
+                            setRestoreOpen(true);
+                          }}
+                        />
+                      </Tooltip>
+                    ) : null}
+                  </Space>
+                ),
+              }}
+            />
+          ) : null}
+        </Card>
+      ) : null}
 
       <CrudFormModal
+        resourceName={resourceName}
         title={`Create ${resource.label.slice(0, -1)}`}
         open={createOpen}
         submitting={createMutation.isPending}
@@ -950,6 +1029,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       />
 
       <CrudFormModal
+        resourceName={resourceName}
         title={`Edit ${resource.label.slice(0, -1)}`}
         open={editOpen}
         submitting={updateMutation.isPending}
@@ -976,7 +1056,21 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         onConfirm={() => void handleDelete()}
       />
 
+      <Modal
+        title={`Restore ${resourceLabelSingular}`}
+        open={restoreOpen}
+        onCancel={() => setRestoreOpen(false)}
+        onOk={() => void handleRestore()}
+        okText="Restore"
+        confirmLoading={restoreMutation.isPending}
+        destroyOnHidden
+      >
+        Restore this {resourceLabelSingular.toLowerCase()} record
+        {selected?.id !== undefined ? ` (#${selected.id})` : ""}?
+      </Modal>
+
       <CrudFormModal
+        resourceName={resourceName}
         title="Link Citizen Profile"
         open={linkMeOpen}
         submitting={specialMutation.isPending}
@@ -999,6 +1093,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       />
 
       <CrudFormModal
+        resourceName={resourceName}
         title="Report Incident"
         open={reportOpen}
         submitting={specialMutation.isPending}

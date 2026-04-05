@@ -27,7 +27,11 @@ export const CAN_MANAGE_USERS: Role[] = [
   Role.DEPARTMENT_MANAGER,
 ];
 
-export const CAN_MANAGE_MFA: Role[] = Object.values(Role);
+export const CAN_MANAGE_MFA: Role[] = [
+  Role.SYSTEM_ADMIN,
+  Role.DEPARTMENT_MANAGER,
+  Role.DISPATCHER,
+];
 
 const MANAGEABLE_ROLES: Record<Role, Role[]> = {
   [Role.SYSTEM_ADMIN]: [

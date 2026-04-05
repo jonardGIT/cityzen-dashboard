@@ -17,6 +17,7 @@ describe("dynamic crud config", () => {
       ["severities", "get"],
       ["assignments", "list"],
       ["assignments", "get"],
+      ["users", "capabilities"],
     ] as const;
 
     for (const [resource, operation] of protectedReads) {
@@ -39,6 +40,30 @@ describe("dynamic crud config", () => {
     ]);
   });
 
+  it("opens read-only reference data to the configured read roles", () => {
+    expect(getCrudEndpoint("agencies", "list")?.allowedRoles).toEqual([
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
+      Role.SUPERVISOR,
+      Role.DISPATCHER,
+    ]);
+    expect(getCrudEndpoint("responders", "get")?.allowedRoles).toEqual([
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
+      Role.SUPERVISOR,
+      Role.DISPATCHER,
+    ]);
+    expect(getCrudEndpoint("statuses", "list")?.allowedRoles).toEqual([
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
+      Role.SUPERVISOR,
+      Role.DISPATCHER,
+      Role.RESPONDER,
+      Role.CITIZEN_REPORTER,
+      Role.AUDITOR,
+    ]);
+  });
+
   it("limits citizen reads and create to management roles", () => {
     expect(getCrudEndpoint("citizens", "list")?.allowedRoles).toEqual([
       Role.SYSTEM_ADMIN,
@@ -51,6 +76,37 @@ describe("dynamic crud config", () => {
     expect(getCrudEndpoint("citizens", "create")?.allowedRoles).toEqual([
       Role.SYSTEM_ADMIN,
       Role.DEPARTMENT_MANAGER,
+    ]);
+  });
+
+  it("exposes restore endpoints for soft-deletable resources", () => {
+    expect(getCrudEndpoint("citizens", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("agencies", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("responders", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("statuses", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("categories", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("severities", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("incidents", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("assignments", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("users", "restore")?.method).toBe("POST");
+  });
+
+  it("extends incident reads to auditors and preserves write restrictions", () => {
+    expect(getCrudEndpoint("incidents", "list")?.allowedRoles).toEqual([
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
+      Role.SUPERVISOR,
+      Role.DISPATCHER,
+      Role.RESPONDER,
+      Role.CITIZEN_REPORTER,
+      Role.AUDITOR,
+    ]);
+    expect(getCrudEndpoint("incidents", "create")?.allowedRoles).toEqual([
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
+      Role.SUPERVISOR,
+      Role.DISPATCHER,
+      Role.RESPONDER,
     ]);
   });
 });

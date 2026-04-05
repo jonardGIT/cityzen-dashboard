@@ -17,7 +17,7 @@ import {
   Typography,
 } from "antd";
 import { AxiosError } from "axios";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
@@ -31,6 +31,13 @@ import {
   useAssignmentsQuery,
 } from "@/features/assignments/api";
 import {
+  getCrudEndpoint,
+} from "@/features/dynamic-crud/config";
+import {
+  useCrudEndpointAvailability,
+} from "@/features/dynamic-crud/openapi";
+import {
+  uploadIncidentMedia,
   useCreateIncidentMutation,
   useIncidentsQuery,
 } from "@/features/incidents/api";
@@ -140,11 +147,17 @@ export default function IncidentsPage() {
     defaultAssignmentsQueryState({ page: 1, pageSize: 200 }),
   );
   const createMutation = useCreateIncidentMutation();
+  const mediaUploadAvailability = useCrudEndpointAvailability(
+    getCrudEndpoint("incidents", "mediaUpload"),
+  );
   const [open, setOpen] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement | null>(null);
   const [locationLookupPending, setLocationLookupPending] = useState(false);
   const [locationLookupError, setLocationLookupError] = useState<string | null>(
     null,
   );
+  const [mediaUploadPending, setMediaUploadPending] = useState(false);
+  const [mediaUploadError, setMediaUploadError] = useState<string | null>(null);
   const [form] = Form.useForm<IncidentFormValues>();
   const latitudeValue = Form.useWatch("latitude", form);
   const longitudeValue = Form.useWatch("longitude", form);
@@ -298,7 +311,9 @@ export default function IncidentsPage() {
           : "Unassigned";
         const relative =
           assignment && assignment.timestamp >= 0
-            ? formatDisplayRelativeTime(new Date(assignment.timestamp).toISOString())
+            ? formatDisplayRelativeTime(
+                new Date(assignment.timestamp).toISOString(),
+              )
             : null;
 
         return (
@@ -464,6 +479,38 @@ export default function IncidentsPage() {
         if (axiosError.response?.data?.message) {
           message.error(axiosError.response.data.message);
         }
+      }
+    }
+  };
+
+  const handleMediaFileSelection = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setMediaUploadPending(true);
+    setMediaUploadError(null);
+
+    try {
+      const mediaUrl = await uploadIncidentMedia(file);
+      form.setFieldValue("mediaUrl", mediaUrl);
+      message.success("Media uploaded and attached to the incident draft.");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to upload incident media.";
+
+      setMediaUploadError(errorMessage);
+      message.error(errorMessage);
+    } finally {
+      setMediaUploadPending(false);
+      if (event.target) {
+        event.target.value = "";
       }
     }
   };
@@ -679,6 +726,13 @@ export default function IncidentsPage() {
           layout="vertical"
           requiredMark={false}
         >
+          <input
+            ref={mediaInputRef}
+            type="file"
+            accept="image/*,video/*,.pdf"
+            style={{ display: "none" }}
+            onChange={(event) => void handleMediaFileSelection(event)}
+          />
           <div className={styles.modalBody}>
             <Button
               onClick={() => void applyCurrentLocation()}
@@ -734,7 +788,55 @@ export default function IncidentsPage() {
                   <Input.TextArea rows={3} />
                 </Form.Item>
 
-                <Form.Item name="mediaUrl" label="Media URL">
+                <Form.Item
+                  name="mediaUrl"
+                  label="Media URL"
+                  extra={
+                    <Space
+                      orientation="vertical"
+                      size={8}
+                      style={{ width: "100%" }}
+                    >
+                      <Text>
+                        Upload evidence through the configured media endpoint or
+                        paste an existing URL.
+                      </Text>
+                      <Space wrap>
+                        {mediaUploadAvailability.isAvailable ? (
+                          <Button
+                            onClick={() => mediaInputRef.current?.click()}
+                            loading={mediaUploadPending}
+                          >
+                            Upload Media
+                          </Button>
+                        ) : null}
+                        <Button
+                          onClick={() => {
+                            form.setFieldValue("mediaUrl", undefined);
+                            setMediaUploadError(null);
+                          }}
+                          disabled={mediaUploadPending}
+                        >
+                          Clear
+                        </Button>
+                      </Space>
+                      {mediaUploadError ? (
+                        <Alert
+                          type="warning"
+                          showIcon
+                          title={mediaUploadError}
+                        />
+                      ) : null}
+                      {!mediaUploadAvailability.isAvailable ? (
+                        <Alert
+                          type="info"
+                          showIcon
+                          title="The current backend feature profile supports URL-based media references only."
+                        />
+                      ) : null}
+                    </Space>
+                  }
+                >
                   <Input placeholder="Optional evidence or attachment URL" />
                 </Form.Item>
 
