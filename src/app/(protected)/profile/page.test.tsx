@@ -52,10 +52,51 @@ vi.mock("@/hooks/useListQueryParams", () => ({
 }));
 
 vi.mock("@/components/common/ResizableTable", () => ({
-  ResizableTable: ({ dataSource }: { dataSource: unknown[] }) => (
-    <div>Session rows: {dataSource.length}</div>
+  ResizableTable: ({
+    dataSource,
+    columns,
+  }: {
+    dataSource: Array<Record<string, unknown>>;
+    columns?: Array<{
+      key?: string;
+      dataIndex?: string;
+      render?: (value: unknown, record: Record<string, unknown>) => unknown;
+    }>;
+  }) => (
+    <div>
+      <div>Session rows: {dataSource.length}</div>
+      {dataSource.map((record, rowIndex) => (
+        <div key={String(record.id ?? rowIndex)}>
+          {columns?.map((column, columnIndex) => (
+            <div key={`${String(column.key ?? column.dataIndex ?? columnIndex)}`}>
+              {column.render
+                ? column.render(
+                    column.dataIndex ? record[column.dataIndex] : undefined,
+                    record,
+                  )
+                : null}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
   ),
 }));
+
+function buildSession(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "session-1",
+    userAgent: "Chrome on Linux",
+    ipAddress: "127.0.0.1",
+    isCurrent: false,
+    createdAt: "2026-04-06T01:00:00.000Z",
+    lastUsedAt: "2026-04-06T01:10:00.000Z",
+    expiresAt: "2026-04-07T01:00:00.000Z",
+    refreshExpiresAt: "2026-04-08T01:00:00.000Z",
+    revokedAt: null,
+    ...overrides,
+  };
+}
 
 function renderProfilePage() {
   return render(
@@ -177,17 +218,7 @@ describe("ProfilePage", () => {
     );
     useAuthSessionsQueryMock.mockReturnValue({
       data: [
-        {
-          id: "session-1",
-          userAgent: "Chrome on Linux",
-          ipAddress: "127.0.0.1",
-          isCurrent: true,
-          createdAt: "2026-04-06T01:00:00.000Z",
-          lastUsedAt: "2026-04-06T01:10:00.000Z",
-          expiresAt: "2026-04-07T01:00:00.000Z",
-          refreshExpiresAt: "2026-04-08T01:00:00.000Z",
-          revokedAt: null,
-        },
+        buildSession({ isCurrent: true }),
       ],
       isLoading: false,
       isFetching: false,
@@ -204,6 +235,55 @@ describe("ProfilePage", () => {
         "Session revocation is unavailable for the current backend feature profile.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("logs out after revoking the current session", async () => {
+    const logoutMock = vi.fn().mockResolvedValue(undefined);
+    const revokeMock = vi.fn().mockResolvedValue(undefined);
+
+    useAuthMock.mockReturnValue({
+      user: {
+        id: "user-1",
+        email: "dispatcher@example.com",
+        name: "Dispatch Lead",
+        role: Role.DISPATCHER,
+        mfaEnabled: false,
+        mfaEnabledAt: null,
+      },
+      logout: logoutMock,
+      hasRole: (...roles: Role[]) => roles.includes(Role.DISPATCHER),
+    });
+    useCrudEndpointAvailabilityMock.mockImplementation(() => ({
+      isAvailable: true,
+      isLoading: false,
+    }));
+    useAuthSessionsQueryMock.mockReturnValue({
+      data: [buildSession({ isCurrent: true })],
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    useRevokeAuthSessionMutationMock.mockReturnValue({
+      isPending: false,
+      variables: null,
+      mutateAsync: revokeMock,
+    });
+
+    renderProfilePage();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Sign Out This Session" }),
+      );
+    });
+
+    expect(revokeMock).toHaveBeenCalledWith("session-1");
+    expect(logoutMock).toHaveBeenCalledWith({
+      revokeRemote: false,
+      redirectTo: "/login?reason=session-revoked",
+    });
   });
 
   it("surfaces an operator-facing error when MFA setup returns 503", async () => {
@@ -246,6 +326,112 @@ describe("ProfilePage", () => {
         /Operator action is required on the backend before MFA enrollment can be used\./,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("logs out after MFA enable succeeds", async () => {
+    const logoutMock = vi.fn().mockResolvedValue(undefined);
+    const enableMock = vi
+      .fn()
+      .mockResolvedValue({ message: "MFA enabled." });
+
+    useAuthMock.mockReturnValue({
+      user: {
+        id: "user-1",
+        email: "dispatcher@example.com",
+        name: "Dispatch Lead",
+        role: Role.DISPATCHER,
+        mfaEnabled: false,
+        mfaEnabledAt: null,
+      },
+      logout: logoutMock,
+      hasRole: (...roles: Role[]) => roles.includes(Role.DISPATCHER),
+    });
+    useCrudEndpointAvailabilityMock.mockImplementation(
+      (endpoint: { path: string }) => ({
+        isAvailable:
+          endpoint.path === "/auth/sessions" ||
+          endpoint.path === "/auth/mfaSetup" ||
+          endpoint.path === "/auth/mfaEnable" ||
+          endpoint.path === "/auth/mfaDisable",
+        isLoading: false,
+      }),
+    );
+    useCreateMfaSetupMutationMock.mockReturnValue({
+      isPending: false,
+      data: {
+        issuer: "Xypes CIRS",
+        accountName: "dispatcher@example.com",
+        secret: "ABC123",
+        otpauthUrl: "otpauth://totp/Xypes",
+      },
+      mutateAsync: vi.fn(),
+    });
+    useEnableMfaMutationMock.mockReturnValue({
+      isPending: false,
+      mutateAsync: enableMock,
+    });
+
+    renderProfilePage();
+
+    fireEvent.change(
+      screen.getByPlaceholderText("Enter 6-digit code to enable MFA"),
+      { target: { value: "123456" } },
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Enable MFA" }));
+    });
+
+    expect(enableMock).toHaveBeenCalledWith({ code: "123456" });
+    expect(logoutMock).toHaveBeenCalledWith({
+      revokeRemote: false,
+      redirectTo: "/login?reason=mfa-updated",
+    });
+  });
+
+  it("logs out after MFA disable succeeds", async () => {
+    const logoutMock = vi.fn().mockResolvedValue(undefined);
+    const disableMock = vi
+      .fn()
+      .mockResolvedValue({ message: "MFA disabled." });
+
+    useAuthMock.mockReturnValue({
+      user: {
+        id: "user-1",
+        email: "dispatcher@example.com",
+        name: "Dispatch Lead",
+        role: Role.DISPATCHER,
+        mfaEnabled: true,
+        mfaEnabledAt: "2026-04-06T01:00:00.000Z",
+      },
+      logout: logoutMock,
+      hasRole: (...roles: Role[]) => roles.includes(Role.DISPATCHER),
+    });
+    useCrudEndpointAvailabilityMock.mockImplementation(() => ({
+      isAvailable: true,
+      isLoading: false,
+    }));
+    useDisableMfaMutationMock.mockReturnValue({
+      isPending: false,
+      mutateAsync: disableMock,
+    });
+
+    renderProfilePage();
+
+    fireEvent.change(
+      screen.getByPlaceholderText("Enter 6-digit code to disable MFA"),
+      { target: { value: "654321" } },
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Disable MFA" }));
+    });
+
+    expect(disableMock).toHaveBeenCalledWith({ code: "654321" });
+    expect(logoutMock).toHaveBeenCalledWith({
+      revokeRemote: false,
+      redirectTo: "/login?reason=mfa-updated",
+    });
   });
 
   it("does not expose MFA management actions to non-privileged roles", () => {
