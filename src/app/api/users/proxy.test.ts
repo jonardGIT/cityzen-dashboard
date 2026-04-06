@@ -56,9 +56,8 @@ describe("users proxy helpers", () => {
         }),
       );
 
-    const { requestUpstreamWithFallback } = await import(
-      "@/app/api/users/proxy"
-    );
+    const { requestUpstreamWithFallback } =
+      await import("@/app/api/users/proxy");
 
     const response = await requestUpstreamWithFallback(
       {

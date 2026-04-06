@@ -127,7 +127,9 @@ describe("LoginPage", () => {
       );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Use A Different Account" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Use A Different Account" }),
+    );
 
     expect(
       screen.queryByLabelText("Authentication code"),
@@ -226,8 +228,6 @@ describe("LoginPage", () => {
     });
 
     expect(screen.getByText("Login Failed")).toBeInTheDocument();
-    expect(
-      screen.getByText("Invalid email or password."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Invalid email or password.")).toBeInTheDocument();
   });
 });

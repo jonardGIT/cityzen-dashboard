@@ -68,7 +68,9 @@ vi.mock("@/components/common/ResizableTable", () => ({
       {dataSource.map((record, rowIndex) => (
         <div key={String(record.id ?? rowIndex)}>
           {columns?.map((column, columnIndex) => (
-            <div key={`${String(column.key ?? column.dataIndex ?? columnIndex)}`}>
+            <div
+              key={`${String(column.key ?? column.dataIndex ?? columnIndex)}`}
+            >
               {column.render
                 ? column.render(
                     column.dataIndex ? record[column.dataIndex] : undefined,
@@ -217,9 +219,7 @@ describe("ProfilePage", () => {
       }),
     );
     useAuthSessionsQueryMock.mockReturnValue({
-      data: [
-        buildSession({ isCurrent: true }),
-      ],
+      data: [buildSession({ isCurrent: true })],
       isLoading: false,
       isFetching: false,
       isError: false,
@@ -330,9 +330,7 @@ describe("ProfilePage", () => {
 
   it("logs out after MFA enable succeeds", async () => {
     const logoutMock = vi.fn().mockResolvedValue(undefined);
-    const enableMock = vi
-      .fn()
-      .mockResolvedValue({ message: "MFA enabled." });
+    const enableMock = vi.fn().mockResolvedValue({ message: "MFA enabled." });
 
     useAuthMock.mockReturnValue({
       user: {
@@ -391,9 +389,7 @@ describe("ProfilePage", () => {
 
   it("logs out after MFA disable succeeds", async () => {
     const logoutMock = vi.fn().mockResolvedValue(undefined);
-    const disableMock = vi
-      .fn()
-      .mockResolvedValue({ message: "MFA disabled." });
+    const disableMock = vi.fn().mockResolvedValue({ message: "MFA disabled." });
 
     useAuthMock.mockReturnValue({
       user: {

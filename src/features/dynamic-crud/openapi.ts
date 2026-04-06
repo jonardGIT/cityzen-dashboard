@@ -107,8 +107,8 @@ export function collectContractDriftIssues(
 
   const unconfiguredOpenApiOperations = operationKeys
     .map(parseEndpointKey)
-    .filter(
-      (entry): entry is { method: string; path: string } => Boolean(entry),
+    .filter((entry): entry is { method: string; path: string } =>
+      Boolean(entry),
     )
     .filter((entry) =>
       isRelevantOpenApiPath(entry.path, resourcePrefixes, configuredAuthPaths),
@@ -121,10 +121,7 @@ export function collectContractDriftIssues(
       message: `${operationKey} is exposed by the active OpenAPI document but missing from dashboard config.`,
     }));
 
-  return [
-    ...missingActiveConfigOperations,
-    ...unconfiguredOpenApiOperations,
-  ];
+  return [...missingActiveConfigOperations, ...unconfiguredOpenApiOperations];
 }
 
 type OpenApiAwareEndpoint = Pick<

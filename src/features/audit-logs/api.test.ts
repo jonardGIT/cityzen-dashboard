@@ -212,9 +212,7 @@ describe("audit log api client", () => {
       message: "Invalid query parameters.",
       generalErrors: [],
       filterErrorsByField: {
-        statusCode: [
-          "The contains operator is not supported for statusCode.",
-        ],
+        statusCode: ["The contains operator is not supported for statusCode."],
         createdAt: ["createdFrom must be a valid datetime."],
       },
       sortErrorsByField: {

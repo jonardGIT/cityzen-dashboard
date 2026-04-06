@@ -1,14 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  requestCrudEndpointMock,
-  assertCrudSuccessMock,
-  getCrudEndpointMock,
-} = vi.hoisted(() => ({
-  requestCrudEndpointMock: vi.fn(),
-  assertCrudSuccessMock: vi.fn(),
-  getCrudEndpointMock: vi.fn(),
-}));
+const { requestCrudEndpointMock, assertCrudSuccessMock, getCrudEndpointMock } =
+  vi.hoisted(() => ({
+    requestCrudEndpointMock: vi.fn(),
+    assertCrudSuccessMock: vi.fn(),
+    getCrudEndpointMock: vi.fn(),
+  }));
 
 vi.mock("@/lib/api/clients", () => ({
   authClient: {

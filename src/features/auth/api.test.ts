@@ -133,11 +133,9 @@ describe("auth feature api", () => {
 
     const result = await createMfaSetup();
 
-    expect(authPostMock).toHaveBeenCalledWith(
-      "/auth/mfa/setup",
-      undefined,
-      { signal: undefined },
-    );
+    expect(authPostMock).toHaveBeenCalledWith("/auth/mfa/setup", undefined, {
+      signal: undefined,
+    });
     expect(result).toEqual({
       issuer: "Xypes CIRS",
       accountName: "dispatcher@example.com",

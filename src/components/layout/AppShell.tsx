@@ -76,8 +76,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, capabilities, logout, isAuthenticated } = useAuth();
-  const { features, contractDrift, isLoading: featureSurfaceLoading } =
-    useBackendFeatureSurface();
+  const {
+    features,
+    contractDrift,
+    isLoading: featureSurfaceLoading,
+  } = useBackendFeatureSurface();
 
   const displayName = useMemo(() => {
     if (!user) {

@@ -54,15 +54,14 @@ describe("dynamic crud OpenAPI helpers", () => {
   });
 
   it("reports active config operations that are missing from the active spec", () => {
-    expect(collectContractDriftIssues(["GET /citizens"]))
-      .toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            type: "missing-active-config-operation",
-            operationKey: "GET /citizens/{id}",
-          }),
-        ]),
-      );
+    expect(collectContractDriftIssues(["GET /citizens"])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "missing-active-config-operation",
+          operationKey: "GET /citizens/{id}",
+        }),
+      ]),
+    );
   });
 
   it("reports active OpenAPI operations that belong to configured resources but are absent from config", () => {

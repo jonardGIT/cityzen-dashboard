@@ -201,9 +201,7 @@ describe("IncidentsPage", () => {
     useCrudEndpointAvailabilityMock.mockReset();
   });
 
-  it(
-    "shows the media upload button when the active backend profile exposes uploads",
-    async () => {
+  it("shows the media upload button when the active backend profile exposes uploads", async () => {
     useCrudEndpointAvailabilityMock.mockReturnValue({
       isAvailable: true,
       isLoading: false,
@@ -217,19 +215,17 @@ describe("IncidentsPage", () => {
 
     const dialog = await screen.findByRole("dialog");
 
-    expect(within(dialog).getByRole("button", { name: "Upload Media" })).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Upload Media" }),
+    ).toBeInTheDocument();
     expect(
       within(dialog).queryByText(
         "The current backend feature profile supports URL-based media references only.",
       ),
     ).not.toBeInTheDocument();
-    },
-    10000,
-  );
+  }, 10000);
 
-  it(
-    "shows the URL-only guidance when uploads are not available in the active profile",
-    async () => {
+  it("shows the URL-only guidance when uploads are not available in the active profile", async () => {
     useCrudEndpointAvailabilityMock.mockReturnValue({
       isAvailable: false,
       isLoading: false,
@@ -251,50 +247,48 @@ describe("IncidentsPage", () => {
         "The current backend feature profile supports URL-based media references only.",
       ),
     ).toBeInTheDocument();
-    },
-    10000,
-  );
+  }, 10000);
 
-  it(
-    "switches citizen reporters into self-service report mode and disables admin-only queries",
-    async () => {
-      useAuthMock.mockReturnValue({
-        hasRole: (...roles: Role[]) => roles.includes(Role.CITIZEN_REPORTER),
-      });
-      useCrudEndpointAvailabilityMock.mockReturnValue({
-        isAvailable: false,
-        isLoading: false,
-      });
+  it("switches citizen reporters into self-service report mode and disables admin-only queries", async () => {
+    useAuthMock.mockReturnValue({
+      hasRole: (...roles: Role[]) => roles.includes(Role.CITIZEN_REPORTER),
+    });
+    useCrudEndpointAvailabilityMock.mockReturnValue({
+      isAvailable: false,
+      isLoading: false,
+    });
 
-      renderPage();
+    renderPage();
 
-      expect(screen.getByRole("button", { name: "Report Incident" })).toBeInTheDocument();
-      expect(useCitizensQueryMock).toHaveBeenCalledWith(expect.anything(), false);
-      expect(useRespondersQueryMock).toHaveBeenCalledWith(expect.anything(), false);
-      expect(useAssignmentsQueryMock).toHaveBeenCalledWith(expect.anything(), false);
+    expect(
+      screen.getByRole("button", { name: "Report Incident" }),
+    ).toBeInTheDocument();
+    expect(useCitizensQueryMock).toHaveBeenCalledWith(expect.anything(), false);
+    expect(useRespondersQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
+    expect(useAssignmentsQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
 
-      await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: "Report Incident" }));
-      });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Report Incident" }));
+    });
 
-      const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog");
 
-      expect(within(dialog).getByText("Report Incident")).toBeInTheDocument();
-      expect(
-        within(dialog).queryByLabelText("Citizen"),
-      ).not.toBeInTheDocument();
-      expect(
-        within(dialog).queryByLabelText("Status"),
-      ).not.toBeInTheDocument();
-      expect(
-        within(dialog).queryByLabelText("Media URL"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "The self-service report flow stays limited to the backend contract fields for incident details and location snapshot data.",
-        ),
-      ).toBeInTheDocument();
-    },
-    10000,
-  );
+    expect(within(dialog).getByText("Report Incident")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Citizen")).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Status")).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByLabelText("Media URL"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The self-service report flow stays limited to the backend contract fields for incident details and location snapshot data.",
+      ),
+    ).toBeInTheDocument();
+  }, 10000);
 });

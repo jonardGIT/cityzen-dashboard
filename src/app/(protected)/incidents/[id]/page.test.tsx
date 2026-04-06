@@ -193,9 +193,15 @@ describe("IncidentWorkspacePage", () => {
     expect(
       screen.getByRole("button", { name: "Open assignments board" }),
     ).toBeInTheDocument();
-    expect(useAssignmentsQueryMock).toHaveBeenCalledWith(expect.anything(), true);
+    expect(useAssignmentsQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      true,
+    );
     expect(useCitizensQueryMock).toHaveBeenCalledWith(expect.anything(), true);
-    expect(useRespondersQueryMock).toHaveBeenCalledWith(expect.anything(), true);
+    expect(useRespondersQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      true,
+    );
   });
 
   it("hides operator-only context and disables admin-only queries for citizen reporters", () => {
@@ -216,8 +222,14 @@ describe("IncidentWorkspacePage", () => {
     expect(
       screen.getByText("Assignment history is reserved for operator workflows"),
     ).toBeInTheDocument();
-    expect(useAssignmentsQueryMock).toHaveBeenCalledWith(expect.anything(), false);
+    expect(useAssignmentsQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
     expect(useCitizensQueryMock).toHaveBeenCalledWith(expect.anything(), false);
-    expect(useRespondersQueryMock).toHaveBeenCalledWith(expect.anything(), false);
+    expect(useRespondersQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
   });
 });

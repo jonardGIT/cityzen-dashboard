@@ -222,6 +222,8 @@ describe("AuditLogsPage", () => {
     render(<AuditLogsPage />);
 
     expect(screen.getByText("Invalid query parameters.")).toBeInTheDocument();
-    expect(screen.queryByText("Unable to load audit logs")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Unable to load audit logs"),
+    ).not.toBeInTheDocument();
   });
 });
