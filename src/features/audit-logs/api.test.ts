@@ -10,7 +10,13 @@ vi.mock("@/lib/api/clients", () => ({
   })),
 }));
 
-import { AuditLogApiClientError, listAuditLogs } from "@/lib/api/auditLogs";
+import {
+  AuditLogApiClientError,
+  extractAuditLogListValidation,
+  getAuditLogById,
+  getAuditLogErrorMessage,
+  listAuditLogs,
+} from "@/lib/api/auditLogs";
 import { fetchAuditLogById, fetchAuditLogs } from "@/features/audit-logs/api";
 
 describe("audit log api client", () => {
@@ -150,5 +156,82 @@ describe("audit log api client", () => {
         filters: [],
       }),
     ).rejects.toBeInstanceOf(AuditLogApiClientError);
+  });
+
+  it("normalizes audit detail fetch failures into a typed 404 error result", async () => {
+    getMock.mockRejectedValueOnce({
+      response: {
+        status: 404,
+        data: {
+          message: "Audit log not found.",
+        },
+      },
+      message: "Request failed with status code 404",
+    });
+
+    const result = await getAuditLogById("audit-missing");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toEqual({
+      status: 404,
+      message: "Audit log not found.",
+      details: {
+        message: "Audit log not found.",
+      },
+    });
+  });
+
+  it("maps audit 422 validation fields into filter and date error groups", () => {
+    const validation = extractAuditLogListValidation(
+      new AuditLogApiClientError({
+        status: 422,
+        message: "Invalid query parameters.",
+        details: {
+          message: "Invalid query parameters.",
+          errors: [
+            {
+              field: "filters[0].operator",
+              message: "The contains operator is not supported for statusCode.",
+            },
+            {
+              field: "createdFrom",
+              message: "createdFrom must be a valid datetime.",
+            },
+            {
+              field: "sortOrder",
+              message: "sortOrder must be asc or desc.",
+            },
+          ],
+        },
+      }),
+      [{ field: "statusCode", operator: "contains", value: "500" }],
+      "timestamp",
+    );
+
+    expect(validation).toEqual({
+      message: "Invalid query parameters.",
+      generalErrors: [],
+      filterErrorsByField: {
+        statusCode: [
+          "The contains operator is not supported for statusCode.",
+        ],
+        createdAt: ["createdFrom must be a valid datetime."],
+      },
+      sortErrorsByField: {
+        timestamp: ["sortOrder must be asc or desc."],
+      },
+    });
+  });
+
+  it("returns the audit client error message for display helpers", () => {
+    expect(
+      getAuditLogErrorMessage(
+        new AuditLogApiClientError({
+          status: 403,
+          message: "Forbidden",
+        }),
+        "fallback",
+      ),
+    ).toBe("Forbidden");
   });
 });
