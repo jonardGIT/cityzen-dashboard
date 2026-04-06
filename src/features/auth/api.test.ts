@@ -22,10 +22,13 @@ vi.mock("@/lib/api/clients", () => ({
 
 import {
   confirmPasswordReset,
+  createMfaSetup,
   disableMfa,
   enableMfa,
   fetchAuthSessions,
   loginWithPassword,
+  logoutCurrentSession,
+  refreshAuthSession,
   requestPasswordReset,
 } from "@/features/auth/api";
 
@@ -69,6 +72,37 @@ describe("auth feature api", () => {
     expect(result).toEqual([{ id: "session-1", isCurrent: true }]);
   });
 
+  it("refreshes the authenticated session and returns replacement tokens", async () => {
+    publicPostMock.mockResolvedValueOnce({
+      data: {
+        token: "next-access-token",
+        refreshToken: "next-refresh-token",
+        tokenType: "Bearer",
+        sessionId: "session-1",
+        expiresAt: "2026-04-06T12:00:00.000Z",
+        refreshExpiresAt: "2026-04-07T12:00:00.000Z",
+        user: {
+          id: "user-1",
+          email: "dispatcher@example.com",
+          name: "Dispatch Lead",
+          role: "DISPATCHER",
+          mfaEnabled: false,
+          mfaEnabledAt: null,
+        },
+      },
+    });
+
+    const result = await refreshAuthSession({
+      refreshToken: "current-refresh-token",
+    });
+
+    expect(publicPostMock).toHaveBeenCalledWith("/auth/refresh", {
+      refreshToken: "current-refresh-token",
+    });
+    expect(result.token).toBe("next-access-token");
+    expect(result.refreshToken).toBe("next-refresh-token");
+  });
+
   it("posts MFA enable and disable requests to the expected endpoints", async () => {
     authPostMock
       .mockResolvedValueOnce({ data: { message: "enabled" } })
@@ -85,6 +119,39 @@ describe("auth feature api", () => {
     });
     expect(enabled).toEqual({ message: "enabled" });
     expect(disabled).toEqual({ message: "disabled" });
+  });
+
+  it("requests MFA setup from the authenticated auth endpoint", async () => {
+    authPostMock.mockResolvedValueOnce({
+      data: {
+        issuer: "Xypes CIRS",
+        accountName: "dispatcher@example.com",
+        secret: "ABC123",
+        otpauthUrl: "otpauth://totp/Xypes",
+      },
+    });
+
+    const result = await createMfaSetup();
+
+    expect(authPostMock).toHaveBeenCalledWith(
+      "/auth/mfa/setup",
+      undefined,
+      { signal: undefined },
+    );
+    expect(result).toEqual({
+      issuer: "Xypes CIRS",
+      accountName: "dispatcher@example.com",
+      secret: "ABC123",
+      otpauthUrl: "otpauth://totp/Xypes",
+    });
+  });
+
+  it("posts logout to revoke the current server-side session", async () => {
+    authPostMock.mockResolvedValueOnce({ data: undefined });
+
+    await logoutCurrentSession();
+
+    expect(authPostMock).toHaveBeenCalledWith("/auth/logout");
   });
 
   it("requests password reset using the public auth client", async () => {
