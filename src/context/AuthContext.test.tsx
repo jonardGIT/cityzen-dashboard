@@ -294,7 +294,9 @@ describe("AuthContext", () => {
   });
 
   it("clears the optimistic session when post-login hydration fails", async () => {
-    const loginError = new Error("Unauthorized: sign in again to satisfy MFA requirements");
+    const loginError = new Error(
+      "Unauthorized: sign in again to satisfy MFA requirements",
+    );
 
     loginWithPasswordMock.mockResolvedValue({
       mfaRequired: false,
