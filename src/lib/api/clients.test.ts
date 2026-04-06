@@ -5,6 +5,7 @@ const {
   authRequestUseMock,
   authResponseUseMock,
   authInstanceMock,
+  refreshResponseUseMock,
   refreshPostMock,
   clearAuthStorageMock,
   getAccessTokenMock,
@@ -47,6 +48,7 @@ const {
     authRequestUseMock,
     authResponseUseMock,
     authInstanceMock,
+    refreshResponseUseMock,
     refreshPostMock,
     clearAuthStorageMock: vi.fn(),
     getAccessTokenMock: vi.fn(),
@@ -214,5 +216,89 @@ describe("auth api clients", () => {
 
     expect(unauthorizedHandler).toHaveBeenCalledWith("session-revoked");
     unregister();
+  });
+
+  it("classifies password-change responses separately from generic expiry", async () => {
+    getRefreshTokenMock.mockReturnValue(null);
+    const unauthorizedHandler = vi.fn();
+    const unregister = registerUnauthorizedHandler(unauthorizedHandler);
+
+    const responseRejected = authResponseUseMock.mock.calls[0]?.[1] as
+      | ((error: {
+          response?: { status?: number; data?: { message?: string } };
+          config?: Record<string, unknown>;
+        }) => Promise<never>)
+      | undefined;
+
+    await expect(
+      responseRejected?.({
+        response: {
+          status: 401,
+          data: { message: "Unauthorized: password changed" },
+        },
+        config: { url: "/incidents", headers: {} },
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        response: {
+          status: 401,
+          data: { message: "Unauthorized: password changed" },
+        },
+      }),
+    );
+
+    expect(unauthorizedHandler).toHaveBeenCalledWith("password-changed");
+    unregister();
+  });
+
+  it("classifies role-change responses separately from generic expiry", async () => {
+    getRefreshTokenMock.mockReturnValue(null);
+    const unauthorizedHandler = vi.fn();
+    const unregister = registerUnauthorizedHandler(unauthorizedHandler);
+
+    const responseRejected = authResponseUseMock.mock.calls[0]?.[1] as
+      | ((error: {
+          response?: { status?: number; data?: { message?: string } };
+          config?: Record<string, unknown>;
+        }) => Promise<never>)
+      | undefined;
+
+    await expect(
+      responseRejected?.({
+        response: {
+          status: 401,
+          data: { message: "Unauthorized: role changed" },
+        },
+        config: { url: "/incidents", headers: {} },
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        response: {
+          status: 401,
+          data: { message: "Unauthorized: role changed" },
+        },
+      }),
+    );
+
+    expect(unauthorizedHandler).toHaveBeenCalledWith("role-changed");
+    unregister();
+  });
+
+  it("clears auth storage when the refresh client itself receives 401", async () => {
+    const refreshRejected = refreshResponseUseMock.mock.calls[0]?.[1] as
+      | ((error: { response?: { status?: number } }) => Promise<never>)
+      | undefined;
+
+    await expect(
+      refreshRejected?.({
+        response: { status: 401 },
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        response: { status: 401 },
+      }),
+    );
+
+    expect(clearAuthStorageMock).toHaveBeenCalledTimes(1);
   });
 });
