@@ -40,6 +40,7 @@ import {
   uploadIncidentMedia,
   useCreateIncidentMutation,
   useIncidentsQuery,
+  useReportIncidentMutation,
 } from "@/features/incidents/api";
 import {
   useCategoriesQuery,
@@ -67,6 +68,7 @@ import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { reverseGeocodeIncidentAddress } from "@/lib/geo/reverse-geocode";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import type { ApiErrorPayload, Incident } from "@/types/api";
+import { Role } from "@/types/auth";
 import styles from "./page.module.css";
 
 const { Link, Text, Title } = Typography;
@@ -130,6 +132,8 @@ export default function IncidentsPage() {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
   const router = useRouter();
+  const isCitizenReporter = hasRole(Role.CITIZEN_REPORTER);
+  const canCreateAdminIncident = hasRole(...CAN_CREATE_INCIDENT);
   const optionQueryState: ListQueryState = {
     page: 1,
     pageSize: 200,
@@ -138,15 +142,17 @@ export default function IncidentsPage() {
     sortOrder: DEFAULT_SORT_ORDER,
     filters: [],
   };
-  const citizensQuery = useCitizensQuery(optionQueryState);
+  const citizensQuery = useCitizensQuery(optionQueryState, !isCitizenReporter);
   const categoriesQuery = useCategoriesQuery(optionQueryState);
   const severitiesQuery = useSeveritiesQuery(optionQueryState);
   const statusesQuery = useStatusesQuery(optionQueryState);
-  const respondersQuery = useRespondersQuery(optionQueryState);
+  const respondersQuery = useRespondersQuery(optionQueryState, !isCitizenReporter);
   const assignmentsQuery = useAssignmentsQuery(
     defaultAssignmentsQueryState({ page: 1, pageSize: 200 }),
+    !isCitizenReporter,
   );
   const createMutation = useCreateIncidentMutation();
+  const reportMutation = useReportIncidentMutation();
   const mediaUploadAvailability = useCrudEndpointAvailability(
     getCrudEndpoint("incidents", "mediaUpload"),
   );
@@ -359,7 +365,7 @@ export default function IncidentsPage() {
     return <ErrorState message={String(incidentsListQuery.error)} />;
   }
 
-  const canCreate = hasRole(...CAN_CREATE_INCIDENT);
+  const canOpenIncidentModal = canCreateAdminIncident || isCitizenReporter;
   const geocodedCount = rows.filter(hasCoordinates).length;
   const addressSnapshotCount = rows.filter(hasAddressSnapshot).length;
   const reportedTodayCount = rows.filter((incident) => {
@@ -446,16 +452,10 @@ export default function IncidentsPage() {
   const submit = async () => {
     try {
       const values = await form.validateFields();
-      await createMutation.mutateAsync({
-        description: values.description,
-        mediaUrl: values.mediaUrl,
-        dateReported: values.dateReported
-          ? new Date(values.dateReported).toISOString()
-          : undefined,
-        citizenId: values.citizenId,
-        categoryId: values.categoryId,
-        severityId: values.severityId,
-        statusId: values.statusId,
+      const dateReported = values.dateReported
+        ? new Date(values.dateReported).toISOString()
+        : undefined;
+      const locationPayload = {
         latitude: values.latitude ? Number(values.latitude) : undefined,
         longitude: values.longitude ? Number(values.longitude) : undefined,
         addressLine1: values.addressLine1,
@@ -467,11 +467,35 @@ export default function IncidentsPage() {
         regionName: values.regionName,
         postalCode: values.postalCode,
         landmark: values.landmark,
-      });
-      message.success("Incident created");
+      };
+
+      if (isCitizenReporter) {
+        await reportMutation.mutateAsync({
+          description: values.description,
+          dateReported,
+          categoryId: values.categoryId,
+          severityId: values.severityId,
+          ...locationPayload,
+        });
+        message.success("Incident reported");
+      } else {
+        await createMutation.mutateAsync({
+          description: values.description,
+          mediaUrl: values.mediaUrl,
+          dateReported,
+          citizenId: values.citizenId,
+          categoryId: values.categoryId,
+          severityId: values.severityId,
+          statusId: values.statusId,
+          ...locationPayload,
+        });
+        message.success("Incident created");
+      }
+
       form.resetFields();
       setOpen(false);
       setLocationLookupError(null);
+      setMediaUploadError(null);
     } catch (error) {
       const mapped = mapValidationErrorsToForm(form, error);
       if (!mapped) {
@@ -526,19 +550,19 @@ export default function IncidentsPage() {
                 Triage, capture, and review incident reports from one workspace.
               </Title>
               <Text className={styles.heroDescription}>
-                Keep the live queue searchable, verify location snapshots
-                quickly, and create new incident records with the
-                backend-aligned address contract.
+                {isCitizenReporter
+                  ? "Report incidents with the required location snapshot fields and track the records attached to your account."
+                  : "Keep the live queue searchable, verify location snapshots quickly, and create new incident records with the backend-aligned address contract."}
               </Text>
             </div>
-            {canCreate ? (
+            {canOpenIncidentModal ? (
               <Button
                 className={styles.heroAction}
                 type="primary"
                 size="large"
                 onClick={() => setOpen(true)}
               >
-                Create Incident
+                {isCitizenReporter ? "Report Incident" : "Create Incident"}
               </Button>
             ) : null}
           </div>
@@ -654,7 +678,7 @@ export default function IncidentsPage() {
                   >
                     Open workspace
                   </Button>
-                  {row.citizenId ? (
+                  {!isCitizenReporter && row.citizenId ? (
                     <Button
                       type="link"
                       onClick={() => router.push(`/citizens/${row.citizenId}`)}
@@ -689,15 +713,17 @@ export default function IncidentsPage() {
             <div className={styles.sidebarItem}>
               <Text className={styles.sidebarLabel}>Severity and status</Text>
               <Text>
-                Set both on creation so the dashboard can place the incident in
-                the correct queue immediately.
+                {isCitizenReporter
+                  ? "Choose category and severity so operators can triage the report quickly once it reaches the response queue."
+                  : "Set both on creation so the dashboard can place the incident in the correct queue immediately."}
               </Text>
             </div>
             <div className={styles.sidebarItem}>
               <Text className={styles.sidebarLabel}>Media evidence</Text>
               <Text>
-                Add a resolvable media URL when supporting photos or attachments
-                exist.
+                {isCitizenReporter
+                  ? "The self-service report flow stays limited to the backend contract fields for incident details and location snapshot data."
+                  : "Add a resolvable media URL when supporting photos or attachments exist."}
               </Text>
             </div>
             <div className={styles.sidebarItem}>
@@ -712,14 +738,14 @@ export default function IncidentsPage() {
       </div>
 
       <Modal
-        title="Create Incident"
+        title={isCitizenReporter ? "Report Incident" : "Create Incident"}
         open={open}
         onCancel={() => {
           setOpen(false);
           setLocationLookupError(null);
         }}
         onOk={() => void submit()}
-        confirmLoading={createMutation.isPending}
+        confirmLoading={createMutation.isPending || reportMutation.isPending}
       >
         <Form<IncidentFormValues>
           form={form}
@@ -788,72 +814,76 @@ export default function IncidentsPage() {
                   <Input.TextArea rows={3} />
                 </Form.Item>
 
-                <Form.Item
-                  name="mediaUrl"
-                  label="Media URL"
-                  extra={
-                    <Space
-                      orientation="vertical"
-                      size={8}
-                      style={{ width: "100%" }}
-                    >
-                      <Text>
-                        Upload evidence through the configured media endpoint or
-                        paste an existing URL.
-                      </Text>
-                      <Space wrap>
-                        {mediaUploadAvailability.isAvailable ? (
+                {isCitizenReporter ? null : (
+                  <Form.Item
+                    name="mediaUrl"
+                    label="Media URL"
+                    extra={
+                      <Space
+                        orientation="vertical"
+                        size={8}
+                        style={{ width: "100%" }}
+                      >
+                        <Text>
+                          Upload evidence through the configured media endpoint or
+                          paste an existing URL.
+                        </Text>
+                        <Space wrap>
+                          {mediaUploadAvailability.isAvailable ? (
+                            <Button
+                              onClick={() => mediaInputRef.current?.click()}
+                              loading={mediaUploadPending}
+                            >
+                              Upload Media
+                            </Button>
+                          ) : null}
                           <Button
-                            onClick={() => mediaInputRef.current?.click()}
-                            loading={mediaUploadPending}
+                            onClick={() => {
+                              form.setFieldValue("mediaUrl", undefined);
+                              setMediaUploadError(null);
+                            }}
+                            disabled={mediaUploadPending}
                           >
-                            Upload Media
+                            Clear
                           </Button>
+                        </Space>
+                        {mediaUploadError ? (
+                          <Alert
+                            type="warning"
+                            showIcon
+                            title={mediaUploadError}
+                          />
                         ) : null}
-                        <Button
-                          onClick={() => {
-                            form.setFieldValue("mediaUrl", undefined);
-                            setMediaUploadError(null);
-                          }}
-                          disabled={mediaUploadPending}
-                        >
-                          Clear
-                        </Button>
+                        {!mediaUploadAvailability.isAvailable ? (
+                          <Alert
+                            type="info"
+                            showIcon
+                            title="The current backend feature profile supports URL-based media references only."
+                          />
+                        ) : null}
                       </Space>
-                      {mediaUploadError ? (
-                        <Alert
-                          type="warning"
-                          showIcon
-                          title={mediaUploadError}
-                        />
-                      ) : null}
-                      {!mediaUploadAvailability.isAvailable ? (
-                        <Alert
-                          type="info"
-                          showIcon
-                          title="The current backend feature profile supports URL-based media references only."
-                        />
-                      ) : null}
-                    </Space>
-                  }
-                >
-                  <Input placeholder="Optional evidence or attachment URL" />
-                </Form.Item>
+                    }
+                  >
+                    <Input placeholder="Optional evidence or attachment URL" />
+                  </Form.Item>
+                )}
 
                 <Form.Item name="dateReported" label="Date Reported">
                   <Input type="datetime-local" />
                 </Form.Item>
 
-                <Form.Item
-                  name="citizenId"
-                  label="Citizen"
-                  rules={[{ required: true }]}
-                >
-                  <Select
-                    options={citizenOptions}
-                    loading={citizensQuery.isLoading}
-                  />
-                </Form.Item>
+                {isCitizenReporter ? null : (
+                  <Form.Item
+                    name="citizenId"
+                    label="Citizen"
+                    rules={[{ required: true }]}
+                  >
+                    <Select
+                      options={citizenOptions}
+                      loading={citizensQuery.isLoading}
+                    />
+                  </Form.Item>
+                )}
 
                 <Form.Item
                   name="categoryId"
@@ -906,16 +936,18 @@ export default function IncidentsPage() {
                   />
                 </Form.Item>
 
-                <Form.Item
-                  name="statusId"
-                  label="Status"
-                  rules={[{ required: true }]}
-                >
-                  <Select
-                    options={statusOptions}
-                    loading={statusesQuery.isLoading}
-                  />
-                </Form.Item>
+                {isCitizenReporter ? null : (
+                  <Form.Item
+                    name="statusId"
+                    label="Status"
+                    rules={[{ required: true }]}
+                  >
+                    <Select
+                      options={statusOptions}
+                      loading={statusesQuery.isLoading}
+                    />
+                  </Form.Item>
+                )}
               </div>
             </Card>
 

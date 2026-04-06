@@ -56,6 +56,7 @@ import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/context/AuthContext";
 import type { ApiErrorPayload } from "@/types/api";
+import { Role } from "@/types/auth";
 import styles from "./page.module.css";
 
 const { Text, Title } = Typography;
@@ -92,6 +93,7 @@ export default function IncidentWorkspacePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const incidentId = params.id;
+  const isCitizenReporter = hasRole(Role.CITIZEN_REPORTER);
   const canAssign = hasRole(...CAN_CREATE_ASSIGNMENT);
   const canManageIncident = hasRole(...CAN_CREATE_INCIDENT);
   const incidentQuery = useIncidentQuery(incidentId);
@@ -117,9 +119,9 @@ export default function IncidentWorkspacePage() {
     [incidentId],
   );
 
-  const assignmentsQuery = useAssignmentsQuery(assignmentQueryState);
-  const citizensQuery = useCitizensQuery(optionQueryState);
-  const respondersQuery = useRespondersQuery(optionQueryState);
+  const assignmentsQuery = useAssignmentsQuery(assignmentQueryState, !isCitizenReporter);
+  const citizensQuery = useCitizensQuery(optionQueryState, !isCitizenReporter);
+  const respondersQuery = useRespondersQuery(optionQueryState, !isCitizenReporter);
   const statusesQuery = useStatusesQuery(optionQueryState);
   const severitiesQuery = useSeveritiesQuery(optionQueryState);
   const categoriesQuery = useCategoriesQuery(optionQueryState);
@@ -314,7 +316,7 @@ export default function IncidentWorkspacePage() {
               >
                 Open in list
               </Button>
-              {incident.citizenId ? (
+              {!isCitizenReporter && incident.citizenId ? (
                 <Button
                   onClick={() => router.push(`/citizens/${incident.citizenId}`)}
                 >
@@ -355,9 +357,11 @@ export default function IncidentWorkspacePage() {
               </Text>
             </div>
             <div className={styles.metricTile}>
-              <Statistic title="Assignments" value={assignments.length} />
+              <Statistic title="Assignments" value={isCitizenReporter ? 0 : assignments.length} />
               <Text className={styles.metricLabel}>
-                Recorded assignment events
+                {isCitizenReporter
+                  ? "Assignment history is reserved for operator workflows"
+                  : "Recorded assignment events"}
               </Text>
             </div>
             <div className={styles.metricTile}>
@@ -439,72 +443,74 @@ export default function IncidentWorkspacePage() {
             </Descriptions>
           </Card>
 
-          <Card className={styles.sectionCard} variant="borderless">
-            <Title level={4} className={styles.sectionTitle}>
-              Assignment activity
-            </Title>
-            <Text className={styles.sectionDescription}>
-              Recent assignment records tied to this incident.
-            </Text>
-            {assignmentsQuery.isLoading ? (
-              <LoadingState />
-            ) : assignments.length === 0 ? (
-              <Text className={styles.emptyText}>
-                No assignments recorded for this incident yet.
+          {isCitizenReporter ? null : (
+            <Card className={styles.sectionCard} variant="borderless">
+              <Title level={4} className={styles.sectionTitle}>
+                Assignment activity
+              </Title>
+              <Text className={styles.sectionDescription}>
+                Recent assignment records tied to this incident.
               </Text>
-            ) : (
-              <div className={styles.assignmentList}>
-                {assignments.map((assignment) => {
-                  const assignmentResponder = assignment.responderId
-                    ? responders.find(
-                        (item) =>
-                          String(item.id) === String(assignment.responderId),
-                      )
-                    : undefined;
-                  const assignmentStatus = assignment.statusId
-                    ? statuses.find(
-                        (item) =>
-                          String(item.id) === String(assignment.statusId),
-                      )
-                    : undefined;
+              {assignmentsQuery.isLoading ? (
+                <LoadingState />
+              ) : assignments.length === 0 ? (
+                <Text className={styles.emptyText}>
+                  No assignments recorded for this incident yet.
+                </Text>
+              ) : (
+                <div className={styles.assignmentList}>
+                  {assignments.map((assignment) => {
+                    const assignmentResponder = assignment.responderId
+                      ? responders.find(
+                          (item) =>
+                            String(item.id) === String(assignment.responderId),
+                        )
+                      : undefined;
+                    const assignmentStatus = assignment.statusId
+                      ? statuses.find(
+                          (item) =>
+                            String(item.id) === String(assignment.statusId),
+                        )
+                      : undefined;
 
-                  return (
-                    <div
-                      key={String(assignment.id)}
-                      className={styles.assignmentRow}
-                    >
-                      <Space wrap size={8}>
-                        <Text strong>
-                          {getResponderDisplayName(assignmentResponder)}
+                    return (
+                      <div
+                        key={String(assignment.id)}
+                        className={styles.assignmentRow}
+                      >
+                        <Space wrap size={8}>
+                          <Text strong>
+                            {getResponderDisplayName(assignmentResponder)}
+                          </Text>
+                          <Tag
+                            color={getStatusColor(
+                              assignmentStatus?.name ?? status?.name ?? "Unknown",
+                            )}
+                          >
+                            {assignmentStatus?.name ??
+                              status?.name ??
+                              "Status not set"}
+                          </Tag>
+                        </Space>
+                        <Text type="secondary">
+                          Assigned{" "}
+                          {formatDateTime(getAssignmentDisplayDate(assignment))}
                         </Text>
-                        <Tag
-                          color={getStatusColor(
-                            assignmentStatus?.name ?? status?.name ?? "Unknown",
-                          )}
-                        >
-                          {assignmentStatus?.name ??
-                            status?.name ??
-                            "Status not set"}
-                        </Tag>
-                      </Space>
-                      <Text type="secondary">
-                        Assigned{" "}
-                        {formatDateTime(getAssignmentDisplayDate(assignment))}
-                      </Text>
-                      <Text className={styles.assignmentMeta}>
-                        {formatRelativeTime(
-                          getAssignmentDisplayDate(assignment),
-                        ) ?? "Assignment time unavailable"}
-                      </Text>
-                      <Text>
-                        {assignment.notes?.trim() || "No notes provided."}
-                      </Text>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
+                        <Text className={styles.assignmentMeta}>
+                          {formatRelativeTime(
+                            getAssignmentDisplayDate(assignment),
+                          ) ?? "Assignment time unavailable"}
+                        </Text>
+                        <Text>
+                          {assignment.notes?.trim() || "No notes provided."}
+                        </Text>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          )}
         </div>
 
         <div className={styles.sidebarStack}>
@@ -539,31 +545,33 @@ export default function IncidentWorkspacePage() {
             ) : null}
           </Card>
 
-          <Card className={styles.sectionCard} variant="borderless">
-            <Title level={4} className={styles.sectionTitle}>
-              Active context
-            </Title>
-            <Text className={styles.sectionDescription}>
-              The primary related records that operators usually need alongside
-              the incident.
-            </Text>
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label="Current responder">
-                {getResponderDisplayName(responder)}
-              </Descriptions.Item>
-              <Descriptions.Item label="Latest assignment">
-                {latestAssignment
-                  ? formatDateTime(getAssignmentDisplayDate(latestAssignment))
-                  : "N/A"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Citizen channel">
-                {citizen?.preferredChannel ?? "N/A"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Citizen contact">
-                {citizen?.contactInfo ?? "N/A"}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
+          {isCitizenReporter ? null : (
+            <Card className={styles.sectionCard} variant="borderless">
+              <Title level={4} className={styles.sectionTitle}>
+                Active context
+              </Title>
+              <Text className={styles.sectionDescription}>
+                The primary related records that operators usually need alongside
+                the incident.
+              </Text>
+              <Descriptions column={1} size="small">
+                <Descriptions.Item label="Current responder">
+                  {getResponderDisplayName(responder)}
+                </Descriptions.Item>
+                <Descriptions.Item label="Latest assignment">
+                  {latestAssignment
+                    ? formatDateTime(getAssignmentDisplayDate(latestAssignment))
+                    : "N/A"}
+                </Descriptions.Item>
+                <Descriptions.Item label="Citizen channel">
+                  {citizen?.preferredChannel ?? "N/A"}
+                </Descriptions.Item>
+                <Descriptions.Item label="Citizen contact">
+                  {citizen?.contactInfo ?? "N/A"}
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
+          )}
 
           <Card className={styles.sectionCard} variant="borderless">
             <Title level={4} className={styles.sectionTitle}>
@@ -587,9 +595,11 @@ export default function IncidentWorkspacePage() {
                   Assign responder
                 </Button>
               </RoleGuard>
-              <Button onClick={() => router.push("/assignments")}>
-                Open assignments board
-              </Button>
+              {isCitizenReporter ? null : (
+                <Button onClick={() => router.push("/assignments")}>
+                  Open assignments board
+                </Button>
+              )}
             </div>
           </Card>
         </div>

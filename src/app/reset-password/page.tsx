@@ -142,7 +142,7 @@ function ResetPasswordPageContent() {
             style={{ marginTop: 16 }}
             type="success"
             showIcon
-            message="Password reset complete"
+            title="Password reset complete"
             description="Your password has been updated. You will be redirected to sign in again."
           />
         ) : null}
@@ -152,7 +152,7 @@ function ResetPasswordPageContent() {
             style={{ marginTop: 16 }}
             type="error"
             showIcon
-            message="Invalid or expired reset token"
+            title="Invalid or expired reset token"
             description={errorMessage}
           />
         ) : errorMessage ? (
@@ -160,7 +160,7 @@ function ResetPasswordPageContent() {
             style={{ marginTop: 16 }}
             type="error"
             showIcon
-            message="Unable to reset password"
+            title="Unable to reset password"
             description={errorMessage}
           />
         ) : null}

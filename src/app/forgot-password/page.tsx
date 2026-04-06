@@ -105,7 +105,7 @@ export default function ForgotPasswordPage() {
             style={{ marginTop: 16 }}
             type="success"
             showIcon
-            message="Request accepted"
+            title="Request accepted"
             description={successResponse.message}
           />
         ) : null}
@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
             style={{ marginTop: 16 }}
             type="error"
             showIcon
-            message="Unable to request reset"
+            title="Unable to request reset"
             description={errorMessage}
           />
         ) : null}

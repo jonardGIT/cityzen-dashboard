@@ -34,12 +34,13 @@ export async function createAssignment(payload: CreateAssignmentDto) {
   return unwrapEntityResponse<Assignment>(response.data);
 }
 
-export function useAssignmentsQuery(state: ListQueryState) {
+export function useAssignmentsQuery(state: ListQueryState, enabled = true) {
   const fetchParams = state;
   return useQuery({
     queryKey: ["assignments", fetchParams],
     queryFn: ({ signal }) => fetchAssignments(fetchParams, signal),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 

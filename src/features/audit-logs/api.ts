@@ -1,46 +1,37 @@
 import { useQuery } from "@tanstack/react-query";
-import { createAuthenticatedClient } from "@/lib/api/clients";
-import { unwrapEntityResponse } from "@/lib/api/normalize";
 import {
-  adaptPaginatedResponse,
-  type PaginatedResponse,
-} from "@/lib/api/pagination";
-import {
-  buildListQueryParams,
-  type FetchListParams,
-} from "@/lib/api/list-query-params";
+  AuditLogApiClientError,
+  getAuditLogById,
+  listAuditLogs,
+} from "@/lib/api/auditLogs";
+import type { PaginatedResponse } from "@/lib/api/pagination";
+import type { FetchListParams } from "@/lib/api/list-query-params";
 import type { AuditLog } from "@/types/api";
-
-const auditLogsApiClient = createAuthenticatedClient("/api/dashboard");
 
 export async function fetchAuditLogs(
   fetchParams: FetchListParams,
   signal?: AbortSignal,
 ): Promise<PaginatedResponse<AuditLog>> {
-  const response = await auditLogsApiClient.get<unknown>("/audit-logs", {
-    params: buildListQueryParams(fetchParams),
-    signal,
-  });
+  const result = await listAuditLogs(fetchParams, { signal });
 
-  return adaptPaginatedResponse<AuditLog>(
-    response.data,
-    fetchParams.page,
-    fetchParams.pageSize,
-  );
+  if (!result.success) {
+    throw new AuditLogApiClientError(result.error);
+  }
+
+  return result.data;
 }
 
 export async function fetchAuditLogById(
   auditLogId: string,
   signal?: AbortSignal,
 ) {
-  const response = await auditLogsApiClient.get<unknown>(
-    `/audit-logs/${auditLogId}`,
-    {
-      signal,
-    },
-  );
+  const result = await getAuditLogById(auditLogId, { signal });
 
-  return unwrapEntityResponse<AuditLog>(response.data);
+  if (!result.success) {
+    throw new AuditLogApiClientError(result.error);
+  }
+
+  return result.data;
 }
 
 export function useAuditLogsQuery(
@@ -53,6 +44,7 @@ export function useAuditLogsQuery(
     enabled,
     placeholderData: (previous) => previous,
     staleTime: 15_000,
+    retry: false,
   });
 }
 
@@ -62,5 +54,6 @@ export function useAuditLogQuery(auditLogId: string | null, enabled = true) {
     queryFn: ({ signal }) => fetchAuditLogById(String(auditLogId), signal),
     enabled: enabled && Boolean(auditLogId),
     staleTime: 15_000,
+    retry: false,
   });
 }

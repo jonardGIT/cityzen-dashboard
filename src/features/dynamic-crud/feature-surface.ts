@@ -4,7 +4,10 @@ import {
   getAuthOptionalEndpoint,
   getCrudEndpoint,
 } from "@/features/dynamic-crud/config";
-import { useCrudEndpointAvailability } from "@/features/dynamic-crud/openapi";
+import {
+  useCrudEndpointAvailability,
+  useOpenApiContractDrift,
+} from "@/features/dynamic-crud/openapi";
 
 export interface BackendFeatureStatus {
   key: string;
@@ -26,6 +29,7 @@ export function useBackendFeatureSurface() {
   const mfaAvailability = useCrudEndpointAvailability(
     getAuthOptionalEndpoint("mfaSetup"),
   );
+  const contractDrift = useOpenApiContractDrift();
 
   const features: BackendFeatureStatus[] = [
     {
@@ -56,10 +60,15 @@ export function useBackendFeatureSurface() {
 
   return {
     features,
+    contractDrift: {
+      issues: contractDrift.issues,
+      hasDrift: contractDrift.hasDrift,
+    },
     isLoading:
       restoreAvailability.isLoading ||
       mediaUploadAvailability.isLoading ||
       sessionsAvailability.isLoading ||
-      mfaAvailability.isLoading,
+      mfaAvailability.isLoading ||
+      contractDrift.isLoading,
   };
 }

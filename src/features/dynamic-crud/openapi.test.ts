@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectContractDriftIssues,
   collectOpenApiOperationKeys,
   isCrudEndpointAvailableInOpenApi,
 } from "@/features/dynamic-crud/openapi";
@@ -50,5 +51,38 @@ describe("dynamic crud OpenAPI helpers", () => {
         ["GET /auth/me"],
       ),
     ).toBe(false);
+  });
+
+  it("reports active config operations that are missing from the active spec", () => {
+    expect(collectContractDriftIssues(["GET /citizens"]))
+      .toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "missing-active-config-operation",
+            operationKey: "GET /citizens/{id}",
+          }),
+        ]),
+      );
+  });
+
+  it("reports active OpenAPI operations that belong to configured resources but are absent from config", () => {
+    expect(
+      collectContractDriftIssues([
+        "GET /citizens",
+        "GET /citizens/{id}",
+        "POST /citizens",
+        "POST /citizens/link-me",
+        "PATCH /citizens/{id}",
+        "DELETE /citizens/{id}",
+        "GET /citizens/export",
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "unconfigured-openapi-operation",
+          operationKey: "GET /citizens/export",
+        }),
+      ]),
+    );
   });
 });

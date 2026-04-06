@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, capabilities, logout, isAuthenticated } = useAuth();
-  const { features, isLoading: featureSurfaceLoading } =
+  const { features, contractDrift, isLoading: featureSurfaceLoading } =
     useBackendFeatureSurface();
 
   const displayName = useMemo(() => {
@@ -213,6 +213,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </Tag>
                 </Tooltip>
               ))}
+              {contractDrift.hasDrift ? (
+                <Tooltip
+                  title={contractDrift.issues
+                    .map((issue) => issue.message)
+                    .join(" ")}
+                >
+                  <Tag color="red">
+                    Contract Drift: {contractDrift.issues.length}
+                  </Tag>
+                </Tooltip>
+              ) : null}
               {featureSurfaceLoading ? (
                 <Text type="secondary">Checking active feature profile...</Text>
               ) : null}

@@ -163,6 +163,24 @@ export interface UpdateIncidentDto {
   landmark?: string;
 }
 
+export interface ReportIncidentDto {
+  description: string;
+  dateReported?: string;
+  categoryId: string;
+  severityId: string;
+  latitude?: number;
+  longitude?: number;
+  addressLine1?: string;
+  addressLine2?: string;
+  barangay?: string;
+  districtName?: string;
+  cityName?: string;
+  provinceName?: string;
+  regionName?: string;
+  postalCode?: string;
+  landmark?: string;
+}
+
 export async function fetchIncidents(
   fetchParams: FetchListParams,
   signal?: AbortSignal,
@@ -188,6 +206,20 @@ export async function fetchIncidentById(id: string, signal?: AbortSignal) {
 export async function createIncident(payload: CreateIncidentDto) {
   const response = await authClient.post<unknown>("/incidents", payload);
   return unwrapEntityResponse<Incident>(response.data);
+}
+
+export async function reportIncident(payload: ReportIncidentDto) {
+  const endpoint = getCrudEndpoint("incidents", "report");
+
+  if (!endpoint) {
+    throw new Error("Incident reporting is not configured.");
+  }
+
+  const result = await requestCrudEndpoint<unknown>(endpoint, {
+    body: payload,
+  });
+
+  return unwrapEntityResponse<Incident>(assertCrudSuccess(result));
 }
 
 export async function updateIncident(id: string, payload: UpdateIncidentDto) {
@@ -279,6 +311,17 @@ export function useCreateIncidentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createIncident,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useReportIncidentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: reportIncident,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });

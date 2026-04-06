@@ -108,12 +108,13 @@ export function useHealthQuery() {
   return useQuery({ queryKey: ["health"], queryFn: fetchHealth });
 }
 
-export function useCitizensQuery(state: ListQueryState) {
+export function useCitizensQuery(state: ListQueryState, enabled = true) {
   const fetchParams = state;
   return useQuery({
     queryKey: ["citizens", fetchParams],
     queryFn: ({ signal }) => fetchCitizens(fetchParams, signal),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 
@@ -125,38 +126,42 @@ export function useCitizenQuery(id: string) {
   });
 }
 
-export function useRespondersQuery(state: ListQueryState) {
+export function useRespondersQuery(state: ListQueryState, enabled = true) {
   const fetchParams = state;
   return useQuery({
     queryKey: ["responders", fetchParams],
     queryFn: ({ signal }) => fetchResponders(fetchParams, signal),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 
-export function useStatusesQuery(state: ListQueryState) {
+export function useStatusesQuery(state: ListQueryState, enabled = true) {
   const fetchParams = state;
   return useQuery({
     queryKey: ["statuses", fetchParams],
     queryFn: ({ signal }) => fetchStatuses(fetchParams, signal),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 
-export function useCategoriesQuery(state: ListQueryState) {
+export function useCategoriesQuery(state: ListQueryState, enabled = true) {
   const fetchParams = state;
   return useQuery({
     queryKey: ["categories", fetchParams],
     queryFn: ({ signal }) => fetchCategories(fetchParams, signal),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 
-export function useSeveritiesQuery(state: ListQueryState) {
+export function useSeveritiesQuery(state: ListQueryState, enabled = true) {
   const fetchParams = state;
   return useQuery({
     queryKey: ["severities", fetchParams],
     queryFn: ({ signal }) => fetchSeverities(fetchParams, signal),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
