@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 const {
   useRouterMock,
   registerUnauthorizedHandlerMock,
+  unauthorizedHandlerRef,
   clearAuthStorageMock,
   getAccessTokenMock,
   getStoredUserMock,
@@ -20,6 +21,9 @@ const {
 } = vi.hoisted(() => ({
   useRouterMock: vi.fn(),
   registerUnauthorizedHandlerMock: vi.fn(),
+  unauthorizedHandlerRef: {
+    current: undefined as undefined | ((reason: string) => void),
+  },
   clearAuthStorageMock: vi.fn(),
   getAccessTokenMock: vi.fn(),
   getStoredUserMock: vi.fn(),
@@ -71,7 +75,7 @@ describe("AuthContext", () => {
 
     useRouterMock.mockReturnValue({ replace: replaceMock });
     registerUnauthorizedHandlerMock.mockImplementation((handler) => {
-      registerUnauthorizedHandlerMock.currentHandler = handler;
+      unauthorizedHandlerRef.current = handler;
       return vi.fn();
     });
     clearAuthStorageMock.mockReset();
@@ -91,7 +95,7 @@ describe("AuthContext", () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
 
     await act(async () => {
-      registerUnauthorizedHandlerMock.currentHandler("session-revoked");
+      unauthorizedHandlerRef.current?.("session-revoked");
     });
 
     expect(result.current.isAuthenticated).toBe(false);
@@ -99,6 +103,148 @@ describe("AuthContext", () => {
     expect(useRouterMock.mock.results[0]?.value.replace).toHaveBeenCalledWith(
       "/login?reason=session-revoked",
     );
+  });
+
+  it("restores an authenticated session from stored auth and backend profile data", async () => {
+    getAccessTokenMock.mockReturnValue("access-token");
+    getStoredUserMock.mockReturnValue({
+      id: "user-1",
+      email: "stored@example.com",
+      name: "Stored User",
+      role: "DISPATCHER",
+      mfaEnabled: false,
+      mfaEnabledAt: null,
+    });
+    fetchCurrentUserMock.mockResolvedValue({
+      id: "user-1",
+      email: "dispatcher@example.com",
+      name: "Dispatch Lead",
+      role: "DISPATCHER",
+      mfaEnabled: true,
+      mfaEnabledAt: "2026-04-06T00:00:00.000Z",
+    });
+    fetchCurrentUserCapabilitiesMock.mockResolvedValue({
+      role: "DISPATCHER",
+      permissions: ["incidents.read"],
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isRestoring).toBe(false);
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+
+    expect(result.current.user).toEqual({
+      id: "user-1",
+      email: "dispatcher@example.com",
+      name: "Dispatch Lead",
+      role: "DISPATCHER",
+      mfaEnabled: true,
+      mfaEnabledAt: "2026-04-06T00:00:00.000Z",
+    });
+    expect(result.current.capabilities).toEqual({
+      role: "DISPATCHER",
+      permissions: ["incidents.read"],
+    });
+    expect(setStoredUserMock).toHaveBeenCalledWith({
+      id: "user-1",
+      email: "dispatcher@example.com",
+      name: "Dispatch Lead",
+      role: "DISPATCHER",
+      mfaEnabled: true,
+      mfaEnabledAt: "2026-04-06T00:00:00.000Z",
+    });
+  });
+
+  it("clears a stale stored session when profile refresh fails during restore", async () => {
+    getAccessTokenMock.mockReturnValue("stale-token");
+    getStoredUserMock.mockReturnValue({
+      id: "user-1",
+      email: "stale@example.com",
+      name: "Stale User",
+      role: "DISPATCHER",
+      mfaEnabled: false,
+      mfaEnabledAt: null,
+    });
+    fetchCurrentUserMock.mockRejectedValue(new Error("Unauthorized"));
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isRestoring).toBe(false);
+      expect(result.current.isAuthenticated).toBe(false);
+    });
+
+    expect(clearAuthStorageMock).toHaveBeenCalled();
+    expect(result.current.user).toBeNull();
+    expect(result.current.capabilities).toBeNull();
+  });
+
+  it("stores auth payloads and hydrates the active user on successful login", async () => {
+    loginWithPasswordMock.mockResolvedValue({
+      mfaRequired: false,
+      auth: {
+        token: "access-token",
+        refreshToken: "refresh-token",
+        tokenType: "Bearer",
+        sessionId: "session-1",
+        expiresAt: "2026-04-06T10:00:00.000Z",
+        refreshExpiresAt: "2026-04-07T10:00:00.000Z",
+        user: {
+          id: "user-1",
+          email: "dispatcher@example.com",
+          name: "Dispatch Lead",
+          role: "DISPATCHER",
+          mfaEnabled: false,
+          mfaEnabledAt: null,
+        },
+      },
+    });
+    getAccessTokenMock.mockReturnValue("access-token");
+    fetchCurrentUserMock.mockResolvedValue({
+      id: "user-1",
+      email: "dispatcher@example.com",
+      name: "Dispatch Lead",
+      role: "DISPATCHER",
+      mfaEnabled: false,
+      mfaEnabledAt: null,
+    });
+    fetchCurrentUserCapabilitiesMock.mockResolvedValue({
+      role: "DISPATCHER",
+      permissions: ["incidents.read"],
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await act(async () => {
+      await result.current.login("dispatcher@example.com", "Password123!");
+    });
+
+    expect(storeAuthResponseMock).toHaveBeenCalledWith({
+      token: "access-token",
+      refreshToken: "refresh-token",
+      tokenType: "Bearer",
+      sessionId: "session-1",
+      expiresAt: "2026-04-06T10:00:00.000Z",
+      refreshExpiresAt: "2026-04-07T10:00:00.000Z",
+      user: {
+        id: "user-1",
+        email: "dispatcher@example.com",
+        name: "Dispatch Lead",
+        role: "DISPATCHER",
+        mfaEnabled: false,
+        mfaEnabledAt: null,
+      },
+    });
+    await waitFor(() => {
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+    expect(result.current.user?.email).toBe("dispatcher@example.com");
+    expect(result.current.capabilities).toEqual({
+      role: "DISPATCHER",
+      permissions: ["incidents.read"],
+    });
   });
 
   it("cleans up locally and skips remote logout when revokeRemote is false", async () => {
