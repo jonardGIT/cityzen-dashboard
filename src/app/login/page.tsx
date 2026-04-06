@@ -72,6 +72,11 @@ function LoginPageContent() {
         return;
       }
 
+      if (result.auth?.mfaEnrollmentRequired) {
+        router.replace("/profile");
+        return;
+      }
+
       router.replace(
         isCitizenSelfServiceUser(result.auth?.user.role)
           ? "/dashboard/incidents"

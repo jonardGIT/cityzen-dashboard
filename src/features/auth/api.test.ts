@@ -1,15 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AxiosError } from "axios";
+import { AxiosError, AxiosHeaders } from "axios";
 
-const { publicPostMock, authGetMock, authPostMock, authDeleteMock } =
-  vi.hoisted(() => ({
-    publicPostMock: vi.fn(),
-    authGetMock: vi.fn(),
-    authPostMock: vi.fn(),
-    authDeleteMock: vi.fn(),
-  }));
+const {
+  publicPostMock,
+  authGetMock,
+  authPostMock,
+  authDeleteMock,
+  proxiedAuthGetMock,
+  createAuthenticatedClientMock,
+} = vi.hoisted(() => ({
+  publicPostMock: vi.fn(),
+  authGetMock: vi.fn(),
+  authPostMock: vi.fn(),
+  authDeleteMock: vi.fn(),
+  proxiedAuthGetMock: vi.fn(),
+  createAuthenticatedClientMock: vi.fn(),
+}));
 
 vi.mock("@/lib/api/clients", () => ({
+  createAuthenticatedClient: createAuthenticatedClientMock.mockReturnValue({
+    get: proxiedAuthGetMock,
+  }),
   publicClient: {
     post: publicPostMock,
   },
@@ -25,6 +36,7 @@ import {
   createMfaSetup,
   disableMfa,
   enableMfa,
+  fetchCurrentUserCapabilities,
   fetchAuthSessions,
   loginWithPassword,
   logoutCurrentSession,
@@ -38,6 +50,7 @@ describe("auth feature api", () => {
     authGetMock.mockReset();
     authPostMock.mockReset();
     authDeleteMock.mockReset();
+    proxiedAuthGetMock.mockReset();
   });
 
   it("returns an MFA-required login result when the backend requests a second factor", async () => {
@@ -47,7 +60,7 @@ describe("auth feature api", () => {
       status: 401,
       statusText: "Unauthorized",
       headers: {},
-      config: { headers: {} },
+      config: { headers: new AxiosHeaders() },
     };
     publicPostMock.mockRejectedValueOnce(error);
 
@@ -57,6 +70,45 @@ describe("auth feature api", () => {
     });
 
     expect(result).toEqual({ mfaRequired: true });
+  });
+
+  it("treats a message-only 401 MFA challenge as second-factor required", async () => {
+    const error = new AxiosError("Unauthorized");
+    error.response = {
+      data: { message: "MFA required for this account." },
+      status: 401,
+      statusText: "Unauthorized",
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+    };
+    publicPostMock.mockRejectedValueOnce(error);
+
+    const result = await loginWithPassword({
+      email: "admin@example.com",
+      password: "password",
+    });
+
+    expect(result).toEqual({ mfaRequired: true });
+  });
+
+  it("does not treat an invalid submitted MFA code as a missing second factor", async () => {
+    const error = new AxiosError("Unauthorized");
+    error.response = {
+      data: { message: "Invalid MFA code." },
+      status: 401,
+      statusText: "Unauthorized",
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+    };
+    publicPostMock.mockRejectedValueOnce(error);
+
+    await expect(
+      loginWithPassword({
+        email: "admin@example.com",
+        password: "password",
+        mfaCode: "123456",
+      }),
+    ).rejects.toBe(error);
   });
 
   it("fetches authenticated sessions from the server", async () => {
@@ -72,10 +124,37 @@ describe("auth feature api", () => {
     expect(result).toEqual([{ id: "session-1", isCurrent: true }]);
   });
 
+  it("fetches current user capabilities through the dashboard users proxy", async () => {
+    proxiedAuthGetMock.mockResolvedValueOnce({
+      data: {
+        role: "SYSTEM_ADMIN",
+        permissions: ["user:manage:global"],
+        scope: ["global"],
+        canUpdateUser: true,
+        canDeleteUser: true,
+      },
+    });
+
+    const result = await fetchCurrentUserCapabilities();
+
+    expect(createAuthenticatedClientMock).toHaveBeenCalledWith("/api");
+    expect(proxiedAuthGetMock).toHaveBeenCalledWith("/users/capabilities", {
+      signal: undefined,
+    });
+    expect(result).toEqual({
+      role: "SYSTEM_ADMIN",
+      label: "System Admin",
+      permissions: ["user:manage:global"],
+      scope: ["global"],
+      canUpdateUser: true,
+      canDeleteUser: true,
+    });
+  });
+
   it("refreshes the authenticated session and returns replacement tokens", async () => {
     publicPostMock.mockResolvedValueOnce({
       data: {
-        token: "next-access-token",
+        accessToken: "next-access-token",
         refreshToken: "next-refresh-token",
         tokenType: "Bearer",
         sessionId: "session-1",
@@ -100,6 +179,7 @@ describe("auth feature api", () => {
       refreshToken: "current-refresh-token",
     });
     expect(result.token).toBe("next-access-token");
+    expect(result.accessToken).toBe("next-access-token");
     expect(result.refreshToken).toBe("next-refresh-token");
   });
 

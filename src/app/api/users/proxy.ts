@@ -1,7 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api/v1").replace(/\/$/, "");
-const API_KEY = process.env.API_KEY ?? process.env.NEXT_PUBLIC_API_KEY ?? "";
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api/v1"
+).replace(/\/$/, "");
+
+function resolveApiKey(): string {
+  const configuredKey =
+    process.env.API_KEY?.trim() ??
+    process.env.NEXT_PUBLIC_API_KEY?.trim() ??
+    "";
+
+  if (configuredKey) {
+    return configuredKey;
+  }
+
+  if (
+    process.env.NODE_ENV !== "production" &&
+    API_BASE_URL.startsWith("http://localhost:3000/api/v1")
+  ) {
+    return "local-dev-key";
+  }
+
+  return "";
+}
+
+const API_KEY = resolveApiKey();
 
 function buildUrl(path: string) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -55,7 +78,9 @@ export async function requestUpstreamWithFallback(
   return lastResponse ?? new Response("Not found", { status: 404 });
 }
 
-export async function toJsonResponse(upstream: Response): Promise<NextResponse> {
+export async function toJsonResponse(
+  upstream: Response,
+): Promise<NextResponse> {
   if (upstream.status === 204) {
     return new NextResponse(null, { status: upstream.status });
   }
@@ -79,5 +104,8 @@ export async function toJsonResponse(upstream: Response): Promise<NextResponse> 
 }
 
 export function unauthorizedResponse() {
-  return NextResponse.json({ message: "Missing Authorization header." }, { status: 401 });
+  return NextResponse.json(
+    { message: "Missing Authorization header." },
+    { status: 401 },
+  );
 }

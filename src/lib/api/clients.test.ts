@@ -107,6 +107,57 @@ describe("auth api clients", () => {
     expect(authorization).toBe("Bearer access-token");
   });
 
+  it("uses the local development API key fallback when no public key is configured", async () => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:3000/api/v1");
+
+    const axiosModule = await import("axios");
+    const createMock = vi.mocked(axiosModule.default.create);
+    createMock.mockReset();
+
+    const refreshRequestUseMock = vi.fn();
+    const refreshResponseUseMock = vi.fn();
+    const publicRequestUseMock = vi.fn();
+    const publicResponseUseMock = vi.fn();
+    const authRequestUseMockLocal = vi.fn();
+    const authResponseUseMockLocal = vi.fn();
+    const refreshPostMockLocal = vi.fn();
+    const authInstanceMockLocal = Object.assign(vi.fn(), {
+      interceptors: {
+        request: { use: authRequestUseMockLocal },
+        response: { use: authResponseUseMockLocal },
+      },
+    });
+
+    createMock
+      .mockReturnValueOnce({
+        post: refreshPostMockLocal,
+        interceptors: {
+          request: { use: refreshRequestUseMock },
+          response: { use: refreshResponseUseMock },
+        },
+      } as never)
+      .mockReturnValueOnce({
+        interceptors: {
+          request: { use: publicRequestUseMock },
+          response: { use: publicResponseUseMock },
+        },
+      } as never)
+      .mockReturnValueOnce(authInstanceMockLocal as never);
+
+    await import("@/lib/api/clients");
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-api-key": "local-dev-key",
+        }),
+      }),
+    );
+  });
+
   it("refreshes the session and retries a protected request once on 401", async () => {
     getRefreshTokenMock.mockReturnValue("refresh-token");
     refreshPostMock.mockResolvedValueOnce({

@@ -45,6 +45,25 @@ describe("users proxy helpers", () => {
     expect(headers.get("x-api-key")).toBe("server-api-key");
   });
 
+  it("uses the local development API key fallback when no key env is configured", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:3000/api/v1");
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })));
+
+    const { requestUpstream } = await import("@/app/api/users/proxy");
+
+    await requestUpstream(
+      {
+        headers: new Headers({ authorization: "Bearer token-123" }),
+      } as never,
+      "/users/capabilities",
+      { method: "GET" },
+    );
+
+    const headers = fetchMock.mock.calls[0]?.[1]?.headers as Headers;
+    expect(headers.get("x-api-key")).toBe("local-dev-key");
+  });
+
   it("retries fallback paths when the upstream responds with 404", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://api.example.test/api/v1");
     fetchMock

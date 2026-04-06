@@ -8,7 +8,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { AxiosError } from "axios";
 import { useRouter } from "next/navigation";
 import { registerUnauthorizedHandler } from "@/lib/api/clients";
 import { normalizeCapabilities, normalizeRole } from "@/lib/auth/roles";
@@ -60,7 +59,9 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [capabilities, setCapabilities] = useState<UserCapabilities | null>(null);
+  const [capabilities, setCapabilities] = useState<UserCapabilities | null>(
+    null,
+  );
   const [isRestoring, setIsRestoring] = useState(true);
   const router = useRouter();
 
@@ -92,13 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     const resolvedUser = await fetchCurrentUser();
     const resolvedCapabilities = await fetchCurrentUserCapabilities().catch(
-      (error: unknown) => {
-        const axiosError = error as AxiosError;
-
-        if (axiosError.response?.status === 401) {
-          throw error;
-        }
-
+      () => {
         return normalizeCapabilities(undefined, resolvedUser.role);
       },
     );
@@ -154,12 +149,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       storeAuthResponse(result.auth);
-      setUser(result.auth.user);
-      await restoreSession();
+
+      try {
+        await refreshUser();
+      } catch (error) {
+        clearLocalSession();
+        throw error;
+      }
 
       return result;
     },
-    [restoreSession],
+    [clearLocalSession, refreshUser],
   );
 
   const hasRole = useCallback(

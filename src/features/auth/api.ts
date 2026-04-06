@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { authClient, publicClient } from "@/lib/api/clients";
+import { authClient, createAuthenticatedClient, publicClient } from "@/lib/api/clients";
 import { normalizeAuthResponse, normalizeAuthUser, normalizeCapabilities } from "@/lib/auth/roles";
 import type { ApiErrorPayload } from "@/types/api";
 import type {
@@ -20,16 +20,33 @@ import type {
 } from "@/types/auth";
 
 const AUTH_SESSIONS_QUERY_KEY = ["auth", "sessions"] as const;
+const usersProxyClient = createAuthenticatedClient("/api");
 
 type MfaAwareErrorPayload = ApiErrorPayload & { mfaRequired?: boolean };
 
-export function isMfaRequiredError(error: unknown): boolean {
+function getApiErrorMessage(data: MfaAwareErrorPayload | undefined): string {
+  return `${data?.message ?? ""} ${data?.error ?? ""}`.trim().toLowerCase();
+}
+
+export function isMfaRequiredError(
+  error: unknown,
+  hasSubmittedMfaCode = false,
+): boolean {
   if (!(error instanceof AxiosError)) {
     return false;
   }
 
   const data = error.response?.data as MfaAwareErrorPayload | undefined;
-  return Boolean(data?.mfaRequired);
+  if (data?.mfaRequired) {
+    return true;
+  }
+
+  if (hasSubmittedMfaCode || error.response?.status !== 401) {
+    return false;
+  }
+
+  const message = getApiErrorMessage(data);
+  return message.includes("mfa") && message.includes("required");
 }
 
 export async function loginWithPassword(
@@ -46,7 +63,7 @@ export async function loginWithPassword(
       auth,
     };
   } catch (error) {
-    if (isMfaRequiredError(error)) {
+    if (isMfaRequiredError(error, Boolean(payload.mfaCode))) {
       return { mfaRequired: true };
     }
 
@@ -94,7 +111,7 @@ export async function fetchCurrentUser(
 export async function fetchCurrentUserCapabilities(
   signal?: AbortSignal,
 ): Promise<UserCapabilities> {
-  const response = await authClient.get<unknown>("/users/capabilities", {
+  const response = await usersProxyClient.get<unknown>("/users/capabilities", {
     signal,
   });
   return normalizeCapabilities(response.data);

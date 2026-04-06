@@ -57,12 +57,14 @@ export interface PasswordResetConfirmRequest {
 
 export interface AuthResponse {
   token: string;
+  accessToken?: string;
   refreshToken: string;
   tokenType: string;
   sessionId: string;
   expiresAt: string;
   refreshExpiresAt: string;
   mfaRequired?: boolean;
+  mfaEnrollmentRequired?: boolean;
   user: AuthUser;
 }
 

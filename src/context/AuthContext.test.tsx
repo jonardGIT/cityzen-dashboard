@@ -157,6 +157,52 @@ describe("AuthContext", () => {
     });
   });
 
+  it("falls back to role-derived capabilities when capabilities fetch returns 401", async () => {
+    getAccessTokenMock.mockReturnValue("access-token");
+    getStoredUserMock.mockReturnValue({
+      id: "user-1",
+      email: "stored@example.com",
+      name: "Stored User",
+      role: "SYSTEM_ADMIN",
+      mfaEnabled: true,
+      mfaEnabledAt: "2026-04-06T00:00:00.000Z",
+    });
+    fetchCurrentUserMock.mockResolvedValue({
+      id: "user-1",
+      email: "admin@example.com",
+      name: "System Admin",
+      role: "SYSTEM_ADMIN",
+      mfaEnabled: true,
+      mfaEnabledAt: "2026-04-06T00:00:00.000Z",
+    });
+    fetchCurrentUserCapabilitiesMock.mockRejectedValue({
+      response: { status: 401 },
+    });
+    normalizeCapabilitiesMock.mockImplementation((_value, fallbackRole) => ({
+      role: fallbackRole,
+      permissions: [],
+      scope: [],
+      canUpdateUser: true,
+      canDeleteUser: true,
+    }));
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isRestoring).toBe(false);
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+
+    expect(clearAuthStorageMock).not.toHaveBeenCalled();
+    expect(result.current.capabilities).toEqual({
+      role: "SYSTEM_ADMIN",
+      permissions: [],
+      scope: [],
+      canUpdateUser: true,
+      canDeleteUser: true,
+    });
+  });
+
   it("clears a stale stored session when profile refresh fails during restore", async () => {
     getAccessTokenMock.mockReturnValue("stale-token");
     getStoredUserMock.mockReturnValue({
@@ -245,6 +291,45 @@ describe("AuthContext", () => {
       role: "DISPATCHER",
       permissions: ["incidents.read"],
     });
+  });
+
+  it("clears the optimistic session when post-login hydration fails", async () => {
+    const loginError = new Error("Unauthorized: sign in again to satisfy MFA requirements");
+
+    loginWithPasswordMock.mockResolvedValue({
+      mfaRequired: false,
+      auth: {
+        token: "access-token",
+        refreshToken: "refresh-token",
+        tokenType: "Bearer",
+        sessionId: "session-1",
+        expiresAt: "2026-04-06T10:00:00.000Z",
+        refreshExpiresAt: "2026-04-07T10:00:00.000Z",
+        user: {
+          id: "user-1",
+          email: "admin@example.com",
+          name: "System Admin",
+          role: "SYSTEM_ADMIN",
+          mfaEnabled: false,
+          mfaEnabledAt: null,
+        },
+      },
+    });
+    fetchCurrentUserMock.mockRejectedValue(loginError);
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await expect(
+      act(async () => {
+        await result.current.login("admin@example.com", "Password123!");
+      }),
+    ).rejects.toThrow(
+      "Unauthorized: sign in again to satisfy MFA requirements",
+    );
+
+    expect(clearAuthStorageMock).toHaveBeenCalled();
+    expect(result.current.user).toBeNull();
+    expect(result.current.capabilities).toBeNull();
   });
 
   it("cleans up locally and skips remote logout when revokeRemote is false", async () => {

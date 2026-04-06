@@ -10,7 +10,24 @@ import type { AuthResponse, LoginReason } from "@/types/auth";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api/v1";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
+
+function resolveApiKey(): string {
+  const configuredKey = process.env.NEXT_PUBLIC_API_KEY?.trim();
+  if (configuredKey) {
+    return configuredKey;
+  }
+
+  if (
+    process.env.NODE_ENV !== "production" &&
+    API_BASE_URL.startsWith("http://localhost:3000/api/v1")
+  ) {
+    return "local-dev-key";
+  }
+
+  return "";
+}
+
+const API_KEY = resolveApiKey();
 
 type UnauthorizedHandler = (reason: LoginReason) => void;
 const unauthorizedHandlers = new Set<UnauthorizedHandler>();

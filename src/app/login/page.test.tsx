@@ -198,6 +198,49 @@ describe("LoginPage", () => {
     expect(replaceMock).toHaveBeenCalledWith("/dashboard/incidents");
   });
 
+  it("redirects privileged users with required MFA enrollment to account security", async () => {
+    const loginMock = vi.fn().mockResolvedValueOnce({
+      mfaRequired: false,
+      auth: {
+        token: "access-token",
+        refreshToken: "refresh-token",
+        tokenType: "Bearer",
+        sessionId: "session-1",
+        expiresAt: "2026-04-05T00:00:00.000Z",
+        refreshExpiresAt: "2026-04-06T00:00:00.000Z",
+        mfaEnrollmentRequired: true,
+        user: {
+          id: "user-1",
+          email: "admin@example.com",
+          name: "System Admin",
+          role: Role.SYSTEM_ADMIN,
+          mfaEnabled: false,
+        },
+      },
+    });
+    const replaceMock = vi.fn();
+
+    useAuthMock.mockReturnValue({ login: loginMock });
+    useRouterMock.mockReturnValue({ replace: replaceMock });
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "admin@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "Password123!" },
+    });
+
+    await act(async () => {
+      fireEvent.submit(
+        screen.getByRole("button", { name: "Sign In" }).closest("form")!,
+      );
+    });
+
+    expect(replaceMock).toHaveBeenCalledWith("/profile");
+  });
+
   it("shows backend error messages when sign-in fails", async () => {
     const loginError = new AxiosError("Request failed");
     loginError.response = {

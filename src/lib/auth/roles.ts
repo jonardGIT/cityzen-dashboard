@@ -1,4 +1,10 @@
-import { Role, type AuthResponse, type AuthUser, type LegacyRole, type UserCapabilities } from "@/types/auth";
+import {
+  Role,
+  type AuthResponse,
+  type AuthUser,
+  type LegacyRole,
+  type UserCapabilities,
+} from "@/types/auth";
 
 const LEGACY_ROLE_MAP: Record<LegacyRole, Role> = {
   SUPER_ADMIN: Role.SYSTEM_ADMIN,
@@ -19,7 +25,10 @@ const ROLE_LABELS: Record<Role, string> = {
 const SELF_SERVICE_SCOPE_HINTS = ["self", "own", "citizen", "reporter"];
 
 function normalizeToken(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_");
 }
 
 export function normalizePermissionKey(value: string): string {
@@ -80,7 +89,11 @@ export function normalizeRole(value: unknown): Role | undefined {
     return trimmed as Role;
   }
 
-  if ((Object.keys(LEGACY_ROLE_MAP) as LegacyRole[]).includes(trimmed as LegacyRole)) {
+  if (
+    (Object.keys(LEGACY_ROLE_MAP) as LegacyRole[]).includes(
+      trimmed as LegacyRole,
+    )
+  ) {
     return LEGACY_ROLE_MAP[trimmed as LegacyRole];
   }
 
@@ -125,8 +138,12 @@ export function normalizeAuthUser(user: AuthUser): AuthUser {
 }
 
 export function normalizeAuthResponse(response: AuthResponse): AuthResponse {
+  const normalizedToken = response.token || response.accessToken || "";
+
   return {
     ...response,
+    token: normalizedToken,
+    accessToken: normalizedToken,
     tokenType: response.tokenType || "Bearer",
     user: normalizeAuthUser(response.user),
   };
@@ -142,7 +159,10 @@ export function normalizeCapabilities(
     permissions?: unknown;
     scope?: unknown;
   };
-  const role = normalizeRole(payload.role) ?? normalizeRole(fallbackRole) ?? Role.CITIZEN_REPORTER;
+  const role =
+    normalizeRole(payload.role) ??
+    normalizeRole(fallbackRole) ??
+    Role.CITIZEN_REPORTER;
   const permissions = normalizeStringList(payload.permissions);
   const scope = collectScopeTokens(payload.scope).filter(
     (entry, index, collection) => collection.indexOf(entry) === index,
@@ -169,7 +189,9 @@ export function permissionListIncludes(
     return false;
   }
 
-  const normalizedPermissions = permissions.map((entry) => normalizeToken(entry));
+  const normalizedPermissions = permissions.map((entry) =>
+    normalizeToken(entry),
+  );
   const normalizedHints = hints.map((entry) => normalizeToken(entry));
 
   return normalizedHints.some((hint) => normalizedPermissions.includes(hint));
@@ -198,6 +220,8 @@ export function isCitizenSelfServiceUser(
   }
 
   return capabilities.scope.some((entry) =>
-    SELF_SERVICE_SCOPE_HINTS.some((hint) => normalizeToken(entry).includes(hint)),
+    SELF_SERVICE_SCOPE_HINTS.some((hint) =>
+      normalizeToken(entry).includes(hint),
+    ),
   );
 }
