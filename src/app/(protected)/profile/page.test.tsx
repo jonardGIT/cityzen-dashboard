@@ -168,6 +168,44 @@ describe("ProfilePage", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows live sessions but disables revoke guidance when only session inventory is active", () => {
+    useCrudEndpointAvailabilityMock.mockImplementation(
+      (endpoint: { path: string }) => ({
+        isAvailable: endpoint.path === "/auth/sessions",
+        isLoading: false,
+      }),
+    );
+    useAuthSessionsQueryMock.mockReturnValue({
+      data: [
+        {
+          id: "session-1",
+          userAgent: "Chrome on Linux",
+          ipAddress: "127.0.0.1",
+          isCurrent: true,
+          createdAt: "2026-04-06T01:00:00.000Z",
+          lastUsedAt: "2026-04-06T01:10:00.000Z",
+          expiresAt: "2026-04-07T01:00:00.000Z",
+          refreshExpiresAt: "2026-04-08T01:00:00.000Z",
+          revokedAt: null,
+        },
+      ],
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderProfilePage();
+
+    expect(screen.getByText("Session rows: 1")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Session revocation is unavailable for the current backend feature profile.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("surfaces an operator-facing error when MFA setup returns 503", async () => {
     const mfaSetupError = new AxiosError("Service unavailable");
     mfaSetupError.response = {
@@ -208,5 +246,35 @@ describe("ProfilePage", () => {
         /Operator action is required on the backend before MFA enrollment can be used\./,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("does not expose MFA management actions to non-privileged roles", () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: "user-2",
+        email: "responder@example.com",
+        name: "Field Responder",
+        role: Role.RESPONDER,
+        mfaEnabled: false,
+        mfaEnabledAt: null,
+      },
+      logout: vi.fn(),
+      hasRole: (...roles: Role[]) => roles.includes(Role.RESPONDER),
+    });
+    useCrudEndpointAvailabilityMock.mockImplementation(() => ({
+      isAvailable: true,
+      isLoading: false,
+    }));
+
+    renderProfilePage();
+
+    expect(
+      screen.getByText(
+        "MFA enrollment is only available to privileged accounts in this dashboard.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Generate Setup" }),
+    ).not.toBeInTheDocument();
   });
 });
