@@ -65,4 +65,18 @@ describe("GET /api/dashboard/audit-logs", () => {
     expect(toJsonResponseMock).toHaveBeenCalledWith(upstream);
     expect(response).toBe(proxied);
   });
+
+  it("returns a 500 response when the upstream request throws", async () => {
+    requestUpstreamMock.mockRejectedValueOnce(new Error("network failed"));
+
+    const response = await GET({
+      headers: new Headers({ authorization: "Bearer token" }),
+      nextUrl: new URL("http://localhost:3001/api/dashboard/audit-logs"),
+    } as never);
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      message: "Failed to fetch audit logs.",
+    });
+  });
 });
