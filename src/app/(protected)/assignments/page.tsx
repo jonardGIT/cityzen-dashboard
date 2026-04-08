@@ -9,7 +9,6 @@ import {
   Modal,
   Select,
   Statistic,
-  Tag,
   Typography,
 } from "antd";
 import { AxiosError } from "axios";
@@ -27,10 +26,7 @@ import {
   useCreateAssignmentMutation,
 } from "@/features/assignments/api";
 import { useIncidentsQuery } from "@/features/incidents/api";
-import {
-  useRespondersQuery,
-  useStatusesQuery,
-} from "@/features/reference-data/api";
+import { useRespondersQuery } from "@/features/reference-data/api";
 import { CAN_CREATE_ASSIGNMENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
@@ -43,7 +39,6 @@ import {
   formatDisplayDateTime,
   formatDisplayRelativeTime,
 } from "@/lib/format/date-time";
-import { getStatusColor } from "@/lib/incidents/display";
 import type { ApiErrorPayload, Assignment } from "@/types/api";
 import styles from "./page.module.css";
 
@@ -52,7 +47,9 @@ const { Title, Text } = Typography;
 interface AssignmentFormValues {
   incidentId: string;
   responderId: string;
-  statusId?: string;
+  responseStart?: string;
+  responseEnd?: string;
+  outcome?: string;
   notes?: string;
 }
 
@@ -73,7 +70,6 @@ export default function AssignmentsPage() {
   const assignmentsQuery = useAssignmentsQuery(listQuery);
   const incidentsQuery = useIncidentsQuery(optionQueryState);
   const respondersQuery = useRespondersQuery(optionQueryState);
-  const statusesQuery = useStatusesQuery(optionQueryState);
   const createMutation = useCreateAssignmentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<AssignmentFormValues>();
@@ -95,7 +91,6 @@ export default function AssignmentsPage() {
   const pagination = assignmentsQuery.data?.pagination;
   const incidents = incidentsQuery.data?.data ?? [];
   const responders = respondersQuery.data?.data ?? [];
-  const statuses = statusesQuery.data?.data ?? [];
   const incidentLabels = new Map(
     (incidentsQuery.data?.data ?? []).map((item) => [
       String(item.id),
@@ -105,15 +100,7 @@ export default function AssignmentsPage() {
   const responderLabels = new Map(
     (respondersQuery.data?.data ?? []).map((item) => [
       String(item.id),
-      item.name ??
-        (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() ||
-          `Responder ${item.id}`),
-    ]),
-  );
-  const statusLabels = new Map(
-    (statusesQuery.data?.data ?? []).map((item) => [
-      String(item.id),
-      item.name ?? `Status ${item.id}`,
+      item.name ?? `Responder ${item.id}`,
     ]),
   );
 
@@ -160,10 +147,7 @@ export default function AssignmentsPage() {
           (item) => String(item.id) === String(row.responderId ?? ""),
         );
         const label =
-          responder?.name ??
-          (`${responder?.firstName ?? ""} ${responder?.lastName ?? ""}`.trim() ||
-            responder?.email ||
-            `Responder ${row.responderId ?? "N/A"}`);
+          responder?.name ?? `Responder ${row.responderId ?? "N/A"}`;
 
         return (
           <div className={styles.cellStack}>
@@ -176,19 +160,14 @@ export default function AssignmentsPage() {
       },
     },
     {
-      key: "statusId",
-      title: "Status",
-      filterKind: "select",
-      selectOptions: statusLabels,
-      width: 140,
-      render: (_value, row) => {
-        const status = statuses.find(
-          (item) => String(item.id) === String(row.statusId ?? ""),
-        );
-        const label = status?.name ?? "Status not set";
-
-        return <Tag color={getStatusColor(label)}>{label}</Tag>;
-      },
+      key: "outcome",
+      title: "Outcome",
+      filterKind: "text",
+      width: 180,
+      render: (value) =>
+        typeof value === "string" && value.trim().length > 0
+          ? value
+          : "Pending",
     },
     {
       key: "notes",
@@ -253,8 +232,8 @@ export default function AssignmentsPage() {
   const linkedIncidentCount = visibleRows.filter((item) =>
     Boolean(item.incidentId),
   ).length;
-  const unassignedStatusCount = visibleRows.filter(
-    (item) => !item.statusId,
+  const outcomeCount = visibleRows.filter((item) =>
+    Boolean(item.outcome),
   ).length;
 
   const submit = async () => {
@@ -325,9 +304,9 @@ export default function AssignmentsPage() {
               </Text>
             </div>
             <div className={styles.metricTile}>
-              <Statistic title="Missing status" value={unassignedStatusCount} />
+              <Statistic title="With outcome" value={outcomeCount} />
               <Text className={styles.metricLabel}>
-                Assignments needing explicit dispatch state.
+                Assignments that have recorded an outcome.
               </Text>
             </div>
           </div>
@@ -443,8 +422,8 @@ export default function AssignmentsPage() {
             <div className={styles.sidebarItem}>
               <Text className={styles.sidebarLabel}>Current signal</Text>
               <Text>
-                {unassignedStatusCount} visible assignments still need an
-                explicit assignment status.
+                {visibleRows.length - outcomeCount} visible assignments still
+                need an outcome recorded.
               </Text>
             </div>
           </div>
@@ -484,22 +463,13 @@ export default function AssignmentsPage() {
             <Select
               options={(respondersQuery.data?.data ?? []).map((item) => ({
                 value: String(item.id),
-                label:
-                  item.name ??
-                  (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() ||
-                    `Responder ${item.id}`),
+                label: item.name ?? `Responder ${item.id}`,
               }))}
             />
           </Form.Item>
 
-          <Form.Item name="statusId" label="Status">
-            <Select
-              allowClear
-              options={(statusesQuery.data?.data ?? []).map((item) => ({
-                value: String(item.id),
-                label: item.name ?? `Status ${item.id}`,
-              }))}
-            />
+          <Form.Item name="outcome" label="Outcome">
+            <Input />
           </Form.Item>
 
           <Form.Item name="notes" label="Notes">

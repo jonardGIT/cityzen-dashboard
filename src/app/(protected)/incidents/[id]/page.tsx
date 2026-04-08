@@ -119,9 +119,15 @@ export default function IncidentWorkspacePage() {
     [incidentId],
   );
 
-  const assignmentsQuery = useAssignmentsQuery(assignmentQueryState, !isCitizenReporter);
+  const assignmentsQuery = useAssignmentsQuery(
+    assignmentQueryState,
+    !isCitizenReporter,
+  );
   const citizensQuery = useCitizensQuery(optionQueryState, !isCitizenReporter);
-  const respondersQuery = useRespondersQuery(optionQueryState, !isCitizenReporter);
+  const respondersQuery = useRespondersQuery(
+    optionQueryState,
+    !isCitizenReporter,
+  );
   const statusesQuery = useStatusesQuery(optionQueryState);
   const severitiesQuery = useSeveritiesQuery(optionQueryState);
   const categoriesQuery = useCategoriesQuery(optionQueryState);
@@ -161,10 +167,7 @@ export default function IncidentWorkspacePage() {
   const categories = categoriesQuery.data?.data ?? [];
   const responderOptions = responders.map((item) => ({
     value: String(item.id),
-    label:
-      item.name ??
-      (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() ||
-        `Responder ${item.id}`),
+    label: item.name ?? `Responder ${item.id}`,
   }));
   const statusOptions = statuses.map((item) => ({
     value: String(item.id),
@@ -350,14 +353,17 @@ export default function IncidentWorkspacePage() {
             <div className={styles.metricTile}>
               <Statistic
                 title="Severity"
-                value={severity?.level ?? severity?.name ?? "Unspecified"}
+                value={severity?.level ?? "Unspecified"}
               />
               <Text className={styles.metricLabel}>
                 Dispatch priority signal
               </Text>
             </div>
             <div className={styles.metricTile}>
-              <Statistic title="Assignments" value={isCitizenReporter ? 0 : assignments.length} />
+              <Statistic
+                title="Assignments"
+                value={isCitizenReporter ? 0 : assignments.length}
+              />
               <Text className={styles.metricLabel}>
                 {isCitizenReporter
                   ? "Assignment history is reserved for operator workflows"
@@ -404,7 +410,7 @@ export default function IncidentWorkspacePage() {
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Severity">
-                {severity?.level ?? severity?.name ?? "N/A"}
+                {severity?.level ?? "N/A"}
               </Descriptions.Item>
               <Descriptions.Item label="Category">
                 {category?.name ?? "N/A"}
@@ -484,7 +490,9 @@ export default function IncidentWorkspacePage() {
                           </Text>
                           <Tag
                             color={getStatusColor(
-                              assignmentStatus?.name ?? status?.name ?? "Unknown",
+                              assignmentStatus?.name ??
+                                status?.name ??
+                                "Unknown",
                             )}
                           >
                             {assignmentStatus?.name ??
@@ -551,8 +559,8 @@ export default function IncidentWorkspacePage() {
                 Active context
               </Title>
               <Text className={styles.sectionDescription}>
-                The primary related records that operators usually need alongside
-                the incident.
+                The primary related records that operators usually need
+                alongside the incident.
               </Text>
               <Descriptions column={1} size="small">
                 <Descriptions.Item label="Current responder">

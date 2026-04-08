@@ -265,11 +265,13 @@ export default function DashboardPage() {
   }
 
   const incidents = incidentsQ.data?.data ?? [];
-  const assignments = assignmentsRestricted ? [] : assignmentsQ.data?.data ?? [];
-  const responders = respondersRestricted ? [] : respondersQ.data?.data ?? [];
-  const statuses = statusesRestricted ? [] : statusesQ.data?.data ?? [];
-  const severities = severitiesRestricted ? [] : severitiesQ.data?.data ?? [];
-  const categories = categoriesRestricted ? [] : categoriesQ.data?.data ?? [];
+  const assignments = assignmentsRestricted
+    ? []
+    : (assignmentsQ.data?.data ?? []);
+  const responders = respondersRestricted ? [] : (respondersQ.data?.data ?? []);
+  const statuses = statusesRestricted ? [] : (statusesQ.data?.data ?? []);
+  const severities = severitiesRestricted ? [] : (severitiesQ.data?.data ?? []);
+  const categories = categoriesRestricted ? [] : (categoriesQ.data?.data ?? []);
   const incidentsTotal = incidentsQ.data?.pagination.total ?? incidents.length;
   const respondersTotal =
     respondersQ.data?.pagination.total ?? responders.length;
@@ -291,7 +293,7 @@ export default function DashboardPage() {
   const severityLabels = new Map(
     severities.map((severity) => [
       String(severity.id),
-      severity.level?.trim() || severity.name?.trim() || String(severity.id),
+      severity.level?.trim() || String(severity.id),
     ]),
   );
   const statusFilterOptions = Array.from(
@@ -318,9 +320,11 @@ export default function DashboardPage() {
 
     const existing = latestAssignmentByIncident.get(incidentId);
     const existingDate =
-      parseDate(getAssignmentDisplayDate(existing ?? ({} as Assignment)))?.getTime() ??
-      0;
-    const nextDate = parseDate(getAssignmentDisplayDate(assignment))?.getTime() ?? 0;
+      parseDate(
+        getAssignmentDisplayDate(existing ?? ({} as Assignment)),
+      )?.getTime() ?? 0;
+    const nextDate =
+      parseDate(getAssignmentDisplayDate(assignment))?.getTime() ?? 0;
 
     if (!existing || nextDate >= existingDate) {
       latestAssignmentByIncident.set(incidentId, assignment);
@@ -392,14 +396,16 @@ export default function DashboardPage() {
         (incident) => !latestAssignmentByIncident.has(String(incident.id)),
       )
     : [];
-  const filteredIncidentsReportedToday = filteredIncidents.filter((incident) => {
-    const reportedAt = parseDate(getIncidentDate(incident));
-    if (!reportedAt) {
-      return false;
-    }
+  const filteredIncidentsReportedToday = filteredIncidents.filter(
+    (incident) => {
+      const reportedAt = parseDate(getIncidentDate(incident));
+      if (!reportedAt) {
+        return false;
+      }
 
-    return currentTime - reportedAt.getTime() <= DAY_IN_MS;
-  });
+      return currentTime - reportedAt.getTime() <= DAY_IN_MS;
+    },
+  );
   const filteredStaleIncidents = canUseLifecycle
     ? filteredOpenIncidents.filter((incident) => {
         const reportedAt = parseDate(getIncidentDate(incident));
@@ -485,11 +491,14 @@ export default function DashboardPage() {
     : [];
   const topCategories = canUseCategories
     ? Array.from(
-        filteredIncidents.reduce<Map<string, number>>((accumulator, incident) => {
-          const key = String(incident.categoryId ?? "unknown");
-          accumulator.set(key, (accumulator.get(key) ?? 0) + 1);
-          return accumulator;
-        }, new Map()),
+        filteredIncidents.reduce<Map<string, number>>(
+          (accumulator, incident) => {
+            const key = String(incident.categoryId ?? "unknown");
+            accumulator.set(key, (accumulator.get(key) ?? 0) + 1);
+            return accumulator;
+          },
+          new Map(),
+        ),
       )
         .map(([categoryId, count]) => ({
           categoryId,
@@ -899,7 +908,9 @@ export default function DashboardPage() {
             />
           ) : null}
 
-          {canUseLifecycle && canUseAssignments && filteredUnassignedIncidents.length > 0 ? (
+          {canUseLifecycle &&
+          canUseAssignments &&
+          filteredUnassignedIncidents.length > 0 ? (
             <Alert
               type="warning"
               showIcon
@@ -931,9 +942,7 @@ export default function DashboardPage() {
                     ...severities.map((severity: Severity) => ({
                       value: String(severity.id),
                       label:
-                        severity.level?.trim() ||
-                        severity.name?.trim() ||
-                        `Severity ${severity.id}`,
+                        severity.level?.trim() || `Severity ${severity.id}`,
                     })),
                   ]}
                 />
@@ -949,70 +958,73 @@ export default function DashboardPage() {
 
       <div className={styles.primaryRow}>
         {canUseLifecycle ? (
-        <Card
-          className={`${styles.metricCard} ${styles.primaryMetric} ${styles.clickableCard}`}
-          variant="borderless"
-          onClick={() => openIncidentsList({ scopeOverride: "open" })}
-        >
-          <Statistic
-            title="Open Incidents"
-            value={filteredOpenIncidents.length}
-          />
-          <Text className={styles.primaryMetricText}>
-            Immediate workload across the current dashboard scope.
-          </Text>
-        </Card>
+          <Card
+            className={`${styles.metricCard} ${styles.primaryMetric} ${styles.clickableCard}`}
+            variant="borderless"
+            onClick={() => openIncidentsList({ scopeOverride: "open" })}
+          >
+            <Statistic
+              title="Open Incidents"
+              value={filteredOpenIncidents.length}
+            />
+            <Text className={styles.primaryMetricText}>
+              Immediate workload across the current dashboard scope.
+            </Text>
+          </Card>
         ) : (
-        <Card
-          className={`${styles.metricCard} ${styles.primaryMetric}`}
-          variant="borderless"
-        >
-          <Statistic title="Incidents In View" value={filteredIncidents.length} />
-          <Text className={styles.primaryMetricText}>
-            Dashboard metrics are limited to incident data for this account.
-          </Text>
-        </Card>
+          <Card
+            className={`${styles.metricCard} ${styles.primaryMetric}`}
+            variant="borderless"
+          >
+            <Statistic
+              title="Incidents In View"
+              value={filteredIncidents.length}
+            />
+            <Text className={styles.primaryMetricText}>
+              Dashboard metrics are limited to incident data for this account.
+            </Text>
+          </Card>
         )}
 
         <div className={styles.summaryPanel}>
           {canUseAssignments ? (
-          <Card
-            className={`${styles.metricCard} ${styles.clickableCard}`}
-            variant="borderless"
-            onClick={() => openIncidentsList({ scopeOverride: "unassigned" })}
-          >
-            <Statistic
-              title="Unassigned Queue"
-              value={filteredUnassignedIncidents.length}
-            />
-            <Text className={styles.metricLabel}>Awaiting dispatch</Text>
-          </Card>
+            <Card
+              className={`${styles.metricCard} ${styles.clickableCard}`}
+              variant="borderless"
+              onClick={() => openIncidentsList({ scopeOverride: "unassigned" })}
+            >
+              <Statistic
+                title="Unassigned Queue"
+                value={filteredUnassignedIncidents.length}
+              />
+              <Text className={styles.metricLabel}>Awaiting dispatch</Text>
+            </Card>
           ) : null}
           {canUseLifecycle ? (
-          <Card
-            className={`${styles.metricCard} ${styles.clickableCard}`}
-            variant="borderless"
-            onClick={() =>
-              openIncidentsList({
-                scopeOverride: "open",
-                extraFilters: [
-                  {
-                    field: "statusId",
-                    operator: "in",
-                    value: statuses
-                      .filter((status) => isInProgressStatus(status.name))
-                      .map((status) => String(status.id)),
-                  },
-                ],
-              })
-            }
-          >
-            <Statistic
-              title="In Progress"
-              value={filteredInProgressIncidents.length}
-            />
-            <Text className={styles.metricLabel}>Active field response</Text>
-          </Card>
+            <Card
+              className={`${styles.metricCard} ${styles.clickableCard}`}
+              variant="borderless"
+              onClick={() =>
+                openIncidentsList({
+                  scopeOverride: "open",
+                  extraFilters: [
+                    {
+                      field: "statusId",
+                      operator: "in",
+                      value: statuses
+                        .filter((status) => isInProgressStatus(status.name))
+                        .map((status) => String(status.id)),
+                    },
+                  ],
+                })
+              }
+            >
+              <Statistic
+                title="In Progress"
+                value={filteredInProgressIncidents.length}
+              />
+              <Text className={styles.metricLabel}>Active field response</Text>
+            </Card>
           ) : null}
           <Card
             className={`${styles.metricCard} ${styles.clickableCard}`}
@@ -1030,36 +1042,36 @@ export default function DashboardPage() {
             <Text className={styles.metricLabel}>Fresh incident volume</Text>
           </Card>
           {canUseLifecycle ? (
-          <Card
-            className={`${styles.metricCard} ${styles.clickableCard}`}
-            variant="borderless"
-            onClick={() => openIncidentsList({ scopeOverride: "stale" })}
-          >
-            <Statistic
-              title="Stale Open Incidents"
-              value={filteredStaleIncidents.length}
-            />
-            <Text className={styles.metricLabel}>At-risk backlog</Text>
-          </Card>
+            <Card
+              className={`${styles.metricCard} ${styles.clickableCard}`}
+              variant="borderless"
+              onClick={() => openIncidentsList({ scopeOverride: "stale" })}
+            >
+              <Statistic
+                title="Stale Open Incidents"
+                value={filteredStaleIncidents.length}
+              />
+              <Text className={styles.metricLabel}>At-risk backlog</Text>
+            </Card>
           ) : null}
         </div>
       </div>
 
       <div className={styles.summaryPanel}>
         {canUseResponders ? (
-        <Card className={styles.metricCard} variant="borderless">
-          <Statistic title="Responders" value={respondersTotal} />
-          <Text className={styles.metricLabel}>Available roster</Text>
-        </Card>
+          <Card className={styles.metricCard} variant="borderless">
+            <Statistic title="Responders" value={respondersTotal} />
+            <Text className={styles.metricLabel}>Available roster</Text>
+          </Card>
         ) : null}
         {canUseAssignments ? (
-        <Card className={styles.metricCard} variant="borderless">
-          <Statistic
-            title="Assignments In View"
-            value={filteredAssignments.length}
-          />
-          <Text className={styles.metricLabel}>Recent dispatch activity</Text>
-        </Card>
+          <Card className={styles.metricCard} variant="borderless">
+            <Statistic
+              title="Assignments In View"
+              value={filteredAssignments.length}
+            />
+            <Text className={styles.metricLabel}>Recent dispatch activity</Text>
+          </Card>
         ) : null}
         <Card className={styles.metricCard} variant="borderless">
           <Statistic title="Incidents Loaded" value={incidentsTotal} />
@@ -1068,103 +1080,105 @@ export default function DashboardPage() {
           </Text>
         </Card>
         {canUseCategories ? (
-        <Card className={styles.metricCard} variant="borderless">
-          <Statistic title="Active Categories" value={topCategories.length} />
-          <Text className={styles.metricLabel}>Dominant issue clusters</Text>
-        </Card>
+          <Card className={styles.metricCard} variant="borderless">
+            <Statistic title="Active Categories" value={topCategories.length} />
+            <Text className={styles.metricLabel}>Dominant issue clusters</Text>
+          </Card>
         ) : null}
       </div>
 
       <Row gutter={[16, 16]}>
         {canUseLifecycle ? (
-        <Col xs={24} xl={12}>
-          <Card className={styles.sectionCard} variant="borderless">
-            <div className={styles.sectionHeading}>
-              <div>
-                <Title level={4} className={styles.sectionTitle}>
-                  Aging Buckets
-                </Title>
-                <Text className={styles.sectionDescription}>
-                  Bucket open incidents by age so dispatchers can see which
-                  queues are drifting.
-                </Text>
-              </div>
-            </div>
-            <div className={styles.verticalList}>
-              {agingBuckets.map((bucket) => (
-                <div key={bucket.key} className={styles.listRow}>
-                  <div className={styles.listMeta}>
-                    <Text strong>{bucket.label}</Text>
-                    <Text type="secondary">{bucket.count} open incidents</Text>
-                  </div>
-                  <Button
-                    type="link"
-                    className={styles.listAction}
-                    onClick={() =>
-                      openIncidentsList({
-                        scopeOverride: "open",
-                        createdFrom: bucket.createdFrom,
-                        createdTo: bucket.createdTo,
-                      })
-                    }
-                  >
-                    Open
-                  </Button>
+          <Col xs={24} xl={12}>
+            <Card className={styles.sectionCard} variant="borderless">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <Title level={4} className={styles.sectionTitle}>
+                    Aging Buckets
+                  </Title>
+                  <Text className={styles.sectionDescription}>
+                    Bucket open incidents by age so dispatchers can see which
+                    queues are drifting.
+                  </Text>
                 </div>
-              ))}
-            </div>
-          </Card>
-        </Col>
-        ) : null}
-        {canUseCategories ? (
-        <Col xs={24} xl={12}>
-          <Card className={styles.sectionCard} variant="borderless">
-            <div className={styles.sectionHeading}>
-              <div>
-                <Title level={4} className={styles.sectionTitle}>
-                  Top Categories In View
-                </Title>
-                <Text className={styles.sectionDescription}>
-                  Highlight the strongest category clusters in the current
-                  dashboard context.
-                </Text>
               </div>
-            </div>
-            <div className={styles.verticalList}>
-              {topCategories.length === 0 ? (
-                <Text type="secondary">
-                  No category data available in this view.
-                </Text>
-              ) : (
-                topCategories.map((category) => (
-                  <div key={category.categoryId} className={styles.listRow}>
+              <div className={styles.verticalList}>
+                {agingBuckets.map((bucket) => (
+                  <div key={bucket.key} className={styles.listRow}>
                     <div className={styles.listMeta}>
-                      <Text strong>{category.label}</Text>
-                      <Text type="secondary">{category.count} incidents</Text>
+                      <Text strong>{bucket.label}</Text>
+                      <Text type="secondary">
+                        {bucket.count} open incidents
+                      </Text>
                     </div>
                     <Button
                       type="link"
                       className={styles.listAction}
                       onClick={() =>
                         openIncidentsList({
-                          extraFilters: [
-                            {
-                              field: "categoryId",
-                              operator: "equals",
-                              value: category.categoryId,
-                            },
-                          ],
+                          scopeOverride: "open",
+                          createdFrom: bucket.createdFrom,
+                          createdTo: bucket.createdTo,
                         })
                       }
                     >
                       Open
                     </Button>
                   </div>
-                ))
-              )}
-            </div>
-          </Card>
-        </Col>
+                ))}
+              </div>
+            </Card>
+          </Col>
+        ) : null}
+        {canUseCategories ? (
+          <Col xs={24} xl={12}>
+            <Card className={styles.sectionCard} variant="borderless">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <Title level={4} className={styles.sectionTitle}>
+                    Top Categories In View
+                  </Title>
+                  <Text className={styles.sectionDescription}>
+                    Highlight the strongest category clusters in the current
+                    dashboard context.
+                  </Text>
+                </div>
+              </div>
+              <div className={styles.verticalList}>
+                {topCategories.length === 0 ? (
+                  <Text type="secondary">
+                    No category data available in this view.
+                  </Text>
+                ) : (
+                  topCategories.map((category) => (
+                    <div key={category.categoryId} className={styles.listRow}>
+                      <div className={styles.listMeta}>
+                        <Text strong>{category.label}</Text>
+                        <Text type="secondary">{category.count} incidents</Text>
+                      </div>
+                      <Button
+                        type="link"
+                        className={styles.listAction}
+                        onClick={() =>
+                          openIncidentsList({
+                            extraFilters: [
+                              {
+                                field: "categoryId",
+                                operator: "equals",
+                                value: category.categoryId,
+                              },
+                            ],
+                          })
+                        }
+                      >
+                        Open
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+          </Col>
         ) : null}
       </Row>
 
@@ -1202,73 +1216,75 @@ export default function DashboardPage() {
         </Card>
 
         {canUseAssignments ? (
+          <Card
+            className={`${styles.sectionCard} ${styles.tableCard} ${styles.compactTable}`}
+            variant="borderless"
+            title={
+              <div>
+                <Title level={4} className={styles.sectionTitle}>
+                  Needs Assignment
+                </Title>
+                <Text className={styles.sectionDescription}>
+                  Unassigned open incidents, ordered by age so dispatch
+                  decisions stay fast.
+                </Text>
+              </div>
+            }
+            extra={
+              <Button
+                type="link"
+                onClick={() =>
+                  openIncidentsList({ scopeOverride: "unassigned" })
+                }
+              >
+                Open incidents
+              </Button>
+            }
+          >
+            <InteractiveLocalTable
+              rows={urgentQueue}
+              columns={urgentQueueColumns}
+              storageKey="dashboard-urgent-queue-widths"
+              emptyText="All open incidents are assigned"
+              searchPlaceholder="Search queue"
+              stickyEdgeColumnCount={{ left: 1 }}
+              pagination={false}
+            />
+          </Card>
+        ) : null}
+      </div>
+
+      {canUseAssignments ? (
         <Card
           className={`${styles.sectionCard} ${styles.tableCard} ${styles.compactTable}`}
           variant="borderless"
           title={
             <div>
               <Title level={4} className={styles.sectionTitle}>
-                Needs Assignment
+                Recent Assignments
               </Title>
               <Text className={styles.sectionDescription}>
-                Unassigned open incidents, ordered by age so dispatch decisions
-                stay fast.
+                The latest assignment activity that overlaps with the current
+                dashboard view.
               </Text>
             </div>
           }
           extra={
-            <Button
-              type="link"
-              onClick={() => openIncidentsList({ scopeOverride: "unassigned" })}
-            >
+            <Button type="link" onClick={() => openIncidentsList()}>
               Open incidents
             </Button>
           }
         >
           <InteractiveLocalTable
-            rows={urgentQueue}
-            columns={urgentQueueColumns}
-            storageKey="dashboard-urgent-queue-widths"
-            emptyText="All open incidents are assigned"
-            searchPlaceholder="Search queue"
+            rows={filteredAssignments}
+            columns={recentAssignmentsColumns}
+            storageKey="dashboard-recent-assignments-widths"
+            emptyText="No assignments available"
+            searchPlaceholder="Search assignments"
             stickyEdgeColumnCount={{ left: 1 }}
             pagination={false}
           />
         </Card>
-        ) : null}
-      </div>
-
-      {canUseAssignments ? (
-      <Card
-        className={`${styles.sectionCard} ${styles.tableCard} ${styles.compactTable}`}
-        variant="borderless"
-        title={
-          <div>
-            <Title level={4} className={styles.sectionTitle}>
-              Recent Assignments
-            </Title>
-            <Text className={styles.sectionDescription}>
-              The latest assignment activity that overlaps with the current
-              dashboard view.
-            </Text>
-          </div>
-        }
-        extra={
-          <Button type="link" onClick={() => openIncidentsList()}>
-            Open incidents
-          </Button>
-        }
-      >
-        <InteractiveLocalTable
-          rows={filteredAssignments}
-          columns={recentAssignmentsColumns}
-          storageKey="dashboard-recent-assignments-widths"
-          emptyText="No assignments available"
-          searchPlaceholder="Search assignments"
-          stickyEdgeColumnCount={{ left: 1 }}
-          pagination={false}
-        />
-      </Card>
       ) : null}
     </div>
   );

@@ -30,12 +30,8 @@ import {
   defaultAssignmentsQueryState,
   useAssignmentsQuery,
 } from "@/features/assignments/api";
-import {
-  getCrudEndpoint,
-} from "@/features/dynamic-crud/config";
-import {
-  useCrudEndpointAvailability,
-} from "@/features/dynamic-crud/openapi";
+import { getCrudEndpoint } from "@/features/dynamic-crud/config";
+import { useCrudEndpointAvailability } from "@/features/dynamic-crud/openapi";
 import {
   uploadIncidentMedia,
   useCreateIncidentMutation,
@@ -146,7 +142,10 @@ export default function IncidentsPage() {
   const categoriesQuery = useCategoriesQuery(optionQueryState);
   const severitiesQuery = useSeveritiesQuery(optionQueryState);
   const statusesQuery = useStatusesQuery(optionQueryState);
-  const respondersQuery = useRespondersQuery(optionQueryState, !isCitizenReporter);
+  const respondersQuery = useRespondersQuery(
+    optionQueryState,
+    !isCitizenReporter,
+  );
   const assignmentsQuery = useAssignmentsQuery(
     defaultAssignmentsQueryState({ page: 1, pageSize: 200 }),
     !isCitizenReporter,
@@ -226,10 +225,7 @@ export default function IncidentsPage() {
       new Map(
         (respondersQuery.data?.data ?? []).map((item) => [
           String(item.id),
-          item.name ??
-            (`${item.firstName ?? ""} ${item.lastName ?? ""}`.trim() ||
-              item.email ||
-              `Responder ${item.id}`),
+          item.name ?? `Responder ${item.id}`,
         ]),
       ),
     [respondersQuery.data],
@@ -825,8 +821,8 @@ export default function IncidentsPage() {
                         style={{ width: "100%" }}
                       >
                         <Text>
-                          Upload evidence through the configured media endpoint or
-                          paste an existing URL.
+                          Upload evidence through the configured media endpoint
+                          or paste an existing URL.
                         </Text>
                         <Space wrap>
                           {mediaUploadAvailability.isAvailable ? (

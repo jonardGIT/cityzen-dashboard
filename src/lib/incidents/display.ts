@@ -81,28 +81,19 @@ export function buildIncidentCoordinatesLabel(
 }
 
 export function getResponderDisplayName(
-  responder: Pick<
-    Responder,
-    "id" | "firstName" | "lastName" | "name" | "email"
-  > | undefined,
+  responder: Pick<Responder, "id" | "name"> | undefined,
 ): string {
   if (!responder) {
     return "Unassigned";
   }
 
-  const fullName = [responder.firstName, responder.lastName]
-    .filter(
-      (value): value is string =>
-        typeof value === "string" && value.trim().length > 0,
-    )
-    .join(" ")
-    .trim();
-
-  return fullName || responder.name || responder.email || String(responder.id);
+  return responder.name || String(responder.id);
 }
 
 export function getAssignmentDisplayDate(
   assignment: Pick<Assignment, "assignedDate" | "createdAt" | "updatedAt">,
 ): string | undefined {
-  return assignment.assignedDate ?? assignment.createdAt ?? assignment.updatedAt;
+  return (
+    assignment.assignedDate ?? assignment.createdAt ?? assignment.updatedAt
+  );
 }

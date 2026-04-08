@@ -21,16 +21,12 @@ export interface CreateUserDto {
   email: string;
   password: string;
   role: Role;
-  firstName?: string;
-  lastName?: string;
 }
 
 export interface UpdateUserDto {
   name?: string;
   email?: string;
   role?: Role;
-  firstName?: string;
-  lastName?: string;
 }
 
 export type UsersCapabilities = UserCapabilities;
@@ -70,9 +66,7 @@ export async function deleteUser(userId: string) {
 }
 
 export async function fetchUsersCapabilities() {
-  const response = await usersApiClient.get<unknown>(
-    "/users/capabilities",
-  );
+  const response = await usersApiClient.get<unknown>("/users/capabilities");
   return normalizeCapabilities(response.data);
 }
 

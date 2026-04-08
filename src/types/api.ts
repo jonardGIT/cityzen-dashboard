@@ -16,6 +16,7 @@ export interface BaseEntity {
   id: string;
   createdAt?: string;
   updatedAt?: string;
+  archivedAt?: string | null;
   [key: string]: unknown;
 }
 
@@ -32,10 +33,6 @@ export interface Agency extends BaseEntity {
 
 export interface Responder extends BaseEntity {
   name?: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phoneNumber?: string;
   role?: string;
   contactInfo?: string;
   agencyId?: string;
@@ -51,12 +48,12 @@ export interface Status extends BaseEntity {
 
 export interface Category extends BaseEntity {
   name?: string;
+  subCategory?: string;
 }
 
 export interface Severity extends BaseEntity {
   level?: string;
   definition?: string;
-  name?: string;
 }
 
 export interface Incident extends BaseEntity {
@@ -83,16 +80,25 @@ export interface Incident extends BaseEntity {
 export interface Assignment extends BaseEntity {
   incidentId?: EntityId;
   responderId?: EntityId;
-  statusId?: EntityId;
   assignedDate?: string;
+  responseStart?: string | null;
+  responseEnd?: string | null;
+  outcome?: string | null;
   notes?: string;
+}
+
+export interface IncidentMedia {
+  id: string;
+  createdAt?: string;
+  updatedAt?: string;
+  incidentId: EntityId;
+  mediaUrl: string;
+  displayOrder?: number;
 }
 
 export interface User extends BaseEntity {
   email?: string;
   name?: string;
-  firstName?: string;
-  lastName?: string;
   role?: string;
 }
 

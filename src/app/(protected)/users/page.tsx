@@ -1,11 +1,26 @@
 "use client";
 
-import { App, Alert, Button, Form, Input, Modal, Popconfirm, Result, Select, Space, Typography } from "antd";
+import {
+  App,
+  Alert,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Popconfirm,
+  Result,
+  Select,
+  Space,
+  Typography,
+} from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useState } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
-import { SharedTable, type SharedTableColumn } from "@/components/crud/SharedTable";
+import {
+  SharedTable,
+  type SharedTableColumn,
+} from "@/components/crud/SharedTable";
 import { useAuth } from "@/context/AuthContext";
 import {
   useCreateUserMutation,
@@ -29,16 +44,12 @@ interface CreateUserFormValues {
   email: string;
   password: string;
   role: Role;
-  firstName?: string;
-  lastName?: string;
 }
 
 interface EditUserFormValues {
   name: string;
   email: string;
   role: Role;
-  firstName?: string;
-  lastName?: string;
 }
 
 export default function UsersPage() {
@@ -71,7 +82,9 @@ export default function UsersPage() {
 
   const rows = usersQuery.data?.data ?? [];
   const paginationMeta = usersQuery.data?.pagination;
-  const isEditingSelf = Boolean(editingUser && String(editingUser.id) === String(user?.id));
+  const isEditingSelf = Boolean(
+    editingUser && String(editingUser.id) === String(user?.id),
+  );
   const roleOptions = new Map(
     Object.values(Role).map((role) => [role, getRoleLabel(role)]),
   );
@@ -79,7 +92,12 @@ export default function UsersPage() {
   const columns: Array<SharedTableColumn<User>> = [
     { key: "email", title: "Email", filterKind: "text" },
     { key: "name", title: "Name", filterKind: "text" },
-    { key: "role", title: "Role", filterKind: "select", selectOptions: roleOptions },
+    {
+      key: "role",
+      title: "Role",
+      filterKind: "select",
+      selectOptions: roleOptions,
+    },
     { key: "createdAt", title: "Created", filterKind: "date", sortable: true },
     { key: "updatedAt", title: "Updated", filterKind: "date", sortable: true },
   ];
@@ -139,7 +157,9 @@ export default function UsersPage() {
       const axiosError = error as AxiosError<ApiErrorPayload>;
 
       if (axiosError.response?.status === 403) {
-        message.error("Permission denied: You cannot assign this role to a user.");
+        message.error(
+          "Permission denied: You cannot assign this role to a user.",
+        );
         return;
       }
 
@@ -159,13 +179,11 @@ export default function UsersPage() {
     setEditingUser(row);
     setIsEditOpen(true);
     editForm.setFieldsValue({
-      name: row.name ?? [row.firstName, row.lastName].filter(Boolean).join(" "),
+      name: row.name ?? "",
       email: row.email ?? "",
       role: (normalizeRole(row.role)
         ? normalizeRole(row.role)
         : assignableRoles[0]) as Role,
-      firstName: row.firstName ?? "",
-      lastName: row.lastName ?? "",
     });
   };
 
@@ -329,14 +347,19 @@ export default function UsersPage() {
         topToolbar={
           <Space direction="vertical" style={{ width: "100%" }}>
             {capabilitiesQuery.data &&
-            (!capabilitiesQuery.data.canUpdateUser || !capabilitiesQuery.data.canDeleteUser) ? (
+            (!capabilitiesQuery.data.canUpdateUser ||
+              !capabilitiesQuery.data.canDeleteUser) ? (
               <Alert
                 type="info"
                 showIcon
                 message="User management capabilities are limited by the connected backend."
                 description={[
-                  !capabilitiesQuery.data.canUpdateUser ? "Edit is not available." : null,
-                  !capabilitiesQuery.data.canDeleteUser ? "Delete is not available." : null,
+                  !capabilitiesQuery.data.canUpdateUser
+                    ? "Edit is not available."
+                    : null,
+                  !capabilitiesQuery.data.canDeleteUser
+                    ? "Delete is not available."
+                    : null,
                   capabilitiesQuery.data.scope.length > 0
                     ? `Current scope: ${capabilitiesQuery.data.scope.join(", ")}.`
                     : null,
@@ -366,7 +389,10 @@ export default function UsersPage() {
                     title="Delete user"
                     description="This action cannot be undone."
                     okText="Delete"
-                    okButtonProps={{ danger: true, loading: deleteMutation.isPending }}
+                    okButtonProps={{
+                      danger: true,
+                      loading: deleteMutation.isPending,
+                    }}
                     onConfirm={() => void submitDelete(record)}
                   >
                     <Button size="small" danger>
@@ -388,24 +414,39 @@ export default function UsersPage() {
         onOk={() => void submitCreate()}
         confirmLoading={createMutation.isPending}
       >
-        <Form<CreateUserFormValues> form={createForm} layout="vertical" requiredMark={false}>
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: "Name is required" }]}>
+        <Form<CreateUserFormValues>
+          form={createForm}
+          layout="vertical"
+          requiredMark={false}
+        >
+          <Form.Item
+            name="name"
+            label="Name"
+            rules={[{ required: true, message: "Name is required" }]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item name="email" label="Email" rules={[{ required: true }, { type: "email" }]}>
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[{ required: true }, { type: "email" }]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item name="password" label="Password" rules={[{ required: true, min: 8 }]}>
+          <Form.Item
+            name="password"
+            label="Password"
+            rules={[{ required: true, min: 8 }]}
+          >
             <Input.Password />
           </Form.Item>
           <Form.Item name="role" label="Role" rules={[{ required: true }]}>
-            <Select options={assignableRoles.map((role) => ({ value: role, label: getRoleLabel(role) }))} />
-          </Form.Item>
-          <Form.Item name="firstName" label="First Name">
-            <Input />
-          </Form.Item>
-          <Form.Item name="lastName" label="Last Name">
-            <Input />
+            <Select
+              options={assignableRoles.map((role) => ({
+                value: role,
+                label: getRoleLabel(role),
+              }))}
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -417,24 +458,33 @@ export default function UsersPage() {
         onOk={() => void submitEdit()}
         confirmLoading={updateMutation.isPending}
       >
-        <Form<EditUserFormValues> form={editForm} layout="vertical" requiredMark={false}>
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: "Name is required" }]}>
+        <Form<EditUserFormValues>
+          form={editForm}
+          layout="vertical"
+          requiredMark={false}
+        >
+          <Form.Item
+            name="name"
+            label="Name"
+            rules={[{ required: true, message: "Name is required" }]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item name="email" label="Email" rules={[{ required: true }, { type: "email" }]}>
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[{ required: true }, { type: "email" }]}
+          >
             <Input />
           </Form.Item>
           <Form.Item name="role" label="Role" rules={[{ required: true }]}>
             <Select
               disabled={isEditingSelf}
-              options={assignableRoles.map((role) => ({ value: role, label: getRoleLabel(role) }))}
+              options={assignableRoles.map((role) => ({
+                value: role,
+                label: getRoleLabel(role),
+              }))}
             />
-          </Form.Item>
-          <Form.Item name="firstName" label="First Name">
-            <Input />
-          </Form.Item>
-          <Form.Item name="lastName" label="Last Name">
-            <Input />
           </Form.Item>
         </Form>
       </Modal>

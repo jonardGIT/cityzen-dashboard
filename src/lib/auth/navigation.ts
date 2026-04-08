@@ -23,10 +23,7 @@ export interface NavigationItemDefinition {
   visible: (context: NavigationContext) => boolean;
 }
 
-const AUDIT_PERMISSION_HINTS = [
-  "audit:read:global",
-  "audit:export:global",
-];
+const AUDIT_PERMISSION_HINTS = ["audit:read:global", "audit:export:global"];
 
 const USER_PERMISSION_HINTS = [
   "user:read:global",
@@ -71,7 +68,7 @@ function canAccessAssignments(context: NavigationContext): boolean {
   const resource = getCrudResource("assignments");
   const roleAllows = Boolean(
     resource &&
-      canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+    canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
   );
 
   if (roleAllows) {
@@ -82,14 +79,17 @@ function canAccessAssignments(context: NavigationContext): boolean {
 }
 
 function canAccessCitizenSelfService(context: NavigationContext): boolean {
-  return permissionsAllow(context.capabilities, CITIZEN_SELF_SERVICE_PERMISSION_HINTS);
+  return permissionsAllow(
+    context.capabilities,
+    CITIZEN_SELF_SERVICE_PERMISSION_HINTS,
+  );
 }
 
 function canAccessIncidents(context: NavigationContext): boolean {
   const resource = getCrudResource("incidents");
   const roleAllows = Boolean(
     resource &&
-      canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+    canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
   );
 
   if (roleAllows) {
@@ -112,7 +112,10 @@ export function canAccessUserManagement(context: NavigationContext): boolean {
     return false;
   }
 
-  if (context.capabilities?.canUpdateUser || context.capabilities?.canDeleteUser) {
+  if (
+    context.capabilities?.canUpdateUser ||
+    context.capabilities?.canDeleteUser
+  ) {
     return true;
   }
 
@@ -142,10 +145,16 @@ export function getNavigationItems(context: NavigationContext) {
         const resource = getCrudResource("citizens");
         const roleAllows = Boolean(
           resource &&
-            canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+          canShowCrudNavigationItem(
+            resource,
+            context.role,
+            context.isAuthenticated,
+          ),
         );
 
-        return roleAllows || (isSelfService && canAccessCitizenSelfService(context));
+        return (
+          roleAllows || (isSelfService && canAccessCitizenSelfService(context))
+        );
       },
     },
     {
@@ -172,7 +181,11 @@ export function getNavigationItems(context: NavigationContext) {
         const resource = getCrudResource("agencies");
         return Boolean(
           resource &&
-            canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+          canShowCrudNavigationItem(
+            resource,
+            context.role,
+            context.isAuthenticated,
+          ),
         );
       },
     },
@@ -185,7 +198,11 @@ export function getNavigationItems(context: NavigationContext) {
         const resource = getCrudResource("responders");
         return Boolean(
           resource &&
-            canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+          canShowCrudNavigationItem(
+            resource,
+            context.role,
+            context.isAuthenticated,
+          ),
         );
       },
     },
@@ -198,7 +215,11 @@ export function getNavigationItems(context: NavigationContext) {
         const resource = getCrudResource("statuses");
         return Boolean(
           resource &&
-            canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+          canShowCrudNavigationItem(
+            resource,
+            context.role,
+            context.isAuthenticated,
+          ),
         );
       },
     },
@@ -211,7 +232,11 @@ export function getNavigationItems(context: NavigationContext) {
         const resource = getCrudResource("categories");
         return Boolean(
           resource &&
-            canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+          canShowCrudNavigationItem(
+            resource,
+            context.role,
+            context.isAuthenticated,
+          ),
         );
       },
     },
@@ -224,7 +249,11 @@ export function getNavigationItems(context: NavigationContext) {
         const resource = getCrudResource("severities");
         return Boolean(
           resource &&
-            canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
+          canShowCrudNavigationItem(
+            resource,
+            context.role,
+            context.isAuthenticated,
+          ),
         );
       },
     },
@@ -253,7 +282,9 @@ export function getNavigationItems(context: NavigationContext) {
     .map((rule) => ({
       ...rule,
       href:
-        isSelfService && rule.selfServiceHref ? rule.selfServiceHref : rule.href,
+        isSelfService && rule.selfServiceHref
+          ? rule.selfServiceHref
+          : rule.href,
       roleLabel: getRoleLabel(context.role),
     }));
 }

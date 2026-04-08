@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { App } from "antd";
-import { AxiosError } from "axios";
+import { AxiosError, type AxiosRequestHeaders } from "axios";
+import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProfilePage from "@/app/(protected)/profile/page";
 import { Role } from "@/types/auth";
@@ -72,10 +73,10 @@ vi.mock("@/components/common/ResizableTable", () => ({
               key={`${String(column.key ?? column.dataIndex ?? columnIndex)}`}
             >
               {column.render
-                ? column.render(
+                ? (column.render(
                     column.dataIndex ? record[column.dataIndex] : undefined,
                     record,
-                  )
+                  ) as React.ReactNode)
                 : null}
             </div>
           ))}
@@ -293,7 +294,7 @@ describe("ProfilePage", () => {
       status: 503,
       statusText: "Service Unavailable",
       headers: {},
-      config: { headers: {} },
+      config: { headers: {} as AxiosRequestHeaders },
     };
 
     useCrudEndpointAvailabilityMock.mockImplementation(
