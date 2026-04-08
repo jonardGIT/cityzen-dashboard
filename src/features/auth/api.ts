@@ -1,7 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { authClient, createAuthenticatedClient, publicClient } from "@/lib/api/clients";
-import { normalizeAuthResponse, normalizeAuthUser, normalizeCapabilities } from "@/lib/auth/roles";
+import {
+  authClient,
+  createAuthenticatedClient,
+  publicClient,
+} from "@/lib/api/clients";
+import {
+  normalizeAuthResponse,
+  normalizeAuthUser,
+  normalizeCapabilities,
+} from "@/lib/auth/roles";
+import { getRefreshToken } from "@/lib/auth/token-storage";
 import type { ApiErrorPayload } from "@/types/api";
 import type {
   AuthResponse,
@@ -140,31 +149,34 @@ export async function revokeAuthSession(sessionId: string): Promise<void> {
 export async function createMfaSetup(
   signal?: AbortSignal,
 ): Promise<MfaSetupResponse> {
+  const refreshToken = getRefreshToken();
   const response = await authClient.post<MfaSetupResponse>(
     "/auth/mfa/setup",
-    undefined,
+    { refreshToken },
     { signal },
   );
   return response.data;
 }
 
 export async function enableMfa(
-  payload: MfaCodeRequest,
+  payload: Omit<MfaCodeRequest, "refreshToken">,
 ): Promise<MessageResponse> {
-  const response = await authClient.post<MessageResponse>(
-    "/auth/mfa/enable",
-    payload,
-  );
+  const refreshToken = getRefreshToken();
+  const response = await authClient.post<MessageResponse>("/auth/mfa/enable", {
+    ...payload,
+    refreshToken,
+  });
   return response.data;
 }
 
 export async function disableMfa(
-  payload: MfaCodeRequest,
+  payload: Omit<MfaCodeRequest, "refreshToken">,
 ): Promise<MessageResponse> {
-  const response = await authClient.post<MessageResponse>(
-    "/auth/mfa/disable",
-    payload,
-  );
+  const refreshToken = getRefreshToken();
+  const response = await authClient.post<MessageResponse>("/auth/mfa/disable", {
+    ...payload,
+    refreshToken,
+  });
   return response.data;
 }
 

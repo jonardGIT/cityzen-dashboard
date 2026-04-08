@@ -29,6 +29,8 @@ import { useMemo, useState } from "react";
 import { ResizableTable } from "@/components/common/ResizableTable";
 import { useAuth } from "@/context/AuthContext";
 import {
+  confirmPasswordReset,
+  requestPasswordReset,
   useAuthSessionsQuery,
   useCreateMfaSetupMutation,
   useDisableMfaMutation,
@@ -47,11 +49,11 @@ import { DEFAULT_SORT_ORDER } from "@/lib/api/list-query-params";
 import { CAN_MANAGE_MFA } from "@/lib/auth/permissions";
 import { getRoleLabel } from "@/lib/auth/roles";
 import type { ApiErrorPayload } from "@/types/api";
-import type {
-  AuthSessionSummary,
-  MfaCodeRequest,
-  MfaSetupResponse,
-} from "@/types/auth";
+import type { AuthSessionSummary, MfaSetupResponse } from "@/types/auth";
+
+interface MfaFormValues {
+  code: string;
+}
 
 const { Paragraph, Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -129,7 +131,11 @@ function formatDateTime(value?: string | null) {
 function getSessionPlatformLabel(userAgent?: string | null) {
   const value = userAgent?.toLowerCase() ?? "";
 
-  if (value.includes("iphone") || value.includes("ipad") || value.includes("ios")) {
+  if (
+    value.includes("iphone") ||
+    value.includes("ipad") ||
+    value.includes("ios")
+  ) {
     return "iPhone or iPad";
   }
 
@@ -436,10 +442,26 @@ function MfaSetupCard({ setup }: { setup: MfaSetupResponse }) {
   );
 }
 
+interface ChangePasswordFormValues {
+  token: string;
+  password: string;
+  confirmPassword: string;
+}
+
+type PasswordResetStep =
+  | "idle"
+  | "requesting"
+  | "token-sent"
+  | "confirming"
+  | "done";
+
 export default function ProfilePage() {
   const { message } = App.useApp();
-  const [enableForm] = Form.useForm<MfaCodeRequest>();
-  const [disableForm] = Form.useForm<MfaCodeRequest>();
+  const [enableForm] = Form.useForm<MfaFormValues>();
+  const [disableForm] = Form.useForm<MfaFormValues>();
+  const [changePasswordForm] = Form.useForm<ChangePasswordFormValues>();
+  const [passwordStep, setPasswordStep] = useState<PasswordResetStep>("idle");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [mfaSetupIssue, setMfaSetupIssue] = useState<string | null>(null);
   const [sessionDraftOperators, setSessionDraftOperators] = useState<
     Partial<Record<SessionField, ListFilterOperator>>
@@ -912,7 +934,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleEnableMfa = async (values: MfaCodeRequest) => {
+  const handleEnableMfa = async (values: MfaFormValues) => {
     if (!canEnableMfa) {
       message.info(
         "MFA enable is unavailable for the current backend feature profile.",
@@ -933,7 +955,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDisableMfa = async (values: MfaCodeRequest) => {
+  const handleDisableMfa = async (values: MfaFormValues) => {
     if (!canDisableMfa) {
       message.info(
         "MFA disable is unavailable for the current backend feature profile.",
@@ -951,6 +973,86 @@ export default function ProfilePage() {
       });
     } catch (error) {
       message.error(getDisplayError(error, "Failed to disable MFA."));
+    }
+  };
+
+  const handleRequestPasswordReset = async () => {
+    if (!user?.email) return;
+    setPasswordError(null);
+    setPasswordStep("requesting");
+
+    try {
+      const response = await requestPasswordReset({ email: user.email });
+      setPasswordStep("token-sent");
+
+      if (process.env.NODE_ENV !== "production" && response.resetToken) {
+        changePasswordForm.setFieldValue("token", response.resetToken);
+      }
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorPayload>;
+      if (axiosError.response?.status === 429) {
+        const retryAfter = axiosError.response?.headers?.["retry-after"];
+        setPasswordError(
+          retryAfter
+            ? `Too many attempts. Try again in ${retryAfter} seconds.`
+            : "Too many attempts. Try again shortly.",
+        );
+      } else if (axiosError.response?.status === 503) {
+        setPasswordError(
+          "Password reset is temporarily unavailable because the API recovery service is not configured.",
+        );
+      } else {
+        setPasswordError(
+          getDisplayError(error, "Unable to request password reset."),
+        );
+      }
+      setPasswordStep("idle");
+    }
+  };
+
+  const handleConfirmPasswordReset = async (
+    values: ChangePasswordFormValues,
+  ) => {
+    setPasswordError(null);
+
+    if (values.password !== values.confirmPassword) {
+      changePasswordForm.setFields([
+        { name: "confirmPassword", errors: ["Passwords do not match"] },
+      ]);
+      return;
+    }
+
+    setPasswordStep("confirming");
+
+    try {
+      await confirmPasswordReset({
+        token: values.token,
+        password: values.password,
+      });
+      setPasswordStep("done");
+      changePasswordForm.resetFields();
+      message.success("Password updated. You will be signed out.");
+      window.setTimeout(() => {
+        void logout({
+          revokeRemote: false,
+          redirectTo: "/login?reason=password-changed",
+        });
+      }, 1600);
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorPayload>;
+      if (axiosError.response?.status === 401) {
+        setPasswordError(
+          "This reset token is invalid or has expired. Request a new one.",
+        );
+      } else if (axiosError.response?.status === 422) {
+        setPasswordError(
+          axiosError.response?.data?.message ??
+            "Password must meet the required policy.",
+        );
+      } else {
+        setPasswordError(getDisplayError(error, "Unable to update password."));
+      }
+      setPasswordStep("token-sent");
     }
   };
 
@@ -985,6 +1087,106 @@ export default function ProfilePage() {
             {formatDateTime(user?.mfaEnabledAt)}
           </Descriptions.Item>
         </Descriptions>
+      </Card>
+
+      <Card title="Change Password">
+        <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+          <Alert
+            type="info"
+            showIcon
+            title="Password change flow"
+            description="Request a reset token for your email, then enter the token and your new password below. You will be signed out after the password is changed."
+          />
+
+          {passwordError ? (
+            <Alert
+              type="error"
+              showIcon
+              title="Password change failed"
+              description={passwordError}
+            />
+          ) : null}
+
+          {passwordStep === "done" ? (
+            <Alert
+              type="success"
+              showIcon
+              title="Password updated"
+              description="Your password has been changed. You will be redirected to sign in."
+            />
+          ) : null}
+
+          {passwordStep === "idle" || passwordStep === "requesting" ? (
+            <Button
+              type="primary"
+              loading={passwordStep === "requesting"}
+              onClick={() => void handleRequestPasswordReset()}
+            >
+              Request password reset token
+            </Button>
+          ) : null}
+
+          {passwordStep === "token-sent" || passwordStep === "confirming" ? (
+            <Form<ChangePasswordFormValues>
+              form={changePasswordForm}
+              layout="vertical"
+              onFinish={(values) => void handleConfirmPasswordReset(values)}
+              requiredMark={false}
+            >
+              <Form.Item
+                name="token"
+                label="Reset token"
+                rules={[{ required: true, message: "Reset token is required" }]}
+                extra="Check your email for the reset token, or paste it from the development preview."
+              >
+                <Input placeholder="Paste your reset token" />
+              </Form.Item>
+
+              <Form.Item
+                name="password"
+                label="New password"
+                rules={[
+                  { required: true, message: "New password is required" },
+                ]}
+                extra="Use at least 12 characters with uppercase, lowercase, number, and special character."
+              >
+                <Input.Password placeholder="Enter a strong new password" />
+              </Form.Item>
+
+              <Form.Item
+                name="confirmPassword"
+                label="Confirm new password"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please confirm your new password",
+                  },
+                ]}
+              >
+                <Input.Password placeholder="Re-enter your new password" />
+              </Form.Item>
+
+              <Space>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={passwordStep === "confirming"}
+                >
+                  Update password
+                </Button>
+                <Button
+                  onClick={() => {
+                    setPasswordStep("idle");
+                    setPasswordError(null);
+                    changePasswordForm.resetFields();
+                  }}
+                >
+                  Cancel
+                </Button>
+              </Space>
+            </Form>
+          ) : null}
+        </Space>
       </Card>
 
       <Card
@@ -1162,7 +1364,7 @@ export default function ProfilePage() {
 
           {canManageMfa ? (
             user?.mfaEnabled ? (
-              <Form<MfaCodeRequest>
+              <Form<MfaFormValues>
                 form={disableForm}
                 layout="vertical"
                 onFinish={(values) => void handleDisableMfa(values)}
@@ -1216,7 +1418,7 @@ export default function ProfilePage() {
                 {pendingSetup ? <MfaSetupCard setup={pendingSetup} /> : null}
 
                 {pendingSetup ? (
-                  <Form<MfaCodeRequest>
+                  <Form<MfaFormValues>
                     form={enableForm}
                     layout="vertical"
                     onFinish={(values) => void handleEnableMfa(values)}

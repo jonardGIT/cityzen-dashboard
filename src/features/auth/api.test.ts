@@ -8,6 +8,7 @@ const {
   authDeleteMock,
   proxiedAuthGetMock,
   createAuthenticatedClientMock,
+  getRefreshTokenMock,
 } = vi.hoisted(() => ({
   publicPostMock: vi.fn(),
   authGetMock: vi.fn(),
@@ -15,6 +16,11 @@ const {
   authDeleteMock: vi.fn(),
   proxiedAuthGetMock: vi.fn(),
   createAuthenticatedClientMock: vi.fn(),
+  getRefreshTokenMock: vi.fn(() => "mock-refresh-token"),
+}));
+
+vi.mock("@/lib/auth/token-storage", () => ({
+  getRefreshToken: getRefreshTokenMock,
 }));
 
 vi.mock("@/lib/api/clients", () => ({
@@ -193,9 +199,11 @@ describe("auth feature api", () => {
 
     expect(authPostMock).toHaveBeenNthCalledWith(1, "/auth/mfa/enable", {
       code: "123456",
+      refreshToken: "mock-refresh-token",
     });
     expect(authPostMock).toHaveBeenNthCalledWith(2, "/auth/mfa/disable", {
       code: "654321",
+      refreshToken: "mock-refresh-token",
     });
     expect(enabled).toEqual({ message: "enabled" });
     expect(disabled).toEqual({ message: "disabled" });
@@ -213,9 +221,13 @@ describe("auth feature api", () => {
 
     const result = await createMfaSetup();
 
-    expect(authPostMock).toHaveBeenCalledWith("/auth/mfa/setup", undefined, {
-      signal: undefined,
-    });
+    expect(authPostMock).toHaveBeenCalledWith(
+      "/auth/mfa/setup",
+      { refreshToken: "mock-refresh-token" },
+      {
+        signal: undefined,
+      },
+    );
     expect(result).toEqual({
       issuer: "Xypes CIRS",
       accountName: "dispatcher@example.com",

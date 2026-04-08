@@ -98,6 +98,7 @@ export interface MfaSetupResponse {
 
 export interface MfaCodeRequest {
   code: string;
+  refreshToken: string;
 }
 
 export interface MessageResponse {
