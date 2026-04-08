@@ -113,6 +113,50 @@ describe("LoginPage", () => {
     expect(replaceMock).toHaveBeenCalledWith("/dashboard");
   });
 
+  it("switches to the MFA step when the first login call rejects with an MFA-required error", async () => {
+    const mfaChallenge = new AxiosError("Unauthorized");
+    mfaChallenge.response = {
+      data: {
+        message:
+          "This account requires a valid MFA code. Enter the 6-digit code from your authenticator app.",
+        mfaRequired: true,
+      },
+      status: 401,
+      statusText: "Unauthorized",
+      headers: {},
+      config: { headers: {} as never },
+    };
+
+    const loginMock = vi.fn().mockRejectedValueOnce(mfaChallenge);
+
+    useAuthMock.mockReturnValue({ login: loginMock });
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "dispatcher@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "Password123!" },
+    });
+
+    await act(async () => {
+      fireEvent.submit(
+        screen.getByRole("button", { name: "Sign In" }).closest("form")!,
+      );
+    });
+
+    expect(
+      await screen.findByLabelText("Authentication code"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Login Failed")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "This account requires a valid MFA code. Enter the 6-digit code from your authenticator app.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("lets the user exit the MFA step and return to the base sign-in state", async () => {
     const loginMock = vi.fn().mockResolvedValueOnce({ mfaRequired: true });
 

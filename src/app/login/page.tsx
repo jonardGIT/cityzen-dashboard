@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { isMfaRequiredError } from "@/features/auth/api";
 import { isCitizenSelfServiceUser } from "@/lib/auth/roles";
 import type { ApiErrorPayload } from "@/types/api";
 import type { LoginReason } from "@/types/auth";
@@ -97,6 +98,14 @@ function LoginPageContent() {
           : "/dashboard",
       );
     } catch (error) {
+      if (isMfaRequiredError(error, Boolean(values.mfaCode))) {
+        setRequiresMfa(true);
+        setPendingCredentials({ email, password });
+        setErrorMessage(null);
+        form.setFieldValue("mfaCode", undefined);
+        return;
+      }
+
       const axiosError = error as AxiosError<ApiErrorPayload>;
       setErrorMessage(
         axiosError.response?.data?.message ??
