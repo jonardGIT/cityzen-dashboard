@@ -70,8 +70,12 @@ describe("LoginPage", () => {
     expect(
       await screen.findByLabelText("Authentication code"),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Login Failed")).not.toBeInTheDocument();
     expect(
       screen.getByText("Step 2 of 2: Verify your sign-in"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Confirm your sign-in with your authenticator code."),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Verify And Sign In" }),
@@ -79,6 +83,8 @@ describe("LoginPage", () => {
     expect(
       screen.getByRole("button", { name: "Use A Different Account" }),
     ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Authentication code"), {
       target: { value: "123456" },
@@ -137,7 +143,58 @@ describe("LoginPage", () => {
     expect(
       screen.queryByText("Step 2 of 2: Verify your sign-in"),
     ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign In" })).toBeInTheDocument();
+  });
+
+  it("shows a verification-specific error when the MFA code is rejected", async () => {
+    const loginError = new AxiosError("Request failed");
+    loginError.response = {
+      data: { message: "Invalid MFA code." },
+      status: 401,
+      statusText: "Unauthorized",
+      headers: {},
+      config: { headers: {} as never },
+    };
+
+    const loginMock = vi
+      .fn()
+      .mockResolvedValueOnce({ mfaRequired: true })
+      .mockRejectedValueOnce(loginError);
+
+    useAuthMock.mockReturnValue({ login: loginMock });
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "dispatcher@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "Password123!" },
+    });
+
+    await act(async () => {
+      fireEvent.submit(
+        screen.getByRole("button", { name: "Sign In" }).closest("form")!,
+      );
+    });
+
+    fireEvent.change(screen.getByLabelText("Authentication code"), {
+      target: { value: "123456" },
+    });
+
+    await act(async () => {
+      fireEvent.submit(
+        screen
+          .getByRole("button", { name: "Verify And Sign In" })
+          .closest("form")!,
+      );
+    });
+
+    expect(screen.getByText("Verification Failed")).toBeInTheDocument();
+    expect(screen.getByText("Invalid MFA code.")).toBeInTheDocument();
+    expect(screen.queryByText("Login Failed")).not.toBeInTheDocument();
   });
 
   it("shows server-driven reauthentication reasons", () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   collectContractDriftIssues,
   collectOpenApiOperationKeys,
+  getCheckedInOpenApiOperationKeys,
   isCrudEndpointAvailableInOpenApi,
 } from "@/features/dynamic-crud/openapi";
 
@@ -19,6 +20,18 @@ describe("dynamic crud OpenAPI helpers", () => {
       "POST /incidents",
       "POST /incidents/{id}/restore",
     ]);
+  });
+
+  it("includes documented auth operations in the checked-in contract", () => {
+    expect(getCheckedInOpenApiOperationKeys()).toEqual(
+      expect.arrayContaining([
+        "POST /auth/password-reset/request",
+        "POST /auth/password-reset/confirm",
+        "POST /auth/mfa/setup",
+        "POST /auth/mfa/enable",
+        "POST /auth/mfa/disable",
+      ]),
+    );
   });
 
   it("treats feature-gated endpoints as unavailable when omitted from the active spec", () => {

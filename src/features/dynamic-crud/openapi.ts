@@ -1,16 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { checkedInOpenApiDocument } from "@/docs/openapi";
 import { publicClient } from "@/lib/api/clients";
 import { getCrudConfig } from "@/features/dynamic-crud/config";
 import type {
   CrudAuthOptionalEndpoint,
   CrudEndpoint,
 } from "@/features/dynamic-crud/types";
-
-type OpenApiDocument = {
-  paths?: Record<string, Record<string, unknown> | undefined>;
-};
+import type { OpenApiDocument } from "@/docs/openapi";
 
 function buildEndpointKey(method: string, path: string) {
   return `${method.toUpperCase()} ${path}`;
@@ -66,9 +64,25 @@ export function collectOpenApiOperationKeys(spec: OpenApiDocument): string[] {
   return keys;
 }
 
-export async function fetchOpenApiOperationKeys() {
+export function getCheckedInOpenApiOperationKeys() {
+  return collectOpenApiOperationKeys(checkedInOpenApiDocument);
+}
+
+async function fetchLiveOpenApiOperationKeys() {
   const response = await publicClient.get<OpenApiDocument>("/openapi.json");
   return collectOpenApiOperationKeys(response.data);
+}
+
+export async function fetchOpenApiOperationKeys() {
+  if (process.env.NEXT_PUBLIC_OPENAPI_SOURCE !== "live") {
+    return getCheckedInOpenApiOperationKeys();
+  }
+
+  try {
+    return await fetchLiveOpenApiOperationKeys();
+  } catch {
+    return getCheckedInOpenApiOperationKeys();
+  }
 }
 
 export function collectContractDriftIssues(

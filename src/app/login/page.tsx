@@ -23,6 +23,11 @@ interface LoginFormValues {
   mfaCode?: string;
 }
 
+interface PendingLoginCredentials {
+  email: string;
+  password: string;
+}
+
 const LOGIN_REASON_MESSAGES: Record<LoginReason, string> = {
   "signed-out": "You have been signed out.",
   "session-expired":
@@ -40,6 +45,8 @@ function LoginPageContent() {
   const [form] = Form.useForm<LoginFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [requiresMfa, setRequiresMfa] = useState(false);
+  const [pendingCredentials, setPendingCredentials] =
+    useState<PendingLoginCredentials | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { login } = useAuth();
   const router = useRouter();
@@ -53,6 +60,7 @@ function LoginPageContent() {
 
   const resetMfaStep = () => {
     setRequiresMfa(false);
+    setPendingCredentials(null);
     setErrorMessage(null);
     form.setFieldValue("mfaCode", undefined);
   };
@@ -61,14 +69,20 @@ function LoginPageContent() {
     setErrorMessage(null);
     setSubmitting(true);
 
+    const email = requiresMfa
+      ? (pendingCredentials?.email ?? values.email)
+      : values.email;
+    const password = requiresMfa
+      ? (pendingCredentials?.password ?? values.password)
+      : values.password;
+
     try {
-      const result = await login(values.email, values.password, values.mfaCode);
+      const result = await login(email, password, values.mfaCode);
 
       if (result.mfaRequired) {
         setRequiresMfa(true);
-        setErrorMessage(
-          "This account requires a valid MFA code. Enter the 6-digit code from your authenticator app.",
-        );
+        setPendingCredentials({ email, password });
+        form.setFieldValue("mfaCode", undefined);
         return;
       }
 
@@ -107,7 +121,11 @@ function LoginPageContent() {
         <Title level={3} style={{ marginBottom: 4 }}>
           LGU Incident Dashboard
         </Title>
-        <Text type="secondary">Sign in with your authorized account.</Text>
+        <Text type="secondary">
+          {requiresMfa
+            ? "Confirm your sign-in with your authenticator code."
+            : "Sign in with your authorized account."}
+        </Text>
 
         {loginInfoMessage ? (
           <Alert
@@ -124,8 +142,18 @@ function LoginPageContent() {
             style={{ marginTop: 16 }}
             type="error"
             showIcon
-            title="Login Failed"
+            title={requiresMfa ? "Verification Failed" : "Login Failed"}
             description={errorMessage}
+          />
+        ) : null}
+
+        {requiresMfa ? (
+          <Alert
+            style={{ marginTop: 16 }}
+            type="info"
+            showIcon
+            title="Step 2 of 2: Verify your sign-in"
+            description={`Enter the 6-digit code from the authenticator app for ${pendingCredentials?.email?.trim() || emailValue?.trim() || "this account"}.`}
           />
         ) : null}
 
@@ -136,27 +164,34 @@ function LoginPageContent() {
           onFinish={onFinish}
           requiredMark={false}
         >
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: "Email is required" },
-              { type: "email", message: "Enter a valid email" },
-            ]}
-          >
-            <Input prefix={<MailOutlined />} placeholder="Enter your email" />
-          </Form.Item>
+          {!requiresMfa ? (
+            <>
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: "Email is required" },
+                  { type: "email", message: "Enter a valid email" },
+                ]}
+              >
+                <Input
+                  prefix={<MailOutlined />}
+                  placeholder="Enter your email"
+                />
+              </Form.Item>
 
-          <Form.Item
-            name="password"
-            label="Password"
-            rules={[{ required: true, message: "Password is required" }]}
-          >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder="Enter your password"
-            />
-          </Form.Item>
+              <Form.Item
+                name="password"
+                label="Password"
+                rules={[{ required: true, message: "Password is required" }]}
+              >
+                <Input.Password
+                  prefix={<LockOutlined />}
+                  placeholder="Enter your password"
+                />
+              </Form.Item>
+            </>
+          ) : null}
 
           {requiresMfa ? (
             <Space
@@ -164,20 +199,18 @@ function LoginPageContent() {
               size={12}
               style={{ width: "100%", marginBottom: 16 }}
             >
-              <Alert
-                type="success"
-                showIcon
-                title="Step 2 of 2: Verify your sign-in"
-                description={`Enter the 6-digit code from the authenticator app for ${emailValue?.trim() || "this account"}.`}
-              />
               <Form.Item
                 name="mfaCode"
                 label="Authentication code"
                 rules={[
-                  { required: true, message: "Authentication code is required" },
+                  {
+                    required: true,
+                    message: "Authentication code is required",
+                  },
                   {
                     len: 6,
-                    message: "Enter the 6-digit code from your authenticator app",
+                    message:
+                      "Enter the 6-digit code from your authenticator app",
                   },
                 ]}
                 style={{ marginBottom: 0 }}

@@ -16,21 +16,25 @@ npm install
 npm run dev
 ```
 
-To compare the dashboard CRUD config against the live backend OpenAPI document:
+The dashboard runtime uses the checked-in contract in `src/docs/openapi.ts` by default so production deployments do not depend on `/api/v1/openapi.json` existing.
+
+To compare the dashboard CRUD config against a live backend OpenAPI document, use a non-production API instance:
 
 ```bash
 npm run check:openapi-drift
 ```
 
-By default this uses `NEXT_PUBLIC_API_BASE_URL` from `.env.local` and requests `/openapi.json`. You can override that with `OPENAPI_URL`.
+By default this uses `NEXT_PUBLIC_API_BASE_URL` from `.env.local` and requests `/openapi.json`. You can override that with `OPENAPI_URL`. Do not point this at production-like environments where OpenAPI is intentionally disabled.
 
-When the backend is offline, validate against a saved spec file instead:
+When the backend is offline, or when the target environment runs with `NODE_ENV=production`, validate against a saved spec file instead:
 
 ```bash
 npm run check:openapi-drift -- --spec-file /tmp/xypes-openapi.json
 ```
 
 Feature-gated config operations are reported separately. They do not fail the check when the live OpenAPI omits them, which is expected for disabled backend feature profiles.
+
+If you need the app to fetch a live OpenAPI document at runtime for local verification, set `NEXT_PUBLIC_OPENAPI_SOURCE=live` against a local or non-production API that exposes `/api/v1/openapi.json`.
 
 App URL: `http://localhost:3001`
 
