@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-The dashboard runtime uses the checked-in contract in `src/docs/openapi.ts` by default so production deployments do not depend on `/api/v1/openapi.json` existing.
+The dashboard runtime derives a checked-in contract from `dashboard-crud-config.flat.json` by default so production deployments do not depend on `/api/v1/openapi.json` existing.
 
 To compare the dashboard CRUD config against a live backend OpenAPI document, use a non-production API instance:
 

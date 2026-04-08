@@ -1,14 +1,32 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { checkedInOpenApiDocument } from "../../docs/openapi";
 import { publicClient } from "@/lib/api/clients";
 import { getCrudConfig } from "@/features/dynamic-crud/config";
 import type {
   CrudAuthOptionalEndpoint,
   CrudEndpoint,
 } from "@/features/dynamic-crud/types";
-import type { OpenApiDocument } from "../../docs/openapi";
+
+export type OpenApiDocument = {
+  paths?: Record<string, Record<string, unknown> | undefined>;
+};
+
+type DocumentedEndpoint = {
+  method: string;
+  path: string;
+};
+
+const documentedNonCrudEndpoints: DocumentedEndpoint[] = [
+  { method: "GET", path: "/health" },
+  { method: "POST", path: "/auth/login" },
+  { method: "POST", path: "/auth/refresh" },
+  { method: "POST", path: "/auth/password-reset/request" },
+  { method: "POST", path: "/auth/password-reset/confirm" },
+  { method: "GET", path: "/auth/me" },
+  { method: "POST", path: "/auth/logout" },
+  { method: "GET", path: "/users/capabilities" },
+];
 
 function buildEndpointKey(method: string, path: string) {
   return `${method.toUpperCase()} ${path}`;
@@ -47,6 +65,31 @@ function isRelevantOpenApiPath(
   );
 }
 
+function buildCheckedInOpenApiDocument(): OpenApiDocument {
+  const config = getCrudConfig();
+  const documentedEndpoints: DocumentedEndpoint[] = [
+    ...config.endpoints.map(({ method, path }) => ({ method, path })),
+    ...(config.auth.optionalEndpoints ?? []).map(({ method, path }) => ({
+      method,
+      path,
+    })),
+    ...documentedNonCrudEndpoints,
+  ];
+
+  const paths = documentedEndpoints.reduce<
+    NonNullable<OpenApiDocument["paths"]>
+  >((result, endpoint) => {
+    const methods = result[endpoint.path] ?? {};
+
+    methods[endpoint.method.toLowerCase()] = {};
+    result[endpoint.path] = methods;
+
+    return result;
+  }, {});
+
+  return { paths };
+}
+
 export function collectOpenApiOperationKeys(spec: OpenApiDocument): string[] {
   const keys: string[] = [];
 
@@ -65,7 +108,7 @@ export function collectOpenApiOperationKeys(spec: OpenApiDocument): string[] {
 }
 
 export function getCheckedInOpenApiOperationKeys() {
-  return collectOpenApiOperationKeys(checkedInOpenApiDocument);
+  return collectOpenApiOperationKeys(buildCheckedInOpenApiDocument());
 }
 
 async function fetchLiveOpenApiOperationKeys() {
