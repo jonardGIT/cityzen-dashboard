@@ -1,14 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { checkedInOpenApiDocument } from "@/docs/openapi";
+import { checkedInOpenApiDocument } from "../../docs/openapi";
 import { publicClient } from "@/lib/api/clients";
 import { getCrudConfig } from "@/features/dynamic-crud/config";
 import type {
   CrudAuthOptionalEndpoint,
   CrudEndpoint,
 } from "@/features/dynamic-crud/types";
-import type { OpenApiDocument } from "@/docs/openapi";
+import type { OpenApiDocument } from "../../docs/openapi";
 
 function buildEndpointKey(method: string, path: string) {
   return `${method.toUpperCase()} ${path}`;
