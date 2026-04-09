@@ -63,7 +63,6 @@ const { Text, Title } = Typography;
 
 interface AssignmentQuickActionValues {
   responderId: string;
-  statusId?: string;
   notes?: string;
 }
 
@@ -203,7 +202,6 @@ export default function IncidentWorkspacePage() {
       await createAssignmentMutation.mutateAsync({
         incidentId: String(incident.id),
         responderId: values.responderId,
-        statusId: values.statusId,
         notes: values.notes,
       });
       message.success("Responder assigned");
@@ -634,15 +632,6 @@ export default function IncidentWorkspacePage() {
               options={responderOptions}
               loading={respondersQuery.isLoading}
               placeholder="Select responder"
-            />
-          </Form.Item>
-
-          <Form.Item name="statusId" label="Assignment Status">
-            <Select
-              allowClear
-              options={statusOptions}
-              loading={statusesQuery.isLoading}
-              placeholder="Optional status"
             />
           </Form.Item>
 
