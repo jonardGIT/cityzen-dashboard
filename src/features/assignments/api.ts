@@ -14,7 +14,10 @@ import type { Assignment } from "@/types/api";
 export interface CreateAssignmentDto {
   incidentId: string;
   responderId: string;
-  statusId?: string;
+  assignedDate?: string;
+  responseStart?: string;
+  responseEnd?: string;
+  outcome?: string;
   notes?: string;
 }
 

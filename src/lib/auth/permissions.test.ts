@@ -44,6 +44,7 @@ describe("auth permissions", () => {
     expect(CAN_MANAGE_MFA).toEqual([
       Role.SYSTEM_ADMIN,
       Role.DEPARTMENT_MANAGER,
+      Role.SUPERVISOR,
       Role.DISPATCHER,
     ]);
   });

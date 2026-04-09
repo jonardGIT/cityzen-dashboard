@@ -1,21 +1,28 @@
 # IDE/editor settings
 .vscode/
 
-# Documentation
+# Documentation (contains credentials, capability details, internal architecture)
 docs/
 
-# Scripts and QA tools
+# Scripts and QA tools (contain hardcoded test data and internal IPs)
 scripts/
+
+# Copilot/AI prompt files (contain internal architecture specs)
+*-prompt.md
 
 # Test files and coverage
 **/*.test.tsx
+**/*.test.ts
 **/*.spec.tsx
+**/*.spec.ts
 coverage/
 
 # Local environment and build info
 *.local
 *.log
-*.md
+
+# CRUD config flat JSON (internal resource mapping)
+dashboard-crud-config.flat.json
 
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 

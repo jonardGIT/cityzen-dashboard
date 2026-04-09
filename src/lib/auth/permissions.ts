@@ -30,6 +30,7 @@ export const CAN_MANAGE_USERS: Role[] = [
 export const CAN_MANAGE_MFA: Role[] = [
   Role.SYSTEM_ADMIN,
   Role.DEPARTMENT_MANAGER,
+  Role.SUPERVISOR,
   Role.DISPATCHER,
 ];
 

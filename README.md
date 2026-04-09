@@ -56,64 +56,13 @@ NEXT_PUBLIC_API_KEY=local-dev-key
 
 ## Auth and Session Behavior
 
-- Login endpoint: `POST /auth/login`
-- Password reset request endpoint: `POST /auth/password-reset/request`
-- Password reset confirm endpoint: `POST /auth/password-reset/confirm`
-- Refresh endpoint: `POST /auth/refresh`
-- Current user endpoint: `GET /auth/me`
-- Session inventory endpoint: `GET /auth/sessions`
-- Session revoke endpoint: `DELETE /auth/sessions/:id`
-- MFA endpoints:
-  - `POST /auth/mfa/setup`
-  - `POST /auth/mfa/enable`
-  - `POST /auth/mfa/disable`
-- MFA management UI is exposed only to `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`, and `DISPATCHER`
-- `POST /auth/mfa/setup` may return `503` when backend MFA encryption/configuration is unavailable; the profile screen surfaces that as an operator-facing configuration issue
-- Access token, refresh token, user, and session metadata are stored in local storage
-- Forgot-password and reset-password public flows are available from the login experience
-- In non-production environments, password reset request responses may expose `resetToken` and `resetExpiresAt` for local development testing
-- On app boot, session restore is attempted via `/auth/me`
-- Protected API calls attempt a refresh before redirecting to `/login`
-- Login shows explicit re-authentication reasons for sign-out, expired or revoked sessions, MFA changes, and other server-driven invalidations when the API provides them
-- The profile page exposes active-session management and MFA enrollment for permitted roles
-- 403 is rendered as forbidden state/page
-- `GET /users/capabilities` is fetched for any authenticated session and drives navigation, self-service routing, and user-management affordances
-- Protected `/api/v1/*` requests require both Bearer token and `x-api-key` unless the backend marks the route public
-- A `401` indicates missing or invalid authentication or API-key forwarding, while `403` indicates an authenticated role mismatch
+See `docs/auth-operation-endpoint-flow.md` (gitignored) for detailed auth flow documentation.
 
 ## Roles
 
-- `SYSTEM_ADMIN`
-- `DEPARTMENT_MANAGER`
-- `SUPERVISOR`
-- `DISPATCHER`
-- `RESPONDER`
-- `CITIZEN_REPORTER`
-- `AUDITOR`
+Seven roles are defined. See internal docs for the full permission matrix and capabilities.
 
-Legacy cached frontend role labels are normalized automatically:
-
-- `SUPER_ADMIN` -> `SYSTEM_ADMIN`
-- `ADMIN` -> `DEPARTMENT_MANAGER`
-- `VIEWER` -> `CITIZEN_REPORTER`
-
-## Permission Matrix
-
-- Create incident: `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`, `RESPONDER`
-- Create assignment: `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`
-- View audit logs: `SYSTEM_ADMIN`, `AUDITOR`
-- Create/manage users: `SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`
-- User management targets are explicit, not hierarchical:
-  - `SYSTEM_ADMIN` can assign/manage `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, `CITIZEN_REPORTER`
-  - `DEPARTMENT_MANAGER` can assign/manage `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, `CITIZEN_REPORTER`
-- Dashboard access decisions prefer scoped capability keys from `GET /users/capabilities`, for example:
-  - `incident:read:department`, `incident:read:assigned`, `incident:read:own`
-  - `assignment:create:department`, `assignment:read:assigned`
-  - `audit:read:global`, `audit:export:global`
-  - `citizen:link:self`, `incident:create:self`
-- Citizen self-service flows:
-  - `POST /citizens/link-me`: `CITIZEN_REPORTER`
-  - `POST /incidents/report`: `CITIZEN_REPORTER`
+Legacy cached frontend role labels (e.g. `SUPER_ADMIN`, `ADMIN`, `VIEWER`) are normalized automatically.
 
 ## Required Routes Implemented
 
@@ -159,12 +108,7 @@ with URL query parameters.
 
 ## Seeded QA Accounts
 
-- `admin@xypes.local / Password123!` (`SYSTEM_ADMIN`)
-- `ops.lead@xypes.local / Password123!` (`DEPARTMENT_MANAGER`)
-- `dispatcher@xypes.local / Password123!` (`DISPATCHER`)
-- `supervisor@xypes.local / Password123!` (`RESPONDER`)
-- `analyst@xypes.local / Password123!` (`CITIZEN_REPORTER`)
-- `auditor@xypes.local / Password123!` (`AUDITOR`)
+See `docs/developer-testing-setup.md` (gitignored) for QA account credentials and role mappings.
 
 ## CORS Reminder
 
