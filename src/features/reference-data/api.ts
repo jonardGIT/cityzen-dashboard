@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { authClient } from "@/lib/api/clients";
+import { authClient, publicClient } from "@/lib/api/clients";
 import { unwrapEntityResponse } from "@/lib/api/normalize";
 import {
   adaptPaginatedResponse,
@@ -20,7 +20,7 @@ import type {
 } from "@/types/api";
 
 export async function fetchHealth() {
-  const response = await authClient.get<unknown>("/health");
+  const response = await publicClient.get<unknown>("/health");
   return unwrapEntityResponse<HealthResponse>(response.data);
 }
 
