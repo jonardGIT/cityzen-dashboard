@@ -36,10 +36,12 @@
         "fullPath": "/api/v1/auth/mfa/setup",
         "authRequired": true,
         "allowedRoles": [
-          "SYSTEM_ADMIN",
-          "DEPARTMENT_MANAGER",
-          "SUPERVISOR",
-          "DISPATCHER"
+          "NATIONAL_ADMIN",
+          "REGIONAL_DIRECTOR",
+          "PROVINCIAL_ADMIN",
+          "CITY_ADMIN",
+          "DISPATCHER",
+          "AUDITOR"
         ],
         "featureGate": {
           "feature": "mfaMode",
@@ -54,10 +56,12 @@
         "fullPath": "/api/v1/auth/mfa/enable",
         "authRequired": true,
         "allowedRoles": [
-          "SYSTEM_ADMIN",
-          "DEPARTMENT_MANAGER",
-          "SUPERVISOR",
-          "DISPATCHER"
+          "NATIONAL_ADMIN",
+          "REGIONAL_DIRECTOR",
+          "PROVINCIAL_ADMIN",
+          "CITY_ADMIN",
+          "DISPATCHER",
+          "AUDITOR"
         ],
         "featureGate": {
           "feature": "mfaMode",
@@ -72,10 +76,12 @@
         "fullPath": "/api/v1/auth/mfa/disable",
         "authRequired": true,
         "allowedRoles": [
-          "SYSTEM_ADMIN",
-          "DEPARTMENT_MANAGER",
-          "SUPERVISOR",
-          "DISPATCHER"
+          "NATIONAL_ADMIN",
+          "REGIONAL_DIRECTOR",
+          "PROVINCIAL_ADMIN",
+          "CITY_ADMIN",
+          "DISPATCHER",
+          "AUDITOR"
         ],
         "featureGate": {
           "feature": "mfaMode",
@@ -94,7 +100,12 @@
       "path": "/citizens",
       "fullPath": "/api/v1/citizens",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "citizens",
@@ -104,7 +115,12 @@
       "path": "/citizens/{id}",
       "fullPath": "/api/v1/citizens/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "citizens",
@@ -114,7 +130,12 @@
       "path": "/citizens",
       "fullPath": "/api/v1/citizens",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "citizens",
@@ -135,7 +156,12 @@
       "path": "/citizens/{id}",
       "fullPath": "/api/v1/citizens/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "citizens",
@@ -145,7 +171,12 @@
       "path": "/citizens/{id}",
       "fullPath": "/api/v1/citizens/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "citizens",
@@ -159,7 +190,12 @@
         "feature": "recordDeletion",
         "requires": "archive"
       },
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
 
     {
@@ -171,9 +207,10 @@
       "fullPath": "/api/v1/agencies",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -186,9 +223,10 @@
       "fullPath": "/api/v1/agencies/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -200,7 +238,12 @@
       "path": "/agencies",
       "fullPath": "/api/v1/agencies",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "agencies",
@@ -210,7 +253,12 @@
       "path": "/agencies/{id}",
       "fullPath": "/api/v1/agencies/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "agencies",
@@ -220,7 +268,12 @@
       "path": "/agencies/{id}",
       "fullPath": "/api/v1/agencies/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "agencies",
@@ -234,7 +287,12 @@
         "feature": "recordDeletion",
         "requires": "archive"
       },
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
 
     {
@@ -246,9 +304,10 @@
       "fullPath": "/api/v1/responders",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -261,9 +320,10 @@
       "fullPath": "/api/v1/responders/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -275,7 +335,12 @@
       "path": "/responders",
       "fullPath": "/api/v1/responders",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "responders",
@@ -285,7 +350,12 @@
       "path": "/responders/{id}",
       "fullPath": "/api/v1/responders/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "responders",
@@ -295,7 +365,12 @@
       "path": "/responders/{id}",
       "fullPath": "/api/v1/responders/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "responders",
@@ -309,7 +384,12 @@
         "feature": "recordDeletion",
         "requires": "archive"
       },
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
 
     {
@@ -321,9 +401,10 @@
       "fullPath": "/api/v1/statuses",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
         "CITIZEN_REPORTER",
@@ -339,9 +420,10 @@
       "fullPath": "/api/v1/statuses/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
         "CITIZEN_REPORTER",
@@ -356,7 +438,12 @@
       "path": "/statuses",
       "fullPath": "/api/v1/statuses",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "statuses",
@@ -366,7 +453,12 @@
       "path": "/statuses/{id}",
       "fullPath": "/api/v1/statuses/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "statuses",
@@ -376,7 +468,12 @@
       "path": "/statuses/{id}",
       "fullPath": "/api/v1/statuses/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "statuses",
@@ -390,7 +487,12 @@
         "feature": "recordDeletion",
         "requires": "archive"
       },
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
 
     {
@@ -402,9 +504,10 @@
       "fullPath": "/api/v1/categories",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
         "CITIZEN_REPORTER",
@@ -420,9 +523,10 @@
       "fullPath": "/api/v1/categories/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
         "CITIZEN_REPORTER",
@@ -437,7 +541,12 @@
       "path": "/categories",
       "fullPath": "/api/v1/categories",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "categories",
@@ -447,7 +556,12 @@
       "path": "/categories/{id}",
       "fullPath": "/api/v1/categories/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "categories",
@@ -457,7 +571,12 @@
       "path": "/categories/{id}",
       "fullPath": "/api/v1/categories/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "categories",
@@ -471,7 +590,12 @@
         "feature": "recordDeletion",
         "requires": "archive"
       },
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
 
     {
@@ -483,9 +607,10 @@
       "fullPath": "/api/v1/severities",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
         "CITIZEN_REPORTER",
@@ -501,9 +626,10 @@
       "fullPath": "/api/v1/severities/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
         "CITIZEN_REPORTER",
@@ -518,7 +644,12 @@
       "path": "/severities",
       "fullPath": "/api/v1/severities",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "severities",
@@ -528,7 +659,12 @@
       "path": "/severities/{id}",
       "fullPath": "/api/v1/severities/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "severities",
@@ -538,7 +674,12 @@
       "path": "/severities/{id}",
       "fullPath": "/api/v1/severities/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "severities",
@@ -552,7 +693,12 @@
         "feature": "recordDeletion",
         "requires": "archive"
       },
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
 
     {
@@ -564,13 +710,13 @@
       "fullPath": "/api/v1/incidents",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
-        "CITIZEN_REPORTER",
-        "AUDITOR"
+        "CITIZEN_REPORTER"
       ],
       "notes": "The backend applies role-aware scoping. Citizen reporters only receive their own incidents."
     },
@@ -583,15 +729,37 @@
       "fullPath": "/api/v1/incidents/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
-        "CITIZEN_REPORTER",
-        "AUDITOR"
+        "CITIZEN_REPORTER"
       ],
       "notes": "The backend enforces per-role incident visibility. Citizen reporters can only access their own incident IDs."
+    },
+    {
+      "resource": "incidents",
+      "label": "Incidents",
+      "operation": "listAudit",
+      "method": "GET",
+      "path": "/incidents/audit",
+      "fullPath": "/api/v1/incidents/audit",
+      "authRequired": true,
+      "allowedRoles": ["AUDITOR"],
+      "notes": "Auditor-safe incident list. The backend returns a redacted incident projection and restricts access to AUDITOR users."
+    },
+    {
+      "resource": "incidents",
+      "label": "Incidents",
+      "operation": "getAudit",
+      "method": "GET",
+      "path": "/incidents/audit/{id}",
+      "fullPath": "/api/v1/incidents/audit/{id}",
+      "authRequired": true,
+      "allowedRoles": ["AUDITOR"],
+      "notes": "Auditor-safe incident detail. The backend returns the redacted auditor projection and restricts access to AUDITOR users."
     },
     {
       "resource": "incidents",
@@ -602,9 +770,10 @@
       "fullPath": "/api/v1/incidents",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER"
       ]
@@ -629,9 +798,10 @@
       "fullPath": "/api/v1/incidents/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER"
       ]
@@ -645,9 +815,10 @@
       "fullPath": "/api/v1/incidents/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER"
       ]
@@ -665,12 +836,42 @@
         "requires": "archive"
       },
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER"
       ]
+    },
+    {
+      "resource": "incidents",
+      "label": "Incidents",
+      "operation": "timeline",
+      "method": "GET",
+      "path": "/incidents/{id}/timeline",
+      "fullPath": "/api/v1/incidents/{id}/timeline",
+      "authRequired": true,
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
+        "DISPATCHER",
+        "RESPONDER"
+      ],
+      "notes": "Internal incident timeline. Citizen reporters use the mobile citizen-safe timeline, and auditors use the separate auditor-safe timeline route."
+    },
+    {
+      "resource": "incidents",
+      "label": "Incidents",
+      "operation": "timelineAudit",
+      "method": "GET",
+      "path": "/incidents/audit/{id}/timeline",
+      "fullPath": "/api/v1/incidents/audit/{id}/timeline",
+      "authRequired": true,
+      "allowedRoles": ["AUDITOR"],
+      "notes": "Auditor-safe incident timeline. The backend exposes a redacted timeline projection and restricts access to AUDITOR users."
     },
     {
       "resource": "incidents",
@@ -681,13 +882,13 @@
       "fullPath": "/api/v1/incidents/{id}/media/{mediaId}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
-        "CITIZEN_REPORTER",
-        "AUDITOR"
+        "CITIZEN_REPORTER"
       ],
       "notes": "Authenticated media access endpoint. The backend enforces incident-level authorization before resolving an access URL."
     },
@@ -704,9 +905,10 @@
         "requires": "supabase-storage"
       },
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
         "CITIZEN_REPORTER"
@@ -723,9 +925,10 @@
       "fullPath": "/api/v1/assignments",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -738,9 +941,10 @@
       "fullPath": "/api/v1/assignments/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -753,9 +957,10 @@
       "fullPath": "/api/v1/assignments",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -768,9 +973,10 @@
       "fullPath": "/api/v1/assignments/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -783,9 +989,10 @@
       "fullPath": "/api/v1/assignments/{id}",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -802,9 +1009,10 @@
         "requires": "archive"
       },
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER"
       ]
     },
@@ -818,9 +1026,10 @@
       "fullPath": "/api/v1/users/capabilities",
       "authRequired": true,
       "allowedRoles": [
-        "SYSTEM_ADMIN",
-        "DEPARTMENT_MANAGER",
-        "SUPERVISOR",
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN",
         "DISPATCHER",
         "RESPONDER",
         "CITIZEN_REPORTER",
@@ -835,7 +1044,7 @@
       "path": "/users",
       "fullPath": "/api/v1/users",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": ["NATIONAL_ADMIN"]
     },
     {
       "resource": "users",
@@ -845,7 +1054,7 @@
       "path": "/users/{id}",
       "fullPath": "/api/v1/users/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": ["NATIONAL_ADMIN"]
     },
     {
       "resource": "users",
@@ -855,7 +1064,12 @@
       "path": "/users",
       "fullPath": "/api/v1/users",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "users",
@@ -865,7 +1079,12 @@
       "path": "/users/{id}",
       "fullPath": "/api/v1/users/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "users",
@@ -875,7 +1094,12 @@
       "path": "/users/{id}",
       "fullPath": "/api/v1/users/{id}",
       "authRequired": true,
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     },
     {
       "resource": "users",
@@ -889,7 +1113,106 @@
         "feature": "recordDeletion",
         "requires": "archive"
       },
-      "allowedRoles": ["SYSTEM_ADMIN", "DEPARTMENT_MANAGER"]
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
+    },
+    {
+      "resource": "mobile-content",
+      "label": "Mobile Content",
+      "operation": "list",
+      "method": "GET",
+      "path": "/mobile-content",
+      "fullPath": "/api/v1/mobile-content",
+      "authRequired": true,
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
+    },
+    {
+      "resource": "mobile-content",
+      "label": "Mobile Content",
+      "operation": "get",
+      "method": "GET",
+      "path": "/mobile-content/{id}",
+      "fullPath": "/api/v1/mobile-content/{id}",
+      "authRequired": true,
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
+    },
+    {
+      "resource": "mobile-content",
+      "label": "Mobile Content",
+      "operation": "create",
+      "method": "POST",
+      "path": "/mobile-content",
+      "fullPath": "/api/v1/mobile-content",
+      "authRequired": true,
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
+    },
+    {
+      "resource": "mobile-content",
+      "label": "Mobile Content",
+      "operation": "update",
+      "method": "PATCH",
+      "path": "/mobile-content/{id}",
+      "fullPath": "/api/v1/mobile-content/{id}",
+      "authRequired": true,
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
+    },
+    {
+      "resource": "mobile-content",
+      "label": "Mobile Content",
+      "operation": "delete",
+      "method": "DELETE",
+      "path": "/mobile-content/{id}",
+      "fullPath": "/api/v1/mobile-content/{id}",
+      "authRequired": true,
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
+    },
+    {
+      "resource": "mobile-content",
+      "label": "Mobile Content",
+      "operation": "restore",
+      "method": "POST",
+      "path": "/mobile-content/{id}/restore",
+      "fullPath": "/api/v1/mobile-content/{id}/restore",
+      "authRequired": true,
+      "featureGate": {
+        "feature": "recordDeletion",
+        "requires": "archive"
+      },
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "REGIONAL_DIRECTOR",
+        "PROVINCIAL_ADMIN",
+        "CITY_ADMIN"
+      ]
     }
   ]
 }

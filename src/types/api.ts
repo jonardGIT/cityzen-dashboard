@@ -96,10 +96,63 @@ export interface IncidentMedia {
   displayOrder?: number;
 }
 
+export type JurisdictionType = "region" | "province" | "city" | "barangay";
+
+export interface Region extends BaseEntity {
+  code?: string;
+  name?: string;
+  designation?: string | null;
+}
+
+export interface Province extends BaseEntity {
+  code?: string;
+  name?: string;
+  regionId?: EntityId;
+}
+
+export interface CityMunicipality extends BaseEntity {
+  code?: string;
+  name?: string;
+  type?: string;
+  provinceId?: EntityId;
+}
+
+export interface Barangay extends BaseEntity {
+  code?: string;
+  name?: string;
+  cityMunicipalityId?: EntityId;
+}
+
+export type UserJurisdictionType = JurisdictionType | "municipality";
+
 export interface User extends BaseEntity {
   email?: string;
   name?: string;
+  mobileNumber?: string | null;
+  mobileNumberVerifiedAt?: string | null;
+  citizenId?: string | null;
   role?: string;
+  jurisdictionType?: UserJurisdictionType | null;
+  jurisdictionId?: EntityId | null;
+}
+
+export interface MobileAppContent extends BaseEntity {
+  slug?: string;
+  title?: string;
+  summary?: string | null;
+  body?: string;
+  contentType?: string;
+  placement?: string;
+  audience?: string | null;
+  imageUrl?: string | null;
+  ctaLabel?: string | null;
+  ctaUrl?: string | null;
+  sortOrder?: number;
+  isPublished?: boolean;
+  publishedAt?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface AuditLog extends BaseEntity {

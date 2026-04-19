@@ -97,4 +97,14 @@ describe("dynamic crud OpenAPI helpers", () => {
       ]),
     );
   });
+
+  it("includes mobile-content operations in the checked-in contract", () => {
+    expect(getCheckedInOpenApiOperationKeys()).toEqual(
+      expect.arrayContaining([
+        "GET /mobile-content",
+        "POST /mobile-content",
+        "PATCH /mobile-content/{id}",
+      ]),
+    );
+  });
 });

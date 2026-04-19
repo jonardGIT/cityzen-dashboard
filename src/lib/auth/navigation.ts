@@ -6,7 +6,7 @@ import {
   isCitizenSelfServiceUser,
   permissionListIncludes,
 } from "@/lib/auth/roles";
-import type { Role, UserCapabilities } from "@/types/auth";
+import { Role, type UserCapabilities } from "@/types/auth";
 
 export interface NavigationContext {
   role?: Role;
@@ -26,30 +26,61 @@ export interface NavigationItemDefinition {
 const AUDIT_PERMISSION_HINTS = ["audit:read:global", "audit:export:global"];
 
 const USER_PERMISSION_HINTS = [
-  "user:read:global",
-  "user:read:department",
-  "user:update:department",
   "user:manage:global",
+  "user:manage:national",
+  "user:create:region",
+  "user:update:region",
+  "user:delete:region",
+  "user:manage:region",
+  "user:create:province",
+  "user:update:province",
+  "user:delete:province",
+  "user:manage:province",
+  "user:create:city",
+  "user:update:city",
+  "user:delete:city",
+  "user:manage:city",
+  "user:create:barangay",
+  "user:update:barangay",
+  "user:delete:barangay",
+  "user:manage:barangay",
+];
+
+const STANDARD_INCIDENT_ACCESS_ROLES: Role[] = [
+  Role.NATIONAL_ADMIN,
+  Role.REGIONAL_DIRECTOR,
+  Role.PROVINCIAL_ADMIN,
+  Role.CITY_ADMIN,
+  Role.DISPATCHER,
+  Role.RESPONDER,
+  Role.CITIZEN_REPORTER,
 ];
 
 const INCIDENT_PERMISSION_HINTS = [
   "incident:read:global",
-  "incident:read:department",
+  "incident:read:national",
+  "incident:read:region",
+  "incident:read:province",
+  "incident:read:city",
   "incident:read:assigned",
+  "incident:read:self",
   "incident:read:own",
 ];
 
 const ASSIGNMENT_PERMISSION_HINTS = [
   "assignment:read:global",
-  "assignment:read:department",
+  "assignment:read:region",
+  "assignment:read:province",
+  "assignment:read:city",
   "assignment:read:assigned",
-  "assignment:create:department",
+  "assignment:create:city",
   "assignment:override:region",
 ];
 
 const CITIZEN_SELF_SERVICE_PERMISSION_HINTS = [
   "citizen:link:self",
   "incident:create:self",
+  "incident:read:self",
   "incident:read:own",
 ];
 
@@ -86,6 +117,10 @@ function canAccessCitizenSelfService(context: NavigationContext): boolean {
 }
 
 function canAccessIncidents(context: NavigationContext): boolean {
+  if (!context.role || !STANDARD_INCIDENT_ACCESS_ROLES.includes(context.role)) {
+    return false;
+  }
+
   const resource = getCrudResource("incidents");
   const roleAllows = Boolean(
     resource &&
@@ -112,11 +147,26 @@ export function canAccessUserManagement(context: NavigationContext): boolean {
     return false;
   }
 
-  if (
-    context.capabilities?.canUpdateUser ||
-    context.capabilities?.canDeleteUser
-  ) {
-    return true;
+  if (context.capabilities) {
+    if (
+      context.capabilities.canUpdateUser ||
+      context.capabilities.canDeleteUser
+    ) {
+      return true;
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(
+        context.capabilities,
+        "canUpdateUser",
+      ) ||
+      Object.prototype.hasOwnProperty.call(
+        context.capabilities,
+        "canDeleteUser",
+      )
+    ) {
+      return false;
+    }
   }
 
   return permissionsAllow(context.capabilities, USER_PERMISSION_HINTS);
@@ -262,6 +312,23 @@ export function getNavigationItems(context: NavigationContext) {
       label: "Users",
       href: "/users",
       visible: () => canAccessUserManagement(context),
+    },
+    {
+      key: "/dashboard/mobile-content",
+      label: "Mobile Content",
+      href: "/dashboard/mobile-content",
+      resource: "mobile-content",
+      visible: () => {
+        const resource = getCrudResource("mobile-content");
+        return Boolean(
+          resource &&
+          canShowCrudNavigationItem(
+            resource,
+            context.role,
+            context.isAuthenticated,
+          ),
+        );
+      },
     },
     {
       key: "/audit-logs",

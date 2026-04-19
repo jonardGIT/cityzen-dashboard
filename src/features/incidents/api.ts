@@ -26,6 +26,74 @@ export interface IncidentMediaReference {
   fallbackUrl?: string;
 }
 
+export interface AuditorIncident {
+  id: string;
+  publicReference: string;
+  status: {
+    id: string;
+    name: string;
+  };
+  category: {
+    id: string;
+    name: string;
+    subCategory?: string | null;
+  };
+  severity: {
+    id: string;
+    level: string;
+    definition?: string | null;
+  };
+  dateReported: string;
+  createdAt: string;
+  updatedAt: string;
+  barangay: string | null;
+  cityName: string | null;
+  provinceName: string | null;
+  regionName: string | null;
+  hasMedia: boolean;
+  assignmentCount: number;
+  statusHistoryCount: number;
+}
+
+export interface IncidentTimelineStatus {
+  id: string;
+  name: string;
+}
+
+export interface IncidentTimelineActor {
+  id: string;
+  email: string;
+  role: string;
+}
+
+export interface IncidentTimelineEntry {
+  id: string;
+  changedAt: string;
+  fromStatus: IncidentTimelineStatus | null;
+  toStatus: IncidentTimelineStatus;
+  changedByUser: IncidentTimelineActor | null;
+  note: string | null;
+}
+
+export interface AuditorIncidentTimelineEntry {
+  id: string;
+  changedAt: string;
+  fromStatus: IncidentTimelineStatus | null;
+  toStatus: IncidentTimelineStatus;
+}
+
+export interface IncidentTimelineResponse {
+  incidentId: string;
+  publicReference: string;
+  timeline: IncidentTimelineEntry[];
+}
+
+export interface AuditorIncidentTimelineResponse {
+  incidentId: string;
+  publicReference: string;
+  timeline: AuditorIncidentTimelineEntry[];
+}
+
 function asRecord(value: unknown): UnknownRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -196,11 +264,60 @@ export async function fetchIncidents(
   );
 }
 
+export async function fetchAuditorIncidents(
+  fetchParams: FetchListParams,
+  signal?: AbortSignal,
+): Promise<PaginatedResponse<AuditorIncident>> {
+  const response = await authClient.get<unknown>("/incidents/audit", {
+    params: buildListQueryParams(fetchParams),
+    signal,
+  });
+
+  return adaptPaginatedResponse<AuditorIncident>(
+    response.data,
+    fetchParams.page,
+    fetchParams.pageSize,
+  );
+}
+
 export async function fetchIncidentById(id: string, signal?: AbortSignal) {
   const response = await authClient.get<unknown>(`/incidents/${id}`, {
     signal,
   });
   return unwrapEntityResponse<Incident>(response.data);
+}
+
+export async function fetchAuditorIncidentById(
+  id: string,
+  signal?: AbortSignal,
+) {
+  const response = await authClient.get<unknown>(`/incidents/audit/${id}`, {
+    signal,
+  });
+
+  return unwrapEntityResponse<AuditorIncident>(response.data);
+}
+
+export async function fetchIncidentTimeline(id: string, signal?: AbortSignal) {
+  const response = await authClient.get<unknown>(`/incidents/${id}/timeline`, {
+    signal,
+  });
+
+  return unwrapEntityResponse<IncidentTimelineResponse>(response.data);
+}
+
+export async function fetchAuditorIncidentTimeline(
+  id: string,
+  signal?: AbortSignal,
+) {
+  const response = await authClient.get<unknown>(
+    `/incidents/audit/${id}/timeline`,
+    {
+      signal,
+    },
+  );
+
+  return unwrapEntityResponse<AuditorIncidentTimelineResponse>(response.data);
 }
 
 export async function createIncident(payload: CreateIncidentDto) {

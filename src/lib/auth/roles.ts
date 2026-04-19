@@ -7,15 +7,35 @@ import {
 } from "@/types/auth";
 
 const LEGACY_ROLE_MAP: Record<LegacyRole, Role> = {
-  SUPER_ADMIN: Role.SYSTEM_ADMIN,
-  ADMIN: Role.DEPARTMENT_MANAGER,
+  SUPER_ADMIN: Role.NATIONAL_ADMIN,
+  ADMIN: Role.CITY_ADMIN,
+  VIEWER: Role.CITIZEN_REPORTER,
+};
+
+const ROLE_ALIASES: Record<string, Role> = {
+  NATIONAL_ADMIN: Role.NATIONAL_ADMIN,
+  REGIONAL_DIRECTOR: Role.REGIONAL_DIRECTOR,
+  PROVINCIAL_ADMIN: Role.PROVINCIAL_ADMIN,
+  CITY_ADMIN: Role.CITY_ADMIN,
+  CITY_CONTENT_EDITOR: Role.CITY_CONTENT_EDITOR,
+  DISPATCHER: Role.DISPATCHER,
+  RESPONDER: Role.RESPONDER,
+  CITIZEN_REPORTER: Role.CITIZEN_REPORTER,
+  AUDITOR: Role.AUDITOR,
+  SYSTEM_ADMIN: Role.NATIONAL_ADMIN,
+  SUPER_ADMIN: Role.NATIONAL_ADMIN,
+  ADMIN: Role.CITY_ADMIN,
+  DEPARTMENT_MANAGER: Role.CITY_ADMIN,
+  SUPERVISOR: Role.PROVINCIAL_ADMIN,
   VIEWER: Role.CITIZEN_REPORTER,
 };
 
 const ROLE_LABELS: Record<Role, string> = {
-  [Role.SYSTEM_ADMIN]: "System Admin",
-  [Role.DEPARTMENT_MANAGER]: "Department Manager",
-  [Role.SUPERVISOR]: "Supervisor",
+  [Role.NATIONAL_ADMIN]: "National Admin",
+  [Role.REGIONAL_DIRECTOR]: "Regional Director",
+  [Role.PROVINCIAL_ADMIN]: "Provincial Admin",
+  [Role.CITY_ADMIN]: "City/Municipal Admin",
+  [Role.CITY_CONTENT_EDITOR]: "City Content Editor",
   [Role.DISPATCHER]: "Dispatcher",
   [Role.RESPONDER]: "Responder",
   [Role.CITIZEN_REPORTER]: "Citizen Reporter",
@@ -87,6 +107,12 @@ export function normalizeRole(value: unknown): Role | undefined {
 
   if ((Object.values(Role) as string[]).includes(trimmed)) {
     return trimmed as Role;
+  }
+
+  const normalized = trimmed.toUpperCase().replace(/[\s-]+/g, "_");
+
+  if (ROLE_ALIASES[normalized]) {
+    return ROLE_ALIASES[normalized];
   }
 
   if (
@@ -213,6 +239,7 @@ export function isCitizenSelfServiceUser(
     permissionListIncludes(capabilities.permissions, [
       "citizen:link:self",
       "incident:create:self",
+      "incident:read:self",
       "incident:read:own",
     ])
   ) {

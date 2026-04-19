@@ -159,6 +159,48 @@ function normalizeFormValues(
       continue;
     }
 
+    if (field.type === "integer") {
+      if (typeof raw === "number") {
+        output[field.name] = Math.trunc(raw);
+        continue;
+      }
+
+      if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (!trimmed) {
+          continue;
+        }
+
+        const parsed = Number.parseInt(trimmed, 10);
+        output[field.name] = Number.isNaN(parsed) ? raw : parsed;
+        continue;
+      }
+    }
+
+    if (field.type === "boolean") {
+      output[field.name] = Boolean(raw);
+      continue;
+    }
+
+    if (field.type === "json") {
+      if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (!trimmed) {
+          continue;
+        }
+
+        try {
+          output[field.name] = JSON.parse(trimmed) as unknown;
+        } catch {
+          throw new Error(`${field.label} must be valid JSON`);
+        }
+        continue;
+      }
+
+      output[field.name] = raw;
+      continue;
+    }
+
     output[field.name] = raw;
   }
 

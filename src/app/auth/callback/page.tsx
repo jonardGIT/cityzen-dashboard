@@ -2,7 +2,7 @@
 
 import { Alert, Card, Spin, Typography } from "antd";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef } from "react";
 
 const { Text, Title } = Typography;
 
@@ -41,19 +41,22 @@ function resolveCallbackType(params: URLSearchParams): CallbackType {
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [error, setError] = useState<string | null>(null);
   const processed = useRef(false);
 
   const callbackType = resolveCallbackType(searchParams);
   const errorParam = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
+  const callbackError = errorParam
+    ? errorDescription ?? errorParam
+    : callbackType === "magiclink" || callbackType === "oauth"
+      ? "This dashboard authenticates against the CIRS API login flow. Complete sign-in from the login page."
+      : null;
 
   useEffect(() => {
     if (processed.current) return;
     processed.current = true;
 
-    if (errorParam) {
-      setError(errorDescription ?? errorParam);
+    if (callbackError) {
       return;
     }
 
@@ -76,18 +79,12 @@ function AuthCallbackContent() {
       case "signup":
         router.replace("/auth/confirm-email?mode=confirmed");
         break;
-      case "magiclink":
-      case "oauth":
-        setError(
-          "This dashboard authenticates against the CIRS API login flow. Complete sign-in from the login page.",
-        );
-        break;
       default:
         router.replace("/login");
     }
-  }, [callbackType, errorParam, errorDescription, searchParams, router]);
+  }, [callbackError, callbackType, searchParams, router]);
 
-  if (error) {
+  if (callbackError) {
     return (
       <div
         style={{
@@ -106,7 +103,7 @@ function AuthCallbackContent() {
             type="error"
             showIcon
             title="Callback error"
-            description={error}
+            description={callbackError}
           />
           <div style={{ marginTop: 16, textAlign: "center" }}>
             <a href="/login">Return to sign in</a>

@@ -133,7 +133,7 @@ describe("auth feature api", () => {
   it("fetches current user capabilities through the dashboard users proxy", async () => {
     proxiedAuthGetMock.mockResolvedValueOnce({
       data: {
-        role: "SYSTEM_ADMIN",
+        role: "NATIONAL_ADMIN",
         permissions: ["user:manage:global"],
         scope: ["global"],
         canUpdateUser: true,
@@ -148,8 +148,8 @@ describe("auth feature api", () => {
       signal: undefined,
     });
     expect(result).toEqual({
-      role: "SYSTEM_ADMIN",
-      label: "System Admin",
+      role: "NATIONAL_ADMIN",
+      label: "National Admin",
       permissions: ["user:manage:global"],
       scope: ["global"],
       canUpdateUser: true,

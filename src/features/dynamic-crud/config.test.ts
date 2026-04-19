@@ -27,36 +27,41 @@ describe("dynamic crud config", () => {
 
   it("limits assignment reads to the operational assignment roles", () => {
     expect(getCrudEndpoint("assignments", "list")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
-      Role.SUPERVISOR,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
       Role.DISPATCHER,
     ]);
     expect(getCrudEndpoint("assignments", "get")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
-      Role.SUPERVISOR,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
       Role.DISPATCHER,
     ]);
   });
 
   it("opens read-only reference data to the configured read roles", () => {
     expect(getCrudEndpoint("agencies", "list")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
-      Role.SUPERVISOR,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
       Role.DISPATCHER,
     ]);
     expect(getCrudEndpoint("responders", "get")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
-      Role.SUPERVISOR,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
       Role.DISPATCHER,
     ]);
     expect(getCrudEndpoint("statuses", "list")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
-      Role.SUPERVISOR,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
       Role.DISPATCHER,
       Role.RESPONDER,
       Role.CITIZEN_REPORTER,
@@ -66,16 +71,22 @@ describe("dynamic crud config", () => {
 
   it("limits citizen reads and create to management roles", () => {
     expect(getCrudEndpoint("citizens", "list")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
     ]);
     expect(getCrudEndpoint("citizens", "get")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
     ]);
     expect(getCrudEndpoint("citizens", "create")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
     ]);
   });
 
@@ -89,24 +100,41 @@ describe("dynamic crud config", () => {
     expect(getCrudEndpoint("incidents", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("assignments", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("users", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("mobile-content", "restore")?.method).toBe("POST");
   });
 
-  it("extends incident reads to auditors and preserves write restrictions", () => {
+  it("keeps incident reads on standard operational roles and preserves write restrictions", () => {
     expect(getCrudEndpoint("incidents", "list")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
-      Role.SUPERVISOR,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
       Role.DISPATCHER,
       Role.RESPONDER,
       Role.CITIZEN_REPORTER,
-      Role.AUDITOR,
     ]);
     expect(getCrudEndpoint("incidents", "create")?.allowedRoles).toEqual([
-      Role.SYSTEM_ADMIN,
-      Role.DEPARTMENT_MANAGER,
-      Role.SUPERVISOR,
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
       Role.DISPATCHER,
       Role.RESPONDER,
+    ]);
+  });
+
+  it("exposes mobile-content CRUD to admin roles", () => {
+    expect(getCrudEndpoint("mobile-content", "list")?.allowedRoles).toEqual([
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
+    ]);
+    expect(getCrudEndpoint("mobile-content", "create")?.allowedRoles).toEqual([
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
     ]);
   });
 });

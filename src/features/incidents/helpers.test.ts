@@ -1,15 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requestCrudEndpointMock, assertCrudSuccessMock, getCrudEndpointMock } =
-  vi.hoisted(() => ({
-    requestCrudEndpointMock: vi.fn(),
-    assertCrudSuccessMock: vi.fn(),
-    getCrudEndpointMock: vi.fn(),
-  }));
+const {
+  authClientGetMock,
+  requestCrudEndpointMock,
+  assertCrudSuccessMock,
+  getCrudEndpointMock,
+} = vi.hoisted(() => ({
+  authClientGetMock: vi.fn(),
+  requestCrudEndpointMock: vi.fn(),
+  assertCrudSuccessMock: vi.fn(),
+  getCrudEndpointMock: vi.fn(),
+}));
 
 vi.mock("@/lib/api/clients", () => ({
   authClient: {
-    get: vi.fn(),
+    get: authClientGetMock,
     post: vi.fn(),
     patch: vi.fn(),
   },
@@ -25,6 +30,10 @@ vi.mock("@/features/dynamic-crud/config", () => ({
 }));
 
 import {
+  fetchAuditorIncidentById,
+  fetchAuditorIncidentTimeline,
+  fetchAuditorIncidents,
+  fetchIncidentTimeline,
   fetchIncidentMediaAccessUrl,
   reportIncident,
   uploadIncidentMedia,
@@ -32,10 +41,256 @@ import {
 
 describe("incident helper endpoints", () => {
   beforeEach(() => {
+    authClientGetMock.mockReset();
     requestCrudEndpointMock.mockReset();
     assertCrudSuccessMock.mockReset();
     getCrudEndpointMock.mockReset();
     assertCrudSuccessMock.mockImplementation((value) => value);
+  });
+
+  it("fetches auditor incidents from the audit list endpoint and adapts pagination", async () => {
+    const signal = new AbortController().signal;
+    authClientGetMock.mockResolvedValueOnce({
+      data: {
+        data: [
+          {
+            id: "incident-1",
+            publicReference: "CIRS-2026-0001",
+            status: { id: "status-1", name: "Under Review" },
+            category: { id: "category-1", name: "Flood" },
+            severity: { id: "severity-1", level: "High" },
+            dateReported: "2026-04-17T06:30:00.000Z",
+            createdAt: "2026-04-17T06:35:00.000Z",
+            updatedAt: "2026-04-17T06:40:00.000Z",
+            barangay: "Centro 10",
+            cityName: "Tuguegarao City",
+            provinceName: "Cagayan",
+            regionName: "Region II",
+            hasMedia: true,
+            assignmentCount: 2,
+            statusHistoryCount: 3,
+          },
+        ],
+        pagination: {
+          page: 2,
+          pageSize: 5,
+          total: 7,
+          totalPages: 2,
+          hasNextPage: false,
+          hasPrevPage: true,
+        },
+      },
+    });
+
+    const result = await fetchAuditorIncidents(
+      {
+        page: 2,
+        pageSize: 5,
+        search: " flood ",
+        sortBy: "updatedAt",
+        sortOrder: "asc",
+        filters: [
+          {
+            field: "status.name",
+            operator: "equals",
+            value: "Under Review",
+          },
+        ],
+      },
+      signal,
+    );
+
+    expect(authClientGetMock).toHaveBeenCalledWith("/incidents/audit", {
+      params: {
+        page: 2,
+        pageSize: 5,
+        search: "flood",
+        sortBy: "updatedAt",
+        sortOrder: "asc",
+        filters: JSON.stringify([
+          {
+            field: "status.name",
+            operator: "equals",
+            value: "Under Review",
+          },
+        ]),
+      },
+      signal,
+    });
+    expect(result).toEqual({
+      data: [
+        {
+          id: "incident-1",
+          publicReference: "CIRS-2026-0001",
+          status: { id: "status-1", name: "Under Review" },
+          category: { id: "category-1", name: "Flood" },
+          severity: { id: "severity-1", level: "High" },
+          dateReported: "2026-04-17T06:30:00.000Z",
+          createdAt: "2026-04-17T06:35:00.000Z",
+          updatedAt: "2026-04-17T06:40:00.000Z",
+          barangay: "Centro 10",
+          cityName: "Tuguegarao City",
+          provinceName: "Cagayan",
+          regionName: "Region II",
+          hasMedia: true,
+          assignmentCount: 2,
+          statusHistoryCount: 3,
+        },
+      ],
+      pagination: {
+        page: 2,
+        pageSize: 5,
+        total: 7,
+        totalPages: 2,
+        hasNextPage: false,
+        hasPrevPage: true,
+      },
+    });
+  });
+
+  it("fetches an auditor incident by id from the audit detail endpoint and unwraps the entity", async () => {
+    const signal = new AbortController().signal;
+    authClientGetMock.mockResolvedValueOnce({
+      data: {
+        data: {
+          id: "incident-1",
+          publicReference: "CIRS-2026-0001",
+          status: { id: "status-1", name: "Under Review" },
+          category: { id: "category-1", name: "Flood" },
+          severity: { id: "severity-1", level: "High" },
+          dateReported: "2026-04-17T06:30:00.000Z",
+          createdAt: "2026-04-17T06:35:00.000Z",
+          updatedAt: "2026-04-17T06:40:00.000Z",
+          barangay: "Centro 10",
+          cityName: "Tuguegarao City",
+          provinceName: "Cagayan",
+          regionName: "Region II",
+          hasMedia: true,
+          assignmentCount: 2,
+          statusHistoryCount: 3,
+        },
+      },
+    });
+
+    const result = await fetchAuditorIncidentById("incident-1", signal);
+
+    expect(authClientGetMock).toHaveBeenCalledWith(
+      "/incidents/audit/incident-1",
+      {
+        signal,
+      },
+    );
+    expect(result).toEqual({
+      id: "incident-1",
+      publicReference: "CIRS-2026-0001",
+      status: { id: "status-1", name: "Under Review" },
+      category: { id: "category-1", name: "Flood" },
+      severity: { id: "severity-1", level: "High" },
+      dateReported: "2026-04-17T06:30:00.000Z",
+      createdAt: "2026-04-17T06:35:00.000Z",
+      updatedAt: "2026-04-17T06:40:00.000Z",
+      barangay: "Centro 10",
+      cityName: "Tuguegarao City",
+      provinceName: "Cagayan",
+      regionName: "Region II",
+      hasMedia: true,
+      assignmentCount: 2,
+      statusHistoryCount: 3,
+    });
+  });
+
+  it("fetches the responder incident timeline endpoint and unwraps actor details", async () => {
+    const signal = new AbortController().signal;
+    authClientGetMock.mockResolvedValueOnce({
+      data: {
+        result: {
+          incidentId: "incident-1",
+          publicReference: "CIRS-2026-0001",
+          timeline: [
+            {
+              id: "timeline-1",
+              changedAt: "2026-04-17T07:00:00.000Z",
+              fromStatus: { id: "status-1", name: "Reported" },
+              toStatus: { id: "status-2", name: "Dispatched" },
+              changedByUser: {
+                id: "user-1",
+                email: "auditor@example.com",
+                role: "AUDITOR",
+              },
+              note: "Forwarded for review",
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await fetchIncidentTimeline("incident-1", signal);
+
+    expect(authClientGetMock).toHaveBeenCalledWith(
+      "/incidents/incident-1/timeline",
+      {
+        signal,
+      },
+    );
+    expect(result).toEqual({
+      incidentId: "incident-1",
+      publicReference: "CIRS-2026-0001",
+      timeline: [
+        {
+          id: "timeline-1",
+          changedAt: "2026-04-17T07:00:00.000Z",
+          fromStatus: { id: "status-1", name: "Reported" },
+          toStatus: { id: "status-2", name: "Dispatched" },
+          changedByUser: {
+            id: "user-1",
+            email: "auditor@example.com",
+            role: "AUDITOR",
+          },
+          note: "Forwarded for review",
+        },
+      ],
+    });
+  });
+
+  it("fetches the auditor timeline endpoint and unwraps the redacted timeline payload", async () => {
+    const signal = new AbortController().signal;
+    authClientGetMock.mockResolvedValueOnce({
+      data: {
+        item: {
+          incidentId: "incident-1",
+          publicReference: "CIRS-2026-0001",
+          timeline: [
+            {
+              id: "timeline-1",
+              changedAt: "2026-04-17T07:00:00.000Z",
+              fromStatus: { id: "status-1", name: "Reported" },
+              toStatus: { id: "status-2", name: "Dispatched" },
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await fetchAuditorIncidentTimeline("incident-1", signal);
+
+    expect(authClientGetMock).toHaveBeenCalledWith(
+      "/incidents/audit/incident-1/timeline",
+      {
+        signal,
+      },
+    );
+    expect(result).toEqual({
+      incidentId: "incident-1",
+      publicReference: "CIRS-2026-0001",
+      timeline: [
+        {
+          id: "timeline-1",
+          changedAt: "2026-04-17T07:00:00.000Z",
+          fromStatus: { id: "status-1", name: "Reported" },
+          toStatus: { id: "status-2", name: "Dispatched" },
+        },
+      ],
+    });
   });
 
   it("throws when the dedicated citizen report endpoint is not configured", async () => {

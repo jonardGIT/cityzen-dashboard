@@ -9,8 +9,10 @@ import {
   Card,
   Form,
   Input,
+  InputNumber,
   Modal,
   Select,
+  Switch,
   Tooltip,
   Typography,
 } from "antd";
@@ -456,6 +458,46 @@ export function CrudFormModal({
             );
           }
 
+          if (field.type === "integer") {
+            return (
+              <Form.Item
+                key={field.name}
+                name={field.name}
+                label={field.label}
+                rules={rules}
+              >
+                <InputNumber style={{ width: "100%" }} precision={0} />
+              </Form.Item>
+            );
+          }
+
+          if (field.type === "boolean") {
+            return (
+              <Form.Item
+                key={field.name}
+                name={field.name}
+                label={field.label}
+                valuePropName="checked"
+                rules={rules}
+              >
+                <Switch />
+              </Form.Item>
+            );
+          }
+
+          if (field.type === "json") {
+            return (
+              <Form.Item
+                key={field.name}
+                name={field.name}
+                label={field.label}
+                rules={rules}
+              >
+                <Input.TextArea rows={6} placeholder='{"key": "value"}' />
+              </Form.Item>
+            );
+          }
+
           return (
             <Form.Item
               key={field.name}
@@ -491,6 +533,17 @@ export function toInitialFormValues(
       if (typeof value === "string" && value.length > 0) {
         normalized[field.name] = value;
       }
+    }
+
+    if (field.type === "json") {
+      const value = normalized[field.name];
+      if (value && typeof value === "object") {
+        normalized[field.name] = JSON.stringify(value, null, 2);
+      }
+    }
+
+    if (field.type === "boolean") {
+      normalized[field.name] = Boolean(normalized[field.name]);
     }
   }
 

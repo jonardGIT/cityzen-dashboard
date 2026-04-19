@@ -66,12 +66,12 @@ describe("canShowCrudNavigationItem", () => {
     );
   });
 
-  it("shows incident navigation for auditors with read access", () => {
+  it("does not show standard incident navigation for auditors", () => {
     const incidents = getCrudResource("incidents");
 
     expect(incidents).toBeDefined();
     expect(canShowCrudNavigationItem(incidents!, Role.AUDITOR, true)).toBe(
-      true,
+      false,
     );
   });
 });

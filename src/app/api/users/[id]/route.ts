@@ -9,6 +9,33 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    if (!request.headers.get("authorization")) {
+      return unauthorizedResponse();
+    }
+
+    const { id } = await context.params;
+    const upstream = await requestUpstreamWithFallback(
+      request,
+      [`/users/${id}`, `/admin/users/${id}`],
+      {
+        method: "GET",
+      },
+    );
+
+    return toJsonResponse(upstream);
+  } catch {
+    return NextResponse.json(
+      { message: "Failed to fetch user details." },
+      { status: 500 },
+    );
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
@@ -21,42 +48,50 @@ export async function PATCH(
     const { id } = await context.params;
     const payload = await request.json();
 
-    const upstreamPatch = await requestUpstreamWithFallback(
-      request,
-      [`/admin/users/${id}`, `/users/${id}`],
-      {
+    const primaryPath = `/users/${id}`;
+    const fallbackPath = `/admin/users/${id}`;
+    const primaryPatch = await requestUpstream(request, primaryPath, {
       method: "PATCH",
       body: JSON.stringify(payload),
-      },
-    );
+    });
 
-    if (upstreamPatch.status !== 404 && upstreamPatch.status !== 405) {
-      return toJsonResponse(upstreamPatch);
+    if (primaryPatch.status !== 404 && primaryPatch.status !== 405) {
+      return toJsonResponse(primaryPatch);
     }
 
-    if (upstreamPatch.status === 404) {
-      return NextResponse.json(
-        {
-          message: "User update endpoint is not available in the connected backend.",
-        },
-        { status: 501 },
-      );
+    const fallbackPatch = await requestUpstream(request, fallbackPath, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+
+    if (fallbackPatch.status !== 404 && fallbackPatch.status !== 405) {
+      return toJsonResponse(fallbackPatch);
     }
 
-    const upstreamPut =
-      upstreamPatch.url.includes("/admin/users/")
-        ? await requestUpstream(request, `/admin/users/${id}`, {
-            method: "PUT",
-            body: JSON.stringify(payload),
-          })
-        : await requestUpstream(request, `/users/${id}`, {
-            method: "PUT",
-            body: JSON.stringify(payload),
-          });
+    if (fallbackPatch.status === 405) {
+      const fallbackPut = await requestUpstream(request, fallbackPath, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
 
-    return toJsonResponse(upstreamPut);
+      return toJsonResponse(fallbackPut);
+    }
+
+    if (primaryPatch.status === 405) {
+      const primaryPut = await requestUpstream(request, primaryPath, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+
+      return toJsonResponse(primaryPut);
+    }
+
+    return toJsonResponse(fallbackPatch);
   } catch {
-    return NextResponse.json({ message: "Failed to update user." }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to update user." },
+      { status: 500 },
+    );
   }
 }
 
@@ -72,23 +107,17 @@ export async function DELETE(
     const { id } = await context.params;
     const upstream = await requestUpstreamWithFallback(
       request,
-      [`/admin/users/${id}`, `/users/${id}`],
+      [`/users/${id}`, `/admin/users/${id}`],
       {
         method: "DELETE",
       },
     );
 
-    if (upstream.status === 404) {
-      return NextResponse.json(
-        {
-          message: "User delete endpoint is not available in the connected backend.",
-        },
-        { status: 501 },
-      );
-    }
-
     return toJsonResponse(upstream);
   } catch {
-    return NextResponse.json({ message: "Failed to delete user." }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to delete user." },
+      { status: 500 },
+    );
   }
 }

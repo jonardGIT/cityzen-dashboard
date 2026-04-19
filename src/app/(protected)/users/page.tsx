@@ -5,6 +5,7 @@ import {
   Alert,
   Button,
   Form,
+  type FormInstance,
   Input,
   Modal,
   Popconfirm,
@@ -14,7 +15,7 @@ import {
   Typography,
 } from "antd";
 import { AxiosError } from "axios";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import {
@@ -25,31 +26,704 @@ import { useAuth } from "@/context/AuthContext";
 import {
   useCreateUserMutation,
   useDeleteUserMutation,
+  useUserQuery,
   useUpdateUserMutation,
   useUsersCapabilitiesQuery,
   useUsersQuery,
 } from "@/features/users/api";
+import {
+  useBarangayByIdQuery,
+  useBarangaysQuery,
+  useCitiesMunicipalitiesQuery,
+  useCityMunicipalityByIdQuery,
+  useProvinceByIdQuery,
+  useProvincesQuery,
+  useRegionByIdQuery,
+  useRegionsQuery,
+} from "@/features/users/geography";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { canAccessUserManagement } from "@/lib/auth/navigation";
 import { canManageRole, getAssignableRoles } from "@/lib/auth/permissions";
-import { getRoleLabel, normalizeRole } from "@/lib/auth/roles";
+import {
+  getRoleLabel,
+  normalizeRole,
+  permissionListIncludes,
+} from "@/lib/auth/roles";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
-import type { ApiErrorPayload, User } from "@/types/api";
-import { Role } from "@/types/auth";
+import type { ApiErrorPayload, JurisdictionType, User } from "@/types/api";
+import { Role, type UserCapabilities } from "@/types/auth";
 
 const { Title, Text } = Typography;
+const PASSWORD_MIN_LENGTH = 12;
+const USER_CREATE_PERMISSION_HINTS = [
+  "user:manage:global",
+  "user:manage:national",
+  "user:manage:region",
+  "user:manage:province",
+  "user:manage:city",
+  "user:manage:barangay",
+  "user:create:region",
+  "user:create:province",
+  "user:create:city",
+  "user:create:barangay",
+] as const;
 
-interface CreateUserFormValues {
+type JurisdictionFormValues = {
+  jurisdictionType?: JurisdictionType;
+  jurisdictionId?: string;
+  regionId?: string;
+  provinceId?: string;
+  cityMunicipalityId?: string;
+};
+
+interface CreateUserFormValues extends JurisdictionFormValues {
   name: string;
   email: string;
   password: string;
   role: Role;
 }
 
-interface EditUserFormValues {
+interface EditUserFormValues extends JurisdictionFormValues {
   name: string;
   email: string;
+  password?: string;
   role: Role;
+}
+
+type UserTableRow = User & {
+  jurisdictionSummary: string;
+};
+
+const JURISDICTION_LABELS = new Map<JurisdictionType, string>([
+  ["region", "Region"],
+  ["province", "Province"],
+  ["city", "City/Municipality"],
+  ["barangay", "Barangay"],
+]);
+
+function normalizeJurisdictionType(
+  value?: string | null,
+): JurisdictionType | undefined {
+  if (value === "municipality") {
+    return "city";
+  }
+
+  if (
+    value === "region" ||
+    value === "province" ||
+    value === "city" ||
+    value === "barangay"
+  ) {
+    return value;
+  }
+
+  return undefined;
+}
+
+function normalizeUserJurisdiction(user?: User | null): User | null {
+  if (!user) {
+    return null;
+  }
+
+  const normalizedType = normalizeJurisdictionType(user.jurisdictionType);
+
+  if (!normalizedType || normalizedType === user.jurisdictionType) {
+    return user;
+  }
+
+  return {
+    ...user,
+    jurisdictionType: normalizedType,
+  };
+}
+
+function getJurisdictionLabel(type?: string | null): string {
+  const normalizedType = normalizeJurisdictionType(type);
+
+  if (!normalizedType) {
+    return "Unbound";
+  }
+
+  return JURISDICTION_LABELS.get(normalizedType) ?? normalizedType;
+}
+
+function formatJurisdictionSummary(
+  user?: Pick<User, "jurisdictionType" | "jurisdictionId"> | null,
+): string {
+  if (!user?.jurisdictionType && !user?.jurisdictionId) {
+    return "No LGU jurisdiction assigned";
+  }
+
+  if (!user?.jurisdictionType || !user?.jurisdictionId) {
+    return "Incomplete LGU jurisdiction assignment";
+  }
+
+  return `${getJurisdictionLabel(user.jurisdictionType)} scope · ${user.jurisdictionId}`;
+}
+
+function getAllowedJurisdictionTypes(role?: Role): JurisdictionType[] {
+  switch (role) {
+    case Role.REGIONAL_DIRECTOR:
+      return ["region"];
+    case Role.PROVINCIAL_ADMIN:
+      return ["province"];
+    case Role.CITY_ADMIN:
+      return ["city"];
+    case Role.CITY_CONTENT_EDITOR:
+    case Role.DISPATCHER:
+    case Role.RESPONDER:
+    case Role.CITIZEN_REPORTER:
+      return ["city", "barangay"];
+    default:
+      return [];
+  }
+}
+
+function buildCreatePayload(values: CreateUserFormValues) {
+  return {
+    name: values.name.trim(),
+    email: values.email.trim(),
+    password: values.password.trim(),
+    role: values.role,
+    ...(values.jurisdictionType && values.jurisdictionId
+      ? {
+          jurisdictionType: values.jurisdictionType,
+          jurisdictionId: values.jurisdictionId,
+        }
+      : {}),
+  };
+}
+
+function buildUpdatePayload(values: EditUserFormValues) {
+  return {
+    name: values.name.trim(),
+    email: values.email.trim(),
+    role: values.role,
+    ...(values.password?.trim() ? { password: values.password.trim() } : {}),
+    ...(values.jurisdictionType && values.jurisdictionId
+      ? {
+          jurisdictionType: values.jurisdictionType,
+          jurisdictionId: values.jurisdictionId,
+        }
+      : {}),
+  };
+}
+
+function applyInlineUserFormMessage(
+  form: FormInstance,
+  message?: string,
+): boolean {
+  if (!message) {
+    return false;
+  }
+
+  if (
+    message.includes(
+      "jurisdictionType and jurisdictionId must be provided together",
+    )
+  ) {
+    form.setFields([
+      {
+        name: "jurisdictionType",
+        errors: ["Select a jurisdiction level."],
+      },
+      {
+        name: "jurisdictionId",
+        errors: ["Select the matching jurisdiction."],
+      },
+    ]);
+    return true;
+  }
+
+  if (message.includes("jurisdictionId must reference an active")) {
+    form.setFields([
+      {
+        name: "jurisdictionId",
+        errors: [message],
+      },
+    ]);
+    return true;
+  }
+
+  if (message.includes("jurisdictionType must be one of")) {
+    form.setFields([
+      {
+        name: "jurisdictionType",
+        errors: [message],
+      },
+    ]);
+    return true;
+  }
+
+  if (message.toLowerCase().includes("password")) {
+    form.setFields([
+      {
+        name: "password",
+        errors: [message],
+      },
+    ]);
+    return true;
+  }
+
+  return false;
+}
+
+function getScopeSummary(
+  capabilities?: UserCapabilities | null,
+): string | null {
+  if (!capabilities) {
+    return null;
+  }
+
+  if (capabilities.scope.length > 0) {
+    return capabilities.scope.join(", ");
+  }
+
+  return null;
+}
+
+function canCreateUsersFromCapabilities(
+  capabilities?: UserCapabilities | null,
+): boolean {
+  if (!capabilities) {
+    return false;
+  }
+
+  return permissionListIncludes(
+    capabilities.permissions,
+    USER_CREATE_PERMISSION_HINTS,
+  );
+}
+
+interface JurisdictionFieldsProps<T extends JurisdictionFormValues> {
+  form: FormInstance<T>;
+  actorRole?: Role;
+  actorUser?: User | null;
+  disabled?: boolean;
+  mode: "create" | "edit";
+}
+
+function JurisdictionFields<T extends JurisdictionFormValues>({
+  form,
+  actorRole,
+  actorUser,
+  disabled,
+  mode,
+}: JurisdictionFieldsProps<T>) {
+  const targetRole = Form.useWatch("role", form) as Role | undefined;
+  const jurisdictionType = Form.useWatch("jurisdictionType", form) as
+    | JurisdictionType
+    | undefined;
+  const jurisdictionId = Form.useWatch("jurisdictionId", form) as
+    | string
+    | undefined;
+  const regionId = Form.useWatch("regionId", form) as string | undefined;
+  const provinceId = Form.useWatch("provinceId", form) as string | undefined;
+  const cityMunicipalityId = Form.useWatch("cityMunicipalityId", form) as
+    | string
+    | undefined;
+
+  const allowedJurisdictionTypes = useMemo(
+    () => getAllowedJurisdictionTypes(targetRole),
+    [targetRole],
+  );
+  const requiresJurisdictionPair =
+    mode === "create" && allowedJurisdictionTypes.length > 0;
+  const isCityAdmin = actorRole === Role.CITY_ADMIN;
+  const actorCityId =
+    actorUser?.jurisdictionType === "city"
+      ? (actorUser.jurisdictionId ?? undefined)
+      : undefined;
+  const allowEmptyJurisdiction =
+    mode === "create" && !isCityAdmin && !requiresJurisdictionPair;
+
+  const currentBarangayQuery = useBarangayByIdQuery(
+    jurisdictionType === "barangay" ? jurisdictionId : undefined,
+    Boolean(jurisdictionType === "barangay" && jurisdictionId),
+  );
+  const derivedCityId =
+    jurisdictionType === "city"
+      ? jurisdictionId
+      : currentBarangayQuery.data?.cityMunicipalityId;
+  const currentCityQuery = useCityMunicipalityByIdQuery(
+    derivedCityId,
+    Boolean(derivedCityId),
+  );
+  const derivedProvinceId =
+    jurisdictionType === "province"
+      ? jurisdictionId
+      : currentCityQuery.data?.provinceId;
+  const currentProvinceQuery = useProvinceByIdQuery(
+    derivedProvinceId,
+    Boolean(derivedProvinceId),
+  );
+  const derivedRegionId =
+    jurisdictionType === "region"
+      ? jurisdictionId
+      : currentProvinceQuery.data?.regionId;
+  useRegionByIdQuery(derivedRegionId, Boolean(derivedRegionId));
+
+  const effectiveRegionId = regionId ?? derivedRegionId;
+  const effectiveProvinceId = provinceId ?? derivedProvinceId;
+  const effectiveCityId = cityMunicipalityId ?? derivedCityId;
+
+  const regionsQuery = useRegionsQuery(
+    undefined,
+    allowedJurisdictionTypes.length > 0,
+  );
+  const provincesQuery = useProvincesQuery(
+    { regionId: effectiveRegionId },
+    Boolean(
+      effectiveRegionId &&
+      (jurisdictionType === "province" ||
+        jurisdictionType === "city" ||
+        jurisdictionType === "barangay"),
+    ),
+  );
+  const citiesQuery = useCitiesMunicipalitiesQuery(
+    { provinceId: effectiveProvinceId },
+    Boolean(
+      effectiveProvinceId &&
+      (jurisdictionType === "city" || jurisdictionType === "barangay"),
+    ),
+  );
+  const barangaysQuery = useBarangaysQuery(
+    { cityMunicipalityId: effectiveCityId },
+    Boolean(effectiveCityId && jurisdictionType === "barangay"),
+  );
+
+  useEffect(() => {
+    if (
+      !jurisdictionType ||
+      allowedJurisdictionTypes.includes(jurisdictionType)
+    ) {
+      return;
+    }
+
+    form.setFieldsValue({
+      jurisdictionType: undefined,
+      jurisdictionId: undefined,
+      regionId: undefined,
+      provinceId: undefined,
+      cityMunicipalityId: undefined,
+    } as Partial<T>);
+  }, [allowedJurisdictionTypes, form, jurisdictionType]);
+
+  useEffect(() => {
+    if (
+      !isCityAdmin ||
+      !actorCityId ||
+      form.getFieldValue("jurisdictionType") ||
+      form.getFieldValue("jurisdictionId")
+    ) {
+      return;
+    }
+
+    form.setFieldsValue({
+      jurisdictionType: "city",
+      jurisdictionId: actorCityId,
+    } as Partial<T>);
+  }, [actorCityId, form, isCityAdmin]);
+
+  useEffect(() => {
+    const nextValues: Partial<T> = {};
+
+    if (jurisdictionType === "region" && jurisdictionId && !regionId) {
+      nextValues.regionId = jurisdictionId as T["regionId"];
+    }
+
+    if (derivedRegionId && !regionId) {
+      nextValues.regionId = derivedRegionId as T["regionId"];
+    }
+
+    if (derivedProvinceId && !provinceId) {
+      nextValues.provinceId = derivedProvinceId as T["provinceId"];
+    }
+
+    if (derivedCityId && !cityMunicipalityId) {
+      nextValues.cityMunicipalityId = derivedCityId as T["cityMunicipalityId"];
+    }
+
+    if (Object.keys(nextValues).length > 0) {
+      form.setFieldsValue(nextValues);
+    }
+  }, [
+    cityMunicipalityId,
+    derivedCityId,
+    derivedProvinceId,
+    derivedRegionId,
+    form,
+    jurisdictionId,
+    jurisdictionType,
+    provinceId,
+    regionId,
+  ]);
+
+  const typeOptions = allowedJurisdictionTypes.map((value) => ({
+    value,
+    label: JURISDICTION_LABELS.get(value) ?? value,
+  }));
+  const regionOptions = (regionsQuery.data?.data ?? []).map((region) => ({
+    value: region.id,
+    label: region.name ?? region.code ?? region.id,
+  }));
+  const provinceOptions = (provincesQuery.data?.data ?? []).map((province) => ({
+    value: province.id,
+    label: province.name ?? province.code ?? province.id,
+  }));
+  const cityOptions = (citiesQuery.data?.data ?? []).map((city) => ({
+    value: city.id,
+    label: city.name ?? city.code ?? city.id,
+  }));
+  const barangayOptions = (barangaysQuery.data?.data ?? []).map((barangay) => ({
+    value: barangay.id,
+    label: barangay.name ?? barangay.code ?? barangay.id,
+  }));
+
+  return (
+    <Space direction="vertical" style={{ width: "100%" }} size={0}>
+      <Form.Item
+        name="jurisdictionType"
+        label="Jurisdiction level"
+        rules={[
+          {
+            validator: async (_, value) => {
+              const currentJurisdictionId =
+                form.getFieldValue("jurisdictionId");
+
+              if (
+                requiresJurisdictionPair &&
+                !value &&
+                !currentJurisdictionId
+              ) {
+                throw new Error("Select a jurisdiction level.");
+              }
+
+              if (currentJurisdictionId && !value) {
+                throw new Error("Select a jurisdiction level.");
+              }
+            },
+          },
+        ]}
+        extra={
+          allowEmptyJurisdiction
+            ? "Leave both jurisdiction fields empty only when the account should remain unbound."
+            : "Jurisdiction changes must be submitted as a complete LGU pair."
+        }
+      >
+        <Select
+          allowClear={allowEmptyJurisdiction}
+          disabled={
+            disabled || allowedJurisdictionTypes.length === 0 || isCityAdmin
+          }
+          options={typeOptions}
+          placeholder="Select a jurisdiction level"
+          onChange={() => {
+            form.setFieldsValue({
+              jurisdictionId: undefined,
+              regionId: undefined,
+              provinceId: undefined,
+              cityMunicipalityId: undefined,
+            } as Partial<T>);
+          }}
+        />
+      </Form.Item>
+
+      {isCityAdmin && actorCityId ? (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="City and municipal admins can only manage users inside their own city or municipality."
+        />
+      ) : null}
+
+      {jurisdictionType === "province" ||
+      jurisdictionType === "city" ||
+      jurisdictionType === "barangay" ? (
+        <Form.Item
+          name="regionId"
+          label="Region"
+          rules={[{ required: true, message: "Select a region." }]}
+        >
+          <Select
+            showSearch
+            optionFilterProp="label"
+            disabled={disabled || regionOptions.length === 0}
+            loading={regionsQuery.isFetching}
+            options={regionOptions}
+            placeholder="Select a region"
+            onChange={() => {
+              form.setFieldsValue({
+                provinceId: undefined,
+                cityMunicipalityId: undefined,
+                jurisdictionId: undefined,
+              } as Partial<T>);
+            }}
+          />
+        </Form.Item>
+      ) : null}
+
+      {jurisdictionType === "city" || jurisdictionType === "barangay" ? (
+        <Form.Item
+          name="provinceId"
+          label="Province"
+          rules={[{ required: true, message: "Select a province." }]}
+        >
+          <Select
+            showSearch
+            optionFilterProp="label"
+            disabled={disabled || !effectiveRegionId}
+            loading={provincesQuery.isFetching}
+            options={provinceOptions}
+            placeholder="Select a province"
+            onChange={() => {
+              form.setFieldsValue({
+                cityMunicipalityId: undefined,
+                jurisdictionId: undefined,
+              } as Partial<T>);
+            }}
+          />
+        </Form.Item>
+      ) : null}
+
+      {jurisdictionType === "barangay" ? (
+        <Form.Item
+          name="cityMunicipalityId"
+          label="City/Municipality"
+          rules={[
+            { required: true, message: "Select a city or municipality." },
+          ]}
+        >
+          <Select
+            showSearch
+            optionFilterProp="label"
+            disabled={disabled || !effectiveProvinceId}
+            loading={citiesQuery.isFetching}
+            options={cityOptions}
+            placeholder="Select a city or municipality"
+            onChange={() => {
+              form.setFieldsValue({
+                jurisdictionId: undefined,
+              } as Partial<T>);
+            }}
+          />
+        </Form.Item>
+      ) : null}
+
+      {jurisdictionType === "region" ? (
+        <Form.Item
+          name="jurisdictionId"
+          label="Region"
+          rules={[
+            {
+              validator: async (_, value) => {
+                if (form.getFieldValue("jurisdictionType") && !value) {
+                  throw new Error("Select a region.");
+                }
+              },
+            },
+          ]}
+        >
+          <Select
+            showSearch
+            optionFilterProp="label"
+            disabled={disabled}
+            loading={regionsQuery.isFetching}
+            options={regionOptions}
+            placeholder="Select a region"
+          />
+        </Form.Item>
+      ) : null}
+
+      {jurisdictionType === "province" ? (
+        <Form.Item
+          name="jurisdictionId"
+          label="Province"
+          rules={[
+            {
+              validator: async (_, value) => {
+                if (!form.getFieldValue("jurisdictionType")) {
+                  return;
+                }
+
+                if (!value) {
+                  throw new Error("Select a province.");
+                }
+              },
+            },
+          ]}
+        >
+          <Select
+            showSearch
+            optionFilterProp="label"
+            disabled={disabled || !effectiveRegionId}
+            loading={provincesQuery.isFetching}
+            options={provinceOptions}
+            placeholder="Select a province"
+          />
+        </Form.Item>
+      ) : null}
+
+      {jurisdictionType === "city" ? (
+        <Form.Item
+          name="jurisdictionId"
+          label="City/Municipality"
+          rules={[
+            {
+              validator: async (_, value) => {
+                if (!form.getFieldValue("jurisdictionType")) {
+                  return;
+                }
+
+                if (!value) {
+                  throw new Error("Select a city or municipality.");
+                }
+              },
+            },
+          ]}
+        >
+          <Select
+            showSearch
+            optionFilterProp="label"
+            disabled={disabled || !effectiveProvinceId}
+            loading={citiesQuery.isFetching}
+            options={cityOptions}
+            placeholder="Select a city or municipality"
+          />
+        </Form.Item>
+      ) : null}
+
+      {jurisdictionType === "barangay" ? (
+        <Form.Item
+          name="jurisdictionId"
+          label="Barangay"
+          rules={[
+            {
+              validator: async (_, value) => {
+                if (!form.getFieldValue("jurisdictionType")) {
+                  return;
+                }
+
+                if (!value) {
+                  throw new Error("Select a barangay.");
+                }
+              },
+            },
+          ]}
+        >
+          <Select
+            showSearch
+            optionFilterProp="label"
+            disabled={disabled || !effectiveCityId}
+            loading={barangaysQuery.isFetching}
+            options={barangayOptions}
+            placeholder="Select a barangay"
+          />
+        </Form.Item>
+      ) : null}
+    </Space>
+  );
 }
 
 export default function UsersPage() {
@@ -63,6 +737,10 @@ export default function UsersPage() {
   const listQuery = useListQueryParams();
   const usersQuery = useUsersQuery(listQuery, canManage);
   const capabilitiesQuery = useUsersCapabilitiesQuery(isAuthenticated);
+  const currentUserDetailQuery = useUserQuery(
+    user?.id,
+    canManage && Boolean(user?.id),
+  );
   const createMutation = useCreateUserMutation();
   const updateMutation = useUpdateUserMutation();
   const deleteMutation = useDeleteUserMutation();
@@ -80,16 +758,40 @@ export default function UsersPage() {
     return getAssignableRoles(user.role);
   }, [user]);
 
-  const rows = usersQuery.data?.data ?? [];
+  const rows = useMemo(
+    () => usersQuery.data?.data ?? [],
+    [usersQuery.data?.data],
+  );
+  const normalizedCurrentActor = useMemo(
+    () => normalizeUserJurisdiction(currentUserDetailQuery.data ?? null),
+    [currentUserDetailQuery.data],
+  );
+  const tableRows = useMemo<Array<UserTableRow>>(
+    () =>
+      rows.map((row) => {
+        const normalizedRow = normalizeUserJurisdiction(row) ?? row;
+
+        return {
+          ...normalizedRow,
+          jurisdictionSummary: formatJurisdictionSummary(normalizedRow),
+        };
+      }),
+    [rows],
+  );
   const paginationMeta = usersQuery.data?.pagination;
   const isEditingSelf = Boolean(
     editingUser && String(editingUser.id) === String(user?.id),
   );
+  const currentActor = normalizedCurrentActor;
+  const currentScopeSummary = getScopeSummary(capabilitiesQuery.data);
   const roleOptions = new Map(
     Object.values(Role).map((role) => [role, getRoleLabel(role)]),
   );
+  const jurisdictionTypeOptions = new Map(
+    Array.from(JURISDICTION_LABELS.entries()),
+  );
 
-  const columns: Array<SharedTableColumn<User>> = [
+  const columns: Array<SharedTableColumn<UserTableRow>> = [
     { key: "email", title: "Email", filterKind: "text" },
     { key: "name", title: "Name", filterKind: "text" },
     {
@@ -97,10 +799,31 @@ export default function UsersPage() {
       title: "Role",
       filterKind: "select",
       selectOptions: roleOptions,
+      render: (value) => {
+        const normalized = normalizeRole(String(value ?? ""));
+        return normalized ? getRoleLabel(normalized) : String(value ?? "-");
+      },
+    },
+    {
+      key: "jurisdictionType",
+      title: "Scope Level",
+      filterKind: "select",
+      selectOptions: jurisdictionTypeOptions,
+      render: (value) => getJurisdictionLabel(String(value ?? "")),
+    },
+    {
+      key: "jurisdictionSummary",
+      title: "Jurisdiction",
+      filterKind: "text",
     },
     { key: "createdAt", title: "Created", filterKind: "date", sortable: true },
     { key: "updatedAt", title: "Updated", filterKind: "date", sortable: true },
   ];
+
+  const canCreateUsers =
+    canManage &&
+    assignableRoles.length > 0 &&
+    canCreateUsersFromCapabilities(capabilitiesQuery.data);
 
   const canEditRow = (row: User): boolean => {
     const targetRole = normalizeRole(row.role);
@@ -146,19 +869,44 @@ export default function UsersPage() {
     return canManageRole(user.role, targetRole);
   };
 
+  const openCreateModal = () => {
+    if (!canCreateUsers) {
+      return;
+    }
+
+    createForm.resetFields();
+    createForm.setFieldsValue({
+      role: assignableRoles[0],
+    });
+    setIsCreateOpen(true);
+  };
+
   const submitCreate = async () => {
+    if (!canCreateUsers) {
+      message.error(
+        "Permission denied: You cannot create users in the current LGU scope.",
+      );
+      setIsCreateOpen(false);
+      return;
+    }
+
     try {
       const values = await createForm.validateFields();
-      await createMutation.mutateAsync(values);
+      await createMutation.mutateAsync(buildCreatePayload(values));
       message.success("User created");
       createForm.resetFields();
       setIsCreateOpen(false);
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorPayload>;
 
+      if (axiosError.response?.status === 401) {
+        message.error("Authentication required. Sign in again and retry.");
+        return;
+      }
+
       if (axiosError.response?.status === 403) {
         message.error(
-          "Permission denied: You cannot assign this role to a user.",
+          "Permission denied: You cannot create that user inside the selected LGU scope.",
         );
         return;
       }
@@ -169,21 +917,39 @@ export default function UsersPage() {
       }
 
       const mapped = mapValidationErrorsToForm(createForm, error);
-      if (!mapped && axiosError.response?.data?.message) {
+      const inlineMessageMapped = applyInlineUserFormMessage(
+        createForm,
+        axiosError.response?.data?.message,
+      );
+      if (
+        !mapped &&
+        !inlineMessageMapped &&
+        axiosError.response?.data?.message
+      ) {
         message.error(axiosError.response.data.message);
       }
     }
   };
 
   const openEditModal = (row: User) => {
-    setEditingUser(row);
+    const normalizedRow = normalizeUserJurisdiction(row) ?? row;
+
+    setEditingUser(normalizedRow);
     setIsEditOpen(true);
     editForm.setFieldsValue({
-      name: row.name ?? "",
-      email: row.email ?? "",
-      role: (normalizeRole(row.role)
-        ? normalizeRole(row.role)
+      name: normalizedRow.name ?? "",
+      email: normalizedRow.email ?? "",
+      role: (normalizeRole(normalizedRow.role)
+        ? normalizeRole(normalizedRow.role)
         : assignableRoles[0]) as Role,
+      password: undefined,
+      jurisdictionType: normalizeJurisdictionType(
+        normalizedRow.jurisdictionType,
+      ),
+      jurisdictionId: normalizedRow.jurisdictionId ?? undefined,
+      regionId: undefined,
+      provinceId: undefined,
+      cityMunicipalityId: undefined,
     });
   };
 
@@ -211,15 +977,27 @@ export default function UsersPage() {
 
       await updateMutation.mutateAsync({
         userId: editingUser.id,
-        payload: values,
+        payload: buildUpdatePayload(values),
       });
       message.success("User updated");
       closeEditModal();
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorPayload>;
 
+      if (axiosError.response?.status === 401) {
+        message.error("Authentication required. Sign in again and retry.");
+        return;
+      }
+
       if (axiosError.response?.status === 403) {
         message.error("Permission denied: You cannot update this user.");
+        return;
+      }
+
+      if (axiosError.response?.status === 404) {
+        message.error(
+          "User not found or no longer available in your LGU scope.",
+        );
         return;
       }
 
@@ -229,7 +1007,15 @@ export default function UsersPage() {
       }
 
       const mapped = mapValidationErrorsToForm(editForm, error);
-      if (!mapped && axiosError.response?.data?.message) {
+      const inlineMessageMapped = applyInlineUserFormMessage(
+        editForm,
+        axiosError.response?.data?.message,
+      );
+      if (
+        !mapped &&
+        !inlineMessageMapped &&
+        axiosError.response?.data?.message
+      ) {
         message.error(axiosError.response.data.message);
       }
     }
@@ -245,8 +1031,20 @@ export default function UsersPage() {
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorPayload>;
 
+      if (axiosError.response?.status === 401) {
+        message.error("Authentication required. Sign in again and retry.");
+        return;
+      }
+
       if (axiosError.response?.status === 403) {
         message.error("Permission denied: You cannot delete this user.");
+        return;
+      }
+
+      if (axiosError.response?.status === 404) {
+        message.error(
+          "User not found or already unavailable in your LGU scope.",
+        );
         return;
       }
 
@@ -267,7 +1065,7 @@ export default function UsersPage() {
       <Result
         status="403"
         title="Forbidden"
-        subTitle="Only System Admin and Department Manager accounts can manage users."
+        subTitle="Your authenticated account does not have access to LGU-scoped user management."
       />
     );
   }
@@ -305,16 +1103,25 @@ export default function UsersPage() {
   return (
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <Space style={{ width: "100%", justifyContent: "space-between" }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Users
-        </Title>
-        <Button type="primary" onClick={() => setIsCreateOpen(true)}>
-          Create User
-        </Button>
+        <Space direction="vertical" size={0}>
+          <Title level={3} style={{ margin: 0 }}>
+            User Management
+          </Title>
+          <Text type="secondary">
+            Manage user accounts inside your LGU scope. Role changes, deletes,
+            and jurisdiction bindings follow backend capability and hierarchy
+            rules.
+          </Text>
+        </Space>
+        {canCreateUsers ? (
+          <Button type="primary" onClick={openCreateModal}>
+            Create User
+          </Button>
+        ) : null}
       </Space>
 
-      <SharedTable<User>
-        rows={rows}
+      <SharedTable<UserTableRow>
+        rows={tableRows}
         columns={columns}
         storageKey="users-shared-table"
         loading={usersQuery.isFetching}
@@ -325,7 +1132,7 @@ export default function UsersPage() {
         onPageSizeChange={listQuery.setPageSize}
         globalSearch={listQuery.search}
         onGlobalSearchChange={listQuery.setSearch}
-        globalSearchPlaceholder="Search users"
+        globalSearchPlaceholder="Search users in your LGU scope"
         sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
         onSortChange={(columnKey, order) => {
           if (columnKey === "createdAt" || columnKey === "updatedAt") {
@@ -346,6 +1153,21 @@ export default function UsersPage() {
         }}
         topToolbar={
           <Space direction="vertical" style={{ width: "100%" }}>
+            {currentActor ? (
+              <Alert
+                type="info"
+                showIcon
+                message="Current admin scope"
+                description={[
+                  currentScopeSummary
+                    ? `Capability scope: ${currentScopeSummary}.`
+                    : null,
+                  `Jurisdiction: ${formatJurisdictionSummary(currentActor)}.`,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              />
+            ) : null}
             {capabilitiesQuery.data &&
             (!capabilitiesQuery.data.canUpdateUser ||
               !capabilitiesQuery.data.canDeleteUser) ? (
@@ -436,7 +1258,13 @@ export default function UsersPage() {
           <Form.Item
             name="password"
             label="Password"
-            rules={[{ required: true, min: 8 }]}
+            rules={[
+              { required: true, message: "Password is required" },
+              {
+                min: PASSWORD_MIN_LENGTH,
+                message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`,
+              },
+            ]}
           >
             <Input.Password />
           </Form.Item>
@@ -448,6 +1276,12 @@ export default function UsersPage() {
               }))}
             />
           </Form.Item>
+          <JurisdictionFields
+            form={createForm}
+            actorRole={user?.role}
+            actorUser={currentActor}
+            mode="create"
+          />
         </Form>
       </Modal>
 
@@ -486,6 +1320,25 @@ export default function UsersPage() {
               }))}
             />
           </Form.Item>
+          <Form.Item
+            name="password"
+            label="Password"
+            extra="Leave blank to keep the current password."
+            rules={[
+              {
+                min: PASSWORD_MIN_LENGTH,
+                message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`,
+              },
+            ]}
+          >
+            <Input.Password placeholder="Leave blank to keep the current password" />
+          </Form.Item>
+          <JurisdictionFields
+            form={editForm}
+            actorRole={user?.role}
+            actorUser={currentActor}
+            mode="edit"
+          />
         </Form>
       </Modal>
     </Space>

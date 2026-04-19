@@ -1,7 +1,9 @@
 export enum Role {
-  SYSTEM_ADMIN = "SYSTEM_ADMIN",
-  DEPARTMENT_MANAGER = "DEPARTMENT_MANAGER",
-  SUPERVISOR = "SUPERVISOR",
+  NATIONAL_ADMIN = "NATIONAL_ADMIN",
+  REGIONAL_DIRECTOR = "REGIONAL_DIRECTOR",
+  PROVINCIAL_ADMIN = "PROVINCIAL_ADMIN",
+  CITY_ADMIN = "CITY_ADMIN",
+  CITY_CONTENT_EDITOR = "CITY_CONTENT_EDITOR",
   DISPATCHER = "DISPATCHER",
   RESPONDER = "RESPONDER",
   CITIZEN_REPORTER = "CITIZEN_REPORTER",
@@ -16,6 +18,9 @@ export interface AuthUser {
   updatedAt?: string;
   email: string;
   name: string;
+  mobileNumber?: string | null;
+  mobileNumberVerifiedAt?: string | null;
+  citizenId?: string | null;
   role: Role;
   mfaEnabled: boolean;
   mfaEnabledAt?: string | null;

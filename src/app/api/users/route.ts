@@ -14,13 +14,21 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse();
     }
 
-    const upstream = await requestUpstreamWithFallback(request, ["/admin/users", "/users"], {
-      method: "GET",
-    });
+    const search = request.nextUrl.search;
+    const upstream = await requestUpstreamWithFallback(
+      request,
+      [`/users${search}`, `/admin/users${search}`],
+      {
+        method: "GET",
+      },
+    );
 
     return toJsonResponse(upstream);
   } catch {
-    return NextResponse.json({ message: "Failed to fetch users." }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to fetch users." },
+      { status: 500 },
+    );
   }
 }
 
@@ -31,13 +39,20 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = await request.json();
-    const upstream = await requestUpstreamWithFallback(request, ["/admin/users", "/users"], {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    const upstream = await requestUpstreamWithFallback(
+      request,
+      ["/users", "/admin/users"],
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
 
     return toJsonResponse(upstream);
   } catch {
-    return NextResponse.json({ message: "Failed to create user." }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to create user." },
+      { status: 500 },
+    );
   }
 }

@@ -18,7 +18,7 @@ import {
 import { Role } from "@/types/auth";
 
 const { Text, Title } = Typography;
-const AUDIT_LOG_ALLOWED_ROLES = [Role.SYSTEM_ADMIN, Role.AUDITOR];
+const AUDIT_LOG_ALLOWED_ROLES = [Role.NATIONAL_ADMIN, Role.AUDITOR];
 
 export default function AuditLogsPage() {
   const { user, capabilities, isAuthenticated } = useAuth();
@@ -78,7 +78,7 @@ export default function AuditLogsPage() {
             </Tag>
           </Title>
           <Text type="secondary">
-            Server-backed audit history for System Admin and Auditor users.
+            Server-backed audit history for National Admin and Auditor users.
           </Text>
         </Space>
 
@@ -96,7 +96,7 @@ export default function AuditLogsPage() {
             <Result
               status="403"
               title="Forbidden"
-              subTitle="Only System Admin and Auditor accounts can access audit logs."
+              subTitle="Only National Admin and Auditor accounts can access audit logs."
             />
           ) : (
             <Alert

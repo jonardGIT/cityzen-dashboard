@@ -9,13 +9,18 @@ import { Role } from "@/types/auth";
 
 describe("auth role normalization", () => {
   it("maps legacy cached role names to the new backend roles", () => {
-    expect(normalizeRole("SUPER_ADMIN")).toBe(Role.SYSTEM_ADMIN);
-    expect(normalizeRole("ADMIN")).toBe(Role.DEPARTMENT_MANAGER);
+    expect(normalizeRole("SUPER_ADMIN")).toBe(Role.NATIONAL_ADMIN);
+    expect(normalizeRole("system admin")).toBe(Role.NATIONAL_ADMIN);
+    expect(normalizeRole("ADMIN")).toBe(Role.CITY_ADMIN);
     expect(normalizeRole("VIEWER")).toBe(Role.CITIZEN_REPORTER);
+    expect(normalizeRole("SUPERVISOR")).toBe(Role.PROVINCIAL_ADMIN);
+    expect(normalizeRole("city content editor")).toBe(Role.CITY_CONTENT_EDITOR);
   });
 
   it("returns human-readable role labels", () => {
-    expect(getRoleLabel(Role.SYSTEM_ADMIN)).toBe("System Admin");
+    expect(getRoleLabel(Role.NATIONAL_ADMIN)).toBe("National Admin");
+    expect(getRoleLabel(Role.CITY_ADMIN)).toBe("City/Municipal Admin");
+    expect(getRoleLabel(Role.CITY_CONTENT_EDITOR)).toBe("City Content Editor");
     expect(getRoleLabel(Role.CITIZEN_REPORTER)).toBe("Citizen Reporter");
   });
 
@@ -34,6 +39,8 @@ describe("auth role normalization", () => {
       "citizen:link:self",
     ]);
     expect(capabilities.scope).toEqual(["self"]);
-    expect(isCitizenSelfServiceUser(capabilities.role, capabilities)).toBe(true);
+    expect(isCitizenSelfServiceUser(capabilities.role, capabilities)).toBe(
+      true,
+    );
   });
 });

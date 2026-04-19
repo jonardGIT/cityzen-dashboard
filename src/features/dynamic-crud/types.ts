@@ -81,7 +81,10 @@ export type CrudFieldType =
   | "email"
   | "password"
   | "select"
-  | "datetime";
+  | "datetime"
+  | "integer"
+  | "boolean"
+  | "json";
 
 export interface CrudFieldOptionSource {
   resource: string;
