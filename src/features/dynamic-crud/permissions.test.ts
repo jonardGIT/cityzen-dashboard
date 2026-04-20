@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { getCrudResource } from "@/features/dynamic-crud/config";
-import { canShowCrudNavigationItem } from "@/features/dynamic-crud/permissions";
+import {
+  canShowCrudNavigationItem,
+  hasPermission,
+} from "@/features/dynamic-crud/permissions";
 import { Role } from "@/types/auth";
 
 describe("canShowCrudNavigationItem", () => {
@@ -73,5 +76,85 @@ describe("canShowCrudNavigationItem", () => {
     expect(canShowCrudNavigationItem(incidents!, Role.AUDITOR, true)).toBe(
       false,
     );
+  });
+
+  it("splits geography write access by LGU level", () => {
+    const regions = getCrudResource("regions");
+    const provinces = getCrudResource("provinces");
+    const cities = getCrudResource("cities-municipalities");
+    const barangays = getCrudResource("barangays");
+
+    expect(regions).toBeDefined();
+    expect(provinces).toBeDefined();
+    expect(cities).toBeDefined();
+    expect(barangays).toBeDefined();
+
+    expect(
+      hasPermission(regions!.endpoints.create, Role.NATIONAL_ADMIN, true),
+    ).toBe(true);
+    expect(
+      hasPermission(regions!.endpoints.create, Role.REGIONAL_DIRECTOR, true),
+    ).toBe(true);
+    expect(
+      hasPermission(regions!.endpoints.create, Role.PROVINCIAL_ADMIN, true),
+    ).toBe(false);
+
+    expect(
+      hasPermission(provinces!.endpoints.create, Role.NATIONAL_ADMIN, true),
+    ).toBe(true);
+    expect(
+      hasPermission(provinces!.endpoints.create, Role.REGIONAL_DIRECTOR, true),
+    ).toBe(true);
+    expect(
+      hasPermission(provinces!.endpoints.create, Role.PROVINCIAL_ADMIN, true),
+    ).toBe(false);
+
+    expect(
+      hasPermission(cities!.endpoints.create, Role.NATIONAL_ADMIN, true),
+    ).toBe(true);
+    expect(
+      hasPermission(cities!.endpoints.create, Role.REGIONAL_DIRECTOR, true),
+    ).toBe(true);
+    expect(
+      hasPermission(cities!.endpoints.create, Role.PROVINCIAL_ADMIN, true),
+    ).toBe(true);
+    expect(hasPermission(cities!.endpoints.create, Role.CITY_ADMIN, true)).toBe(
+      false,
+    );
+
+    expect(
+      hasPermission(barangays!.endpoints.create, Role.NATIONAL_ADMIN, true),
+    ).toBe(true);
+    expect(
+      hasPermission(barangays!.endpoints.create, Role.REGIONAL_DIRECTOR, true),
+    ).toBe(true);
+    expect(
+      hasPermission(barangays!.endpoints.create, Role.PROVINCIAL_ADMIN, true),
+    ).toBe(true);
+    expect(
+      hasPermission(barangays!.endpoints.create, Role.CITY_ADMIN, true),
+    ).toBe(true);
+    expect(
+      hasPermission(barangays!.endpoints.create, Role.DISPATCHER, true),
+    ).toBe(false);
+  });
+
+  it("denies unauthenticated geography list access", () => {
+    const geographyResources = [
+      getCrudResource("regions"),
+      getCrudResource("provinces"),
+      getCrudResource("cities-municipalities"),
+      getCrudResource("barangays"),
+    ];
+
+    for (const resource of geographyResources) {
+      expect(resource).toBeDefined();
+      expect(
+        hasPermission(resource!.endpoints.list, Role.NATIONAL_ADMIN, false),
+      ).toBe(false);
+      expect(
+        canShowCrudNavigationItem(resource!, Role.NATIONAL_ADMIN, false),
+      ).toBe(false);
+    }
   });
 });

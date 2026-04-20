@@ -50,6 +50,50 @@ describe("dynamic crud OpenAPI helpers", () => {
     ).toBe(false);
   });
 
+  it("treats feature-gated endpoints as unavailable until operation keys load", () => {
+    expect(
+      isCrudEndpointAvailableInOpenApi(
+        {
+          method: "POST",
+          path: "/incidents/media/upload",
+          featureGate: {
+            feature: "mediaStorage",
+            requires: "supabase-storage",
+          },
+        },
+        undefined,
+      ),
+    ).toBe(false);
+  });
+
+  it("treats feature-gated endpoints as available once the active spec includes them", () => {
+    expect(
+      isCrudEndpointAvailableInOpenApi(
+        {
+          method: "POST",
+          path: "/incidents/media/upload",
+          featureGate: {
+            feature: "mediaStorage",
+            requires: "supabase-storage",
+          },
+        },
+        ["POST /incidents/media/upload"],
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps non-gated endpoints available before operation keys load", () => {
+    expect(
+      isCrudEndpointAvailableInOpenApi(
+        {
+          method: "GET",
+          path: "/citizens",
+        },
+        undefined,
+      ),
+    ).toBe(true);
+  });
+
   it("supports feature-gated auth optional endpoints", () => {
     expect(
       isCrudEndpointAvailableInOpenApi(

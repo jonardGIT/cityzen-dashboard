@@ -282,6 +282,18 @@ function getScopeSummary(
   return null;
 }
 
+function formatReadableList(items: string[]): string {
+  if (items.length <= 1) {
+    return items[0] ?? "";
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
 function canCreateUsersFromCapabilities(
   capabilities?: UserCapabilities | null,
 ): boolean {
@@ -310,6 +322,17 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
   disabled,
   mode,
 }: JurisdictionFieldsProps<T>) {
+  type SetFieldsValueArg = Parameters<typeof form.setFieldsValue>[0];
+  type GetFieldValueArg = Parameters<typeof form.getFieldValue>[0];
+
+  const setJurisdictionFieldsValue = (values: SetFieldsValueArg) => {
+    form.setFieldsValue(values);
+  };
+
+  const getJurisdictionFieldValue = <K extends keyof JurisdictionFormValues>(
+    field: K,
+  ) => form.getFieldValue(field as GetFieldValueArg) as T[K] | undefined;
+
   const targetRole = Form.useWatch("role", form) as Role | undefined;
   const jurisdictionType = Form.useWatch("jurisdictionType", form) as
     | JurisdictionType
@@ -334,34 +357,62 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
     actorUser?.jurisdictionType === "city"
       ? (actorUser.jurisdictionId ?? undefined)
       : undefined;
+  const cityAdminScopeLocked = isCityAdmin && Boolean(actorCityId);
   const allowEmptyJurisdiction =
     mode === "create" && !isCityAdmin && !requiresJurisdictionPair;
 
-  const currentBarangayQuery = useBarangayByIdQuery(
-    jurisdictionType === "barangay" ? jurisdictionId : undefined,
-    Boolean(jurisdictionType === "barangay" && jurisdictionId),
+  const actorCityQuery = useCityMunicipalityByIdQuery(
+    actorCityId,
+    cityAdminScopeLocked,
   );
-  const derivedCityId =
-    jurisdictionType === "city"
+  const actorProvinceId = actorCityQuery.data?.provinceId;
+  const actorProvinceQuery = useProvinceByIdQuery(
+    actorProvinceId,
+    cityAdminScopeLocked && Boolean(actorProvinceId),
+  );
+  const actorRegionId = actorProvinceQuery.data?.regionId;
+  useRegionByIdQuery(
+    actorRegionId,
+    cityAdminScopeLocked && Boolean(actorRegionId),
+  );
+
+  const currentBarangayQuery = useBarangayByIdQuery(
+    !cityAdminScopeLocked && jurisdictionType === "barangay"
+      ? jurisdictionId
+      : undefined,
+    Boolean(
+      !cityAdminScopeLocked &&
+      jurisdictionType === "barangay" &&
+      jurisdictionId,
+    ),
+  );
+  const derivedCityId = cityAdminScopeLocked
+    ? actorCityId
+    : jurisdictionType === "city"
       ? jurisdictionId
       : currentBarangayQuery.data?.cityMunicipalityId;
   const currentCityQuery = useCityMunicipalityByIdQuery(
     derivedCityId,
-    Boolean(derivedCityId),
+    Boolean(!cityAdminScopeLocked && derivedCityId),
   );
-  const derivedProvinceId =
-    jurisdictionType === "province"
+  const derivedProvinceId = cityAdminScopeLocked
+    ? actorProvinceId
+    : jurisdictionType === "province"
       ? jurisdictionId
       : currentCityQuery.data?.provinceId;
   const currentProvinceQuery = useProvinceByIdQuery(
     derivedProvinceId,
-    Boolean(derivedProvinceId),
+    Boolean(!cityAdminScopeLocked && derivedProvinceId),
   );
-  const derivedRegionId =
-    jurisdictionType === "region"
+  const derivedRegionId = cityAdminScopeLocked
+    ? actorRegionId
+    : jurisdictionType === "region"
       ? jurisdictionId
       : currentProvinceQuery.data?.regionId;
-  useRegionByIdQuery(derivedRegionId, Boolean(derivedRegionId));
+  useRegionByIdQuery(
+    derivedRegionId,
+    Boolean(!cityAdminScopeLocked && derivedRegionId),
+  );
 
   const effectiveRegionId = regionId ?? derivedRegionId;
   const effectiveProvinceId = provinceId ?? derivedProvinceId;
@@ -400,33 +451,72 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
       return;
     }
 
-    form.setFieldsValue({
+    setJurisdictionFieldsValue({
       jurisdictionType: undefined,
       jurisdictionId: undefined,
       regionId: undefined,
       provinceId: undefined,
       cityMunicipalityId: undefined,
-    } as Partial<T>);
+    } as SetFieldsValueArg);
   }, [allowedJurisdictionTypes, form, jurisdictionType]);
 
   useEffect(() => {
     if (
-      !isCityAdmin ||
-      !actorCityId ||
-      form.getFieldValue("jurisdictionType") ||
-      form.getFieldValue("jurisdictionId")
+      !cityAdminScopeLocked ||
+      !allowedJurisdictionTypes.includes("city") ||
+      !actorCityId
     ) {
       return;
     }
 
-    form.setFieldsValue({
-      jurisdictionType: "city",
-      jurisdictionId: actorCityId,
-    } as Partial<T>);
-  }, [actorCityId, form, isCityAdmin]);
+    const nextValues: JurisdictionFormValues = {};
+
+    if (!jurisdictionType) {
+      nextValues.jurisdictionType = "city" as T["jurisdictionType"];
+    }
+
+    if (actorRegionId && regionId !== actorRegionId) {
+      nextValues.regionId = actorRegionId as T["regionId"];
+    }
+
+    if (actorProvinceId && provinceId !== actorProvinceId) {
+      nextValues.provinceId = actorProvinceId as T["provinceId"];
+    }
+
+    if (cityMunicipalityId !== actorCityId) {
+      nextValues.cityMunicipalityId = actorCityId as T["cityMunicipalityId"];
+    }
+
+    if (
+      (jurisdictionType ?? "city") === "city" &&
+      jurisdictionId !== actorCityId
+    ) {
+      nextValues.jurisdictionId = actorCityId;
+    }
+
+    if (Object.keys(nextValues).length > 0) {
+      setJurisdictionFieldsValue(nextValues as SetFieldsValueArg);
+    }
+  }, [
+    actorCityId,
+    actorProvinceId,
+    actorRegionId,
+    allowedJurisdictionTypes,
+    cityAdminScopeLocked,
+    cityMunicipalityId,
+    form,
+    jurisdictionId,
+    jurisdictionType,
+    provinceId,
+    regionId,
+  ]);
 
   useEffect(() => {
-    const nextValues: Partial<T> = {};
+    if (cityAdminScopeLocked) {
+      return;
+    }
+
+    const nextValues: JurisdictionFormValues = {};
 
     if (jurisdictionType === "region" && jurisdictionId && !regionId) {
       nextValues.regionId = jurisdictionId as T["regionId"];
@@ -445,9 +535,10 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
     }
 
     if (Object.keys(nextValues).length > 0) {
-      form.setFieldsValue(nextValues);
+      setJurisdictionFieldsValue(nextValues as SetFieldsValueArg);
     }
   }, [
+    cityAdminScopeLocked,
     cityMunicipalityId,
     derivedCityId,
     derivedProvinceId,
@@ -481,7 +572,7 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
   }));
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }} size={0}>
+    <Space vertical style={{ width: "100%" }} size={0}>
       <Form.Item
         name="jurisdictionType"
         label="Jurisdiction level"
@@ -489,7 +580,7 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           {
             validator: async (_, value) => {
               const currentJurisdictionId =
-                form.getFieldValue("jurisdictionId");
+                getJurisdictionFieldValue("jurisdictionId");
 
               if (
                 requiresJurisdictionPair &&
@@ -513,18 +604,16 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
       >
         <Select
           allowClear={allowEmptyJurisdiction}
-          disabled={
-            disabled || allowedJurisdictionTypes.length === 0 || isCityAdmin
-          }
+          disabled={disabled || allowedJurisdictionTypes.length === 0}
           options={typeOptions}
           placeholder="Select a jurisdiction level"
           onChange={() => {
-            form.setFieldsValue({
+            setJurisdictionFieldsValue({
               jurisdictionId: undefined,
               regionId: undefined,
               provinceId: undefined,
               cityMunicipalityId: undefined,
-            } as Partial<T>);
+            } as SetFieldsValueArg);
           }}
         />
       </Form.Item>
@@ -534,7 +623,7 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
-          message="City and municipal admins can only manage users inside their own city or municipality."
+          title="City and municipal admins can only manage users inside their own city or municipality."
         />
       ) : null}
 
@@ -549,16 +638,18 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           <Select
             showSearch
             optionFilterProp="label"
-            disabled={disabled || regionOptions.length === 0}
+            disabled={
+              disabled || cityAdminScopeLocked || regionOptions.length === 0
+            }
             loading={regionsQuery.isFetching}
             options={regionOptions}
             placeholder="Select a region"
             onChange={() => {
-              form.setFieldsValue({
+              setJurisdictionFieldsValue({
                 provinceId: undefined,
                 cityMunicipalityId: undefined,
                 jurisdictionId: undefined,
-              } as Partial<T>);
+              } as SetFieldsValueArg);
             }}
           />
         </Form.Item>
@@ -573,15 +664,15 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           <Select
             showSearch
             optionFilterProp="label"
-            disabled={disabled || !effectiveRegionId}
+            disabled={disabled || cityAdminScopeLocked || !effectiveRegionId}
             loading={provincesQuery.isFetching}
             options={provinceOptions}
             placeholder="Select a province"
             onChange={() => {
-              form.setFieldsValue({
+              setJurisdictionFieldsValue({
                 cityMunicipalityId: undefined,
                 jurisdictionId: undefined,
-              } as Partial<T>);
+              } as SetFieldsValueArg);
             }}
           />
         </Form.Item>
@@ -598,14 +689,14 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           <Select
             showSearch
             optionFilterProp="label"
-            disabled={disabled || !effectiveProvinceId}
+            disabled={disabled || cityAdminScopeLocked || !effectiveProvinceId}
             loading={citiesQuery.isFetching}
             options={cityOptions}
             placeholder="Select a city or municipality"
             onChange={() => {
-              form.setFieldsValue({
+              setJurisdictionFieldsValue({
                 jurisdictionId: undefined,
-              } as Partial<T>);
+              } as SetFieldsValueArg);
             }}
           />
         </Form.Item>
@@ -618,7 +709,7 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           rules={[
             {
               validator: async (_, value) => {
-                if (form.getFieldValue("jurisdictionType") && !value) {
+                if (getJurisdictionFieldValue("jurisdictionType") && !value) {
                   throw new Error("Select a region.");
                 }
               },
@@ -643,7 +734,7 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           rules={[
             {
               validator: async (_, value) => {
-                if (!form.getFieldValue("jurisdictionType")) {
+                if (!getJurisdictionFieldValue("jurisdictionType")) {
                   return;
                 }
 
@@ -672,7 +763,7 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           rules={[
             {
               validator: async (_, value) => {
-                if (!form.getFieldValue("jurisdictionType")) {
+                if (!getJurisdictionFieldValue("jurisdictionType")) {
                   return;
                 }
 
@@ -686,7 +777,7 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           <Select
             showSearch
             optionFilterProp="label"
-            disabled={disabled || !effectiveProvinceId}
+            disabled={disabled || cityAdminScopeLocked || !effectiveProvinceId}
             loading={citiesQuery.isFetching}
             options={cityOptions}
             placeholder="Select a city or municipality"
@@ -701,7 +792,7 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
           rules={[
             {
               validator: async (_, value) => {
-                if (!form.getFieldValue("jurisdictionType")) {
+                if (!getJurisdictionFieldValue("jurisdictionType")) {
                   return;
                 }
 
@@ -784,6 +875,13 @@ export default function UsersPage() {
   );
   const currentActor = normalizedCurrentActor;
   const currentScopeSummary = getScopeSummary(capabilitiesQuery.data);
+  const manageableRolesSummary = useMemo(() => {
+    if (assignableRoles.length === 0) {
+      return null;
+    }
+
+    return `You can create and manage ${formatReadableList(assignableRoles.map((role) => getRoleLabel(role)))} accounts within your LGU scope.`;
+  }, [assignableRoles]);
   const roleOptions = new Map(
     Object.values(Role).map((role) => [role, getRoleLabel(role)]),
   );
@@ -1101,16 +1199,16 @@ export default function UsersPage() {
   }
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
+    <Space vertical size={16} style={{ width: "100%" }}>
       <Space style={{ width: "100%", justifyContent: "space-between" }}>
-        <Space direction="vertical" size={0}>
+        <Space vertical size={0}>
           <Title level={3} style={{ margin: 0 }}>
-            User Management
+            Staff & User Management
           </Title>
           <Text type="secondary">
-            Manage user accounts inside your LGU scope. Role changes, deletes,
-            and jurisdiction bindings follow backend capability and hierarchy
-            rules.
+            Manage staff and user accounts inside your LGU scope. Role
+            assignments, edits, deletes, and jurisdiction bindings follow
+            backend capability and hierarchy rules.
           </Text>
         </Space>
         {canCreateUsers ? (
@@ -1152,12 +1250,12 @@ export default function UsersPage() {
           listQuery.setUpdatedRange(value.from, value.to);
         }}
         topToolbar={
-          <Space direction="vertical" style={{ width: "100%" }}>
+          <Space vertical style={{ width: "100%" }}>
             {currentActor ? (
               <Alert
                 type="info"
                 showIcon
-                message="Current admin scope"
+                title="Current admin scope"
                 description={[
                   currentScopeSummary
                     ? `Capability scope: ${currentScopeSummary}.`
@@ -1168,13 +1266,21 @@ export default function UsersPage() {
                   .join(" ")}
               />
             ) : null}
+            {manageableRolesSummary ? (
+              <Alert
+                type="info"
+                showIcon
+                title="Staff roles you can manage"
+                description={manageableRolesSummary}
+              />
+            ) : null}
             {capabilitiesQuery.data &&
             (!capabilitiesQuery.data.canUpdateUser ||
               !capabilitiesQuery.data.canDeleteUser) ? (
               <Alert
                 type="info"
                 showIcon
-                message="User management capabilities are limited by the connected backend."
+                title="User management capabilities are limited by the connected backend."
                 description={[
                   !capabilitiesQuery.data.canUpdateUser
                     ? "Edit is not available."

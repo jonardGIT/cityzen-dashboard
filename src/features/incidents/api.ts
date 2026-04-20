@@ -393,12 +393,13 @@ export async function uploadIncidentMedia(file: File): Promise<string> {
   return url;
 }
 
-export function useIncidentsQuery(state: ListQueryState) {
+export function useIncidentsQuery(state: ListQueryState, enabled = true) {
   const fetchParams = state;
   return useQuery({
     queryKey: ["incidents", fetchParams],
     queryFn: ({ signal }) => fetchIncidents(fetchParams, signal),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 

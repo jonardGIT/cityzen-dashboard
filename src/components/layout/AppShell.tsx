@@ -61,6 +61,14 @@ function iconForResource(resource: string) {
       return <TagsOutlined />;
     case "severities":
       return <ProfileOutlined />;
+    case "regions":
+      return <ApartmentOutlined />;
+    case "provinces":
+      return <ApartmentOutlined />;
+    case "cities-municipalities":
+      return <ApartmentOutlined />;
+    case "barangays":
+      return <TeamOutlined />;
     case "users":
       return <UserOutlined />;
     case "mobile-content":

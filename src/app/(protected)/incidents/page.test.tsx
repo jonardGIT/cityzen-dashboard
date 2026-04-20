@@ -21,6 +21,7 @@ const {
   useSeveritiesQueryMock,
   useStatusesQueryMock,
   useListQueryParamsMock,
+  canAccessCrudResourceMock,
 } = vi.hoisted(() => ({
   useRouterMock: vi.fn(),
   useAuthMock: vi.fn(),
@@ -38,6 +39,7 @@ const {
   useSeveritiesQueryMock: vi.fn(),
   useStatusesQueryMock: vi.fn(),
   useListQueryParamsMock: vi.fn(),
+  canAccessCrudResourceMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -78,6 +80,10 @@ vi.mock("@/features/reference-data/api", () => ({
 
 vi.mock("@/hooks/useListQueryParams", () => ({
   useListQueryParams: useListQueryParamsMock,
+}));
+
+vi.mock("@/lib/auth/navigation", () => ({
+  canAccessCrudResource: canAccessCrudResourceMock,
 }));
 
 vi.mock("@/components/common/FilterToolbar", () => ({
@@ -147,8 +153,23 @@ describe("IncidentsPage", () => {
   beforeEach(() => {
     useRouterMock.mockReturnValue({ push: vi.fn() });
     useAuthMock.mockReturnValue({
+      user: {
+        id: "user-1",
+        email: "dispatcher@example.com",
+        name: "Dispatcher",
+        role: Role.DISPATCHER,
+        mfaEnabled: false,
+      },
+      capabilities: {
+        role: Role.DISPATCHER,
+        label: "Dispatcher",
+        permissions: ["incident:read:city"],
+        scope: ["city"],
+      },
+      isAuthenticated: true,
       hasRole: (...roles: Role[]) => roles.includes(Role.DISPATCHER),
     });
+    canAccessCrudResourceMock.mockReturnValue(true);
     defaultAssignmentsQueryStateMock.mockReturnValue({
       page: 1,
       pageSize: 200,
@@ -251,6 +272,20 @@ describe("IncidentsPage", () => {
 
   it("switches citizen reporters into self-service report mode and disables admin-only queries", async () => {
     useAuthMock.mockReturnValue({
+      user: {
+        id: "user-2",
+        email: "citizen@example.com",
+        name: "Citizen",
+        role: Role.CITIZEN_REPORTER,
+        mfaEnabled: false,
+      },
+      capabilities: {
+        role: Role.CITIZEN_REPORTER,
+        label: "Citizen Reporter",
+        permissions: ["incident:create:self", "incident:read:self"],
+        scope: ["self"],
+      },
+      isAuthenticated: true,
       hasRole: (...roles: Role[]) => roles.includes(Role.CITIZEN_REPORTER),
     });
     useCrudEndpointAvailabilityMock.mockReturnValue({
@@ -291,4 +326,37 @@ describe("IncidentsPage", () => {
       ),
     ).toBeInTheDocument();
   }, 10000);
+
+  it("shows a forbidden state and disables page queries when capability access is denied", () => {
+    canAccessCrudResourceMock.mockReturnValue(false);
+
+    renderPage();
+
+    expect(screen.getByText("Forbidden")).toBeInTheDocument();
+    expect(
+      screen.getByText("You do not have permission to access incidents."),
+    ).toBeInTheDocument();
+    expect(useIncidentsQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
+    expect(useCategoriesQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
+    expect(useSeveritiesQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
+    expect(useStatusesQueryMock).toHaveBeenCalledWith(expect.anything(), false);
+    expect(useCitizensQueryMock).toHaveBeenCalledWith(expect.anything(), false);
+    expect(useRespondersQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
+    expect(useAssignmentsQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
+  });
 });

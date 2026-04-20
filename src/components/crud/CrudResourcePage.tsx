@@ -63,11 +63,14 @@ import { hasPermission } from "@/features/dynamic-crud/permissions";
 import { useCrudResource } from "@/features/dynamic-crud/useCrudResource";
 import type {
   CrudFieldConfig,
+  CrudFieldOptionSource,
   CrudOperation,
+  CrudSelectOption,
 } from "@/features/dynamic-crud/types";
 import { useAuth } from "@/context/AuthContext";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { buildListQueryParams } from "@/lib/api/list-query-params";
+import { canAccessCrudResource } from "@/lib/auth/navigation";
 import { isCitizenSelfServiceUser } from "@/lib/auth/roles";
 import type { ApiErrorPayload, BaseEntity } from "@/types/api";
 import { Role } from "@/types/auth";
@@ -111,6 +114,10 @@ function normalizeFormValues(
   const numericFieldNames = new Set(["latitude", "longitude"]);
 
   for (const field of fields) {
+    if (field.submit === false) {
+      continue;
+    }
+
     const raw = values[field.name];
 
     if (isUpdate && (raw === undefined || raw === null || raw === "")) {
@@ -271,6 +278,27 @@ function applyValidationErrors(
   return true;
 }
 
+function mergeOptionSource(
+  existingOptionSource: CrudFieldOptionSource | undefined,
+  incomingOptionSource: CrudFieldOptionSource,
+): CrudFieldOptionSource {
+  if (!existingOptionSource) {
+    return incomingOptionSource;
+  }
+
+  return {
+    ...existingOptionSource,
+    ...incomingOptionSource,
+    pageSize: Math.max(
+      existingOptionSource.pageSize ?? 200,
+      incomingOptionSource.pageSize ?? 200,
+    ),
+    fetchAllPages:
+      Boolean(existingOptionSource.fetchAllPages) ||
+      Boolean(incomingOptionSource.fetchAllPages),
+  };
+}
+
 export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   const { message } = App.useApp();
   const { user, capabilities, isAuthenticated } = useAuth();
@@ -314,6 +342,16 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     () => getResourceFieldsForOperation(resourceName, "report"),
     [resourceName],
   );
+  const hasDirectResourceAccess = resource
+    ? canAccessCrudResource(
+        {
+          role: user?.role,
+          capabilities,
+          isAuthenticated,
+        },
+        resourceName,
+      )
+    : false;
 
   const {
     listQuery,
@@ -322,7 +360,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     updateMutation,
     deleteMutation,
     restoreMutation,
-  } = useCrudResource(resourceName, tableState);
+  } = useCrudResource(resourceName, tableState, hasDirectResourceAccess);
 
   const canList = hasPermission(
     resource?.endpoints.list,
@@ -365,6 +403,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     isAuthenticated,
   );
   const canUseSelfService = canLinkMe || canReport;
+  const canAccessPage = hasDirectResourceAccess || canUseSelfService;
   const isSelfServiceUser = isCitizenSelfServiceUser(user?.role, capabilities);
 
   const specialMutation = useMutation({
@@ -404,7 +443,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
   const detailsQuery = useQuery({
     queryKey: ["crud", resourceName, "detail", selected?.id],
-    enabled: Boolean(detailsOpen && selected?.id && canGet),
+    enabled: Boolean(
+      detailsOpen && selected?.id && canGet && hasDirectResourceAccess,
+    ),
     queryFn: async () => {
       if (!selected?.id) {
         return null;
@@ -429,9 +470,11 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
           continue;
         }
 
-        if (!resources.has(field.optionSource.resource)) {
-          resources.set(field.optionSource.resource, field.optionSource);
-        }
+        const existingOptionSource = resources.get(field.optionSource.resource);
+        resources.set(
+          field.optionSource.resource,
+          mergeOptionSource(existingOptionSource, field.optionSource),
+        );
       }
     }
 
@@ -445,7 +488,14 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
   const optionQueries = useQueries({
     queries: optionResources.map(({ resourceKey, optionSource }) => ({
-      queryKey: ["crud", "options", resourceKey],
+      queryKey: [
+        "crud",
+        "options",
+        resourceKey,
+        optionSource?.pageSize ?? 200,
+        optionSource?.fetchAllPages ?? false,
+      ],
+      enabled: canAccessPage,
       queryFn: async () => {
         if (resourceKey === "roles") {
           return ROLE_OPTIONS;
@@ -453,35 +503,48 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
         const endpoint = getCrudEndpoint(resourceKey, "list");
         if (!endpoint) {
-          return [] as Array<{
-            value: string;
-            label: string;
-            description?: string;
-          }>;
+          return [] as CrudSelectOption[];
         }
 
-        const result = await requestCrudEndpoint<unknown>(endpoint, {
-          queryParams: { page: 1, pageSize: 200 },
-        });
-        if (!result.success || !result.data) {
-          throw new CrudRequestError(
-            result.error?.status ?? 500,
-            result.error?.message ?? `Failed to load ${resourceKey}.`,
-            result.error?.details,
+        const requestedPageSize = optionSource?.pageSize ?? 200;
+        const items: Record<string, unknown>[] = [];
+        let page = 1;
+
+        while (true) {
+          const result = await requestCrudEndpoint<unknown>(endpoint, {
+            queryParams: { page, pageSize: requestedPageSize },
+          });
+
+          if (!result.success || !result.data) {
+            throw new CrudRequestError(
+              result.error?.status ?? 500,
+              result.error?.message ?? `Failed to load ${resourceKey}.`,
+              result.error?.details,
+            );
+          }
+
+          const adapted = adaptPaginatedResponse<Record<string, unknown>>(
+            result.data,
+            page,
+            requestedPageSize,
           );
+          items.push(...adapted.data);
+
+          if (
+            !optionSource?.fetchAllPages ||
+            !adapted.pagination.hasNextPage ||
+            page >= adapted.pagination.totalPages
+          ) {
+            break;
+          }
+
+          page += 1;
         }
 
-        const items = Array.isArray(result.data)
-          ? result.data
-          : ((result.data as { data?: unknown[] }).data ?? []);
-
-        const typedItems = Array.isArray(items)
-          ? (items as Record<string, unknown>[])
-          : [];
         const valueField = optionSource?.valueField ?? "id";
         const labelField = optionSource?.labelField ?? "name";
 
-        return typedItems.map((item) => ({
+        return items.map((item) => ({
           value: String(item[valueField] ?? item.id ?? ""),
           label: String(
             item[labelField] ??
@@ -496,16 +559,14 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
               : typeof item.description === "string"
                 ? item.description
                 : undefined,
+          record: item,
         }));
       },
     })),
   });
 
   const optionsByResource = useMemo(() => {
-    const map = new Map<
-      string,
-      Array<{ value: string; label: string; description?: string }>
-    >();
+    const map = new Map<string, CrudSelectOption[]>();
 
     optionResources.forEach(({ resourceKey }, index) => {
       map.set(resourceKey, optionQueries[index]?.data ?? []);
@@ -541,10 +602,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   }, [optionQueries, optionResources]);
 
   const optionsByField = useMemo(() => {
-    const output: Record<
-      string,
-      Array<{ value: string; label: string; description?: string }>
-    > = {};
+    const output: Record<string, CrudSelectOption[]> = {};
     const allFields = [
       ...createFields,
       ...updateFields,
@@ -705,7 +763,11 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
 
   useEffect(() => {
     const listEndpoint = resource?.endpoints.list;
-    if (!listEndpoint || !paginationMeta?.hasNextPage) {
+    if (
+      !hasDirectResourceAccess ||
+      !listEndpoint ||
+      !paginationMeta?.hasNextPage
+    ) {
       return;
     }
 
@@ -738,6 +800,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     });
   }, [
     paginationMeta?.hasNextPage,
+    hasDirectResourceAccess,
     queryClient,
     resource?.endpoints.list,
     resourceName,
@@ -866,12 +929,12 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     );
   }
 
-  if (!canList && !canUseSelfService) {
+  if (!canAccessPage) {
     return (
       <Result
         status="403"
-        title="Not Authorized"
-        subTitle="You do not have permission to view this resource list."
+        title="Forbidden"
+        subTitle="You do not have permission to access this resource."
       />
     );
   }

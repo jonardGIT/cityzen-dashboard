@@ -46,36 +46,57 @@ const USER_PERMISSION_HINTS = [
   "user:manage:barangay",
 ];
 
-const STANDARD_INCIDENT_ACCESS_ROLES: Role[] = [
-  Role.NATIONAL_ADMIN,
-  Role.REGIONAL_DIRECTOR,
-  Role.PROVINCIAL_ADMIN,
-  Role.CITY_ADMIN,
-  Role.DISPATCHER,
-  Role.RESPONDER,
-  Role.CITIZEN_REPORTER,
-];
-
 const INCIDENT_PERMISSION_HINTS = [
-  "incident:read:global",
-  "incident:read:national",
-  "incident:read:region",
-  "incident:read:province",
-  "incident:read:city",
-  "incident:read:assigned",
+  "incident:create:self",
   "incident:read:self",
-  "incident:read:own",
+  "incident:update:self",
+  "incident:read:assigned",
+  "incident:update:assigned",
+  "incident:read:region",
+  "incident:reassign:region",
+  "incident:close:region",
+  "incident:read:province",
+  "incident:escalate:province",
+  "incident:read:city",
+  "incident:assign:city",
+  "incident:update:priority:city",
+  "incident:manage:global",
+  "incident:read:global",
 ];
 
 const ASSIGNMENT_PERMISSION_HINTS = [
-  "assignment:read:global",
-  "assignment:read:region",
-  "assignment:read:province",
-  "assignment:read:city",
-  "assignment:read:assigned",
   "assignment:create:city",
-  "assignment:override:region",
+  "assignment:update:city",
+  "assignment:read:own",
 ];
+
+const AGENCY_PERMISSION_HINTS = [
+  "agency:manage:city",
+  "agency:manage:province",
+  "agency:manage:region",
+];
+
+const REFERENCE_DATA_PERMISSION_HINTS = ["reference:manage:city"];
+
+const MOBILE_CONTENT_PERMISSION_HINTS = [
+  "mobile_content:create:city",
+  "mobile_content:read:city",
+  "mobile_content:update:city",
+  "mobile_content:publish:city",
+  "mobile_content:archive:city",
+];
+
+const CRUD_RESOURCE_PERMISSION_HINTS: Partial<
+  Record<string, readonly string[]>
+> = {
+  incidents: INCIDENT_PERMISSION_HINTS,
+  assignments: ASSIGNMENT_PERMISSION_HINTS,
+  agencies: AGENCY_PERMISSION_HINTS,
+  statuses: REFERENCE_DATA_PERMISSION_HINTS,
+  categories: REFERENCE_DATA_PERMISSION_HINTS,
+  severities: REFERENCE_DATA_PERMISSION_HINTS,
+  "mobile-content": MOBILE_CONTENT_PERMISSION_HINTS,
+};
 
 const CITIZEN_SELF_SERVICE_PERMISSION_HINTS = [
   "citizen:link:self",
@@ -88,25 +109,40 @@ function permissionsAllow(
   capabilities: UserCapabilities | null | undefined,
   hints: readonly string[],
 ): boolean {
-  if (!capabilities || capabilities.permissions.length === 0) {
-    return true;
+  if (!capabilities) {
+    return false;
+  }
+
+  if (
+    !Array.isArray(capabilities.permissions) ||
+    capabilities.permissions.length === 0
+  ) {
+    return false;
   }
 
   return permissionListIncludes(capabilities.permissions, hints);
 }
 
-function canAccessAssignments(context: NavigationContext): boolean {
-  const resource = getCrudResource("assignments");
+export function canAccessCrudResource(
+  context: NavigationContext,
+  resourceKey: string,
+): boolean {
+  const resource = getCrudResource(resourceKey);
   const roleAllows = Boolean(
     resource &&
     canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
   );
 
-  if (roleAllows) {
+  if (!roleAllows) {
+    return false;
+  }
+
+  const hints = CRUD_RESOURCE_PERMISSION_HINTS[resourceKey];
+  if (!hints) {
     return true;
   }
 
-  return permissionsAllow(context.capabilities, ASSIGNMENT_PERMISSION_HINTS);
+  return permissionsAllow(context.capabilities, hints);
 }
 
 function canAccessCitizenSelfService(context: NavigationContext): boolean {
@@ -117,21 +153,7 @@ function canAccessCitizenSelfService(context: NavigationContext): boolean {
 }
 
 function canAccessIncidents(context: NavigationContext): boolean {
-  if (!context.role || !STANDARD_INCIDENT_ACCESS_ROLES.includes(context.role)) {
-    return false;
-  }
-
-  const resource = getCrudResource("incidents");
-  const roleAllows = Boolean(
-    resource &&
-    canShowCrudNavigationItem(resource, context.role, context.isAuthenticated),
-  );
-
-  if (roleAllows) {
-    return true;
-  }
-
-  return permissionsAllow(context.capabilities, INCIDENT_PERMISSION_HINTS);
+  return canAccessCrudResource(context, "incidents");
 }
 
 export function canAccessAuditLogs(context: NavigationContext): boolean {
@@ -192,18 +214,9 @@ export function getNavigationItems(context: NavigationContext) {
       selfServiceHref: "/dashboard/citizens",
       resource: "citizens",
       visible: () => {
-        const resource = getCrudResource("citizens");
-        const roleAllows = Boolean(
-          resource &&
-          canShowCrudNavigationItem(
-            resource,
-            context.role,
-            context.isAuthenticated,
-          ),
-        );
-
         return (
-          roleAllows || (isSelfService && canAccessCitizenSelfService(context))
+          canAccessCrudResource(context, "citizens") ||
+          (isSelfService && canAccessCitizenSelfService(context))
         );
       },
     },
@@ -220,92 +233,70 @@ export function getNavigationItems(context: NavigationContext) {
       label: "Assignments",
       href: "/assignments",
       resource: "assignments",
-      visible: () => canAccessAssignments(context),
+      visible: () => canAccessCrudResource(context, "assignments"),
     },
     {
       key: "/dashboard/agencies",
       label: "Agencies",
       href: "/dashboard/agencies",
       resource: "agencies",
-      visible: () => {
-        const resource = getCrudResource("agencies");
-        return Boolean(
-          resource &&
-          canShowCrudNavigationItem(
-            resource,
-            context.role,
-            context.isAuthenticated,
-          ),
-        );
-      },
+      visible: () => canAccessCrudResource(context, "agencies"),
     },
     {
       key: "/responders",
       label: "Responders",
       href: "/responders",
       resource: "responders",
-      visible: () => {
-        const resource = getCrudResource("responders");
-        return Boolean(
-          resource &&
-          canShowCrudNavigationItem(
-            resource,
-            context.role,
-            context.isAuthenticated,
-          ),
-        );
-      },
+      visible: () => canAccessCrudResource(context, "responders"),
     },
     {
       key: "/statuses",
       label: "Statuses",
       href: "/statuses",
       resource: "statuses",
-      visible: () => {
-        const resource = getCrudResource("statuses");
-        return Boolean(
-          resource &&
-          canShowCrudNavigationItem(
-            resource,
-            context.role,
-            context.isAuthenticated,
-          ),
-        );
-      },
+      visible: () => canAccessCrudResource(context, "statuses"),
     },
     {
       key: "/categories",
       label: "Categories",
       href: "/categories",
       resource: "categories",
-      visible: () => {
-        const resource = getCrudResource("categories");
-        return Boolean(
-          resource &&
-          canShowCrudNavigationItem(
-            resource,
-            context.role,
-            context.isAuthenticated,
-          ),
-        );
-      },
+      visible: () => canAccessCrudResource(context, "categories"),
     },
     {
       key: "/severities",
       label: "Severities",
       href: "/severities",
       resource: "severities",
-      visible: () => {
-        const resource = getCrudResource("severities");
-        return Boolean(
-          resource &&
-          canShowCrudNavigationItem(
-            resource,
-            context.role,
-            context.isAuthenticated,
-          ),
-        );
-      },
+      visible: () => canAccessCrudResource(context, "severities"),
+    },
+    {
+      key: "/dashboard/regions",
+      label: "Regions",
+      href: "/dashboard/regions",
+      resource: "regions",
+      visible: () => canAccessCrudResource(context, "regions"),
+    },
+    {
+      key: "/dashboard/provinces",
+      label: "Provinces",
+      href: "/dashboard/provinces",
+      resource: "provinces",
+      visible: () => canAccessCrudResource(context, "provinces"),
+    },
+    {
+      key: "/dashboard/cities-municipalities",
+      label: "Cities / Municipalities",
+      href: "/dashboard/cities-municipalities",
+      resource: "cities-municipalities",
+      visible: () => canAccessCrudResource(context, "cities-municipalities"),
+    },
+    {
+      key: "/dashboard/barangays",
+      label: "Barangays",
+      href: "/dashboard/barangays",
+      resource: "barangays",
+      visible: () => canAccessCrudResource(context, "barangays"),
     },
     {
       key: "/users",
@@ -318,17 +309,7 @@ export function getNavigationItems(context: NavigationContext) {
       label: "Mobile Content",
       href: "/dashboard/mobile-content",
       resource: "mobile-content",
-      visible: () => {
-        const resource = getCrudResource("mobile-content");
-        return Boolean(
-          resource &&
-          canShowCrudNavigationItem(
-            resource,
-            context.role,
-            context.isAuthenticated,
-          ),
-        );
-      },
+      visible: () => canAccessCrudResource(context, "mobile-content"),
     },
     {
       key: "/audit-logs",

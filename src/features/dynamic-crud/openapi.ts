@@ -199,7 +199,7 @@ export function isCrudEndpointAvailableInOpenApi(
   }
 
   if (!operationKeys) {
-    return true;
+    return false;
   }
 
   return operationKeys.includes(

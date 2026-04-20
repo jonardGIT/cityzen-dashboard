@@ -15,6 +15,7 @@ import {
   Tag,
   Tooltip,
   Typography,
+  Result,
 } from "antd";
 import { AxiosError } from "axios";
 import { useMemo, useRef, useState } from "react";
@@ -50,6 +51,7 @@ import {
   DEFAULT_SORT_ORDER,
   type ListQueryState,
 } from "@/lib/api/list-query-params";
+import { canAccessCrudResource } from "@/lib/auth/navigation";
 import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
 import {
   formatDisplayDateTime,
@@ -126,8 +128,16 @@ function getAssignmentTimestamp(assignment: {
 
 export default function IncidentsPage() {
   const { message } = App.useApp();
-  const { hasRole } = useAuth();
+  const { user, capabilities, isAuthenticated, hasRole } = useAuth();
   const router = useRouter();
+  const canAccessPage = canAccessCrudResource(
+    {
+      role: user?.role,
+      capabilities,
+      isAuthenticated,
+    },
+    "incidents",
+  );
   const isCitizenReporter = hasRole(Role.CITIZEN_REPORTER);
   const canCreateAdminIncident = hasRole(...CAN_CREATE_INCIDENT);
   const optionQueryState: ListQueryState = {
@@ -138,17 +148,18 @@ export default function IncidentsPage() {
     sortOrder: DEFAULT_SORT_ORDER,
     filters: [],
   };
-  const citizensQuery = useCitizensQuery(optionQueryState, !isCitizenReporter);
-  const categoriesQuery = useCategoriesQuery(optionQueryState);
-  const severitiesQuery = useSeveritiesQuery(optionQueryState);
-  const statusesQuery = useStatusesQuery(optionQueryState);
+  const canLoadAdminOptions = canAccessPage && !isCitizenReporter;
+  const citizensQuery = useCitizensQuery(optionQueryState, canLoadAdminOptions);
+  const categoriesQuery = useCategoriesQuery(optionQueryState, canAccessPage);
+  const severitiesQuery = useSeveritiesQuery(optionQueryState, canAccessPage);
+  const statusesQuery = useStatusesQuery(optionQueryState, canAccessPage);
   const respondersQuery = useRespondersQuery(
     optionQueryState,
-    !isCitizenReporter,
+    canLoadAdminOptions,
   );
   const assignmentsQuery = useAssignmentsQuery(
     defaultAssignmentsQueryState({ page: 1, pageSize: 200 }),
-    !isCitizenReporter,
+    canLoadAdminOptions,
   );
   const createMutation = useCreateIncidentMutation();
   const reportMutation = useReportIncidentMutation();
@@ -178,7 +189,7 @@ export default function IncidentsPage() {
 
   const listQuery = useListQueryParams();
 
-  const incidentsListQuery = useIncidentsQuery(listQuery);
+  const incidentsListQuery = useIncidentsQuery(listQuery, canAccessPage);
   const rows = incidentsListQuery.data?.data ?? [];
   const pagination = incidentsListQuery.data?.pagination;
   const totalIncidents = pagination?.total ?? rows.length;
@@ -259,6 +270,17 @@ export default function IncidentsPage() {
 
     return map;
   }, [assignmentsQuery.data]);
+
+  if (!canAccessPage) {
+    return (
+      <Result
+        status="403"
+        title="Forbidden"
+        subTitle="You do not have permission to access incidents."
+      />
+    );
+  }
+
   const columns: Array<SharedTableColumn<Incident>> = [
     {
       key: "description",

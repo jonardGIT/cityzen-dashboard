@@ -193,6 +193,14 @@ export function normalizeCapabilities(
   const scope = collectScopeTokens(payload.scope).filter(
     (entry, index, collection) => collection.indexOf(entry) === index,
   );
+  const hasCanUpdateUser = Object.prototype.hasOwnProperty.call(
+    payload,
+    "canUpdateUser",
+  );
+  const hasCanDeleteUser = Object.prototype.hasOwnProperty.call(
+    payload,
+    "canDeleteUser",
+  );
 
   return {
     role,
@@ -202,8 +210,12 @@ export function normalizeCapabilities(
         : getRoleLabel(role),
     permissions,
     scope,
-    canUpdateUser: Boolean(payload.canUpdateUser),
-    canDeleteUser: Boolean(payload.canDeleteUser),
+    ...(hasCanUpdateUser
+      ? { canUpdateUser: Boolean(payload.canUpdateUser) }
+      : {}),
+    ...(hasCanDeleteUser
+      ? { canDeleteUser: Boolean(payload.canDeleteUser) }
+      : {}),
   };
 }
 

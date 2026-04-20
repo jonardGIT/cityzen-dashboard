@@ -5,7 +5,97 @@ import type {
 import { getRoleLabel } from "@/lib/auth/roles";
 import { Role } from "@/types/auth";
 
+const PHILIPPINE_CITIES_OPTION_PAGE_SIZE = 2000;
+
 const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
+  regions: [
+    { name: "code", label: "Code", type: "text", required: true },
+    { name: "name", label: "Name", type: "text", required: true },
+    { name: "designation", label: "Designation", type: "text" },
+  ],
+  provinces: [
+    { name: "code", label: "Code", type: "text", required: true },
+    { name: "name", label: "Name", type: "text", required: true },
+    {
+      name: "regionId",
+      label: "Region",
+      type: "select",
+      required: true,
+      optionSource: {
+        resource: "regions",
+        valueField: "id",
+        labelField: "name",
+      },
+    },
+  ],
+  "cities-municipalities": [
+    { name: "code", label: "Code", type: "text", required: true },
+    { name: "name", label: "Name", type: "text", required: true },
+    {
+      name: "regionId",
+      label: "Region",
+      type: "select",
+      submit: false,
+      optionSource: {
+        resource: "regions",
+        valueField: "id",
+        labelField: "name",
+      },
+    },
+    {
+      name: "type",
+      label: "Type (CITY or MUNICIPALITY)",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "provinceId",
+      label: "Province",
+      type: "select",
+      required: true,
+      optionSource: {
+        resource: "provinces",
+        valueField: "id",
+        labelField: "name",
+        dependencyFilter: {
+          sourceField: "regionId",
+          targetField: "regionId",
+        },
+      },
+    },
+  ],
+  barangays: [
+    { name: "code", label: "Code", type: "text", required: true },
+    { name: "name", label: "Name", type: "text", required: true },
+    {
+      name: "provinceId",
+      label: "Province",
+      type: "select",
+      submit: false,
+      optionSource: {
+        resource: "provinces",
+        valueField: "id",
+        labelField: "name",
+      },
+    },
+    {
+      name: "cityMunicipalityId",
+      label: "City / Municipality",
+      type: "select",
+      required: true,
+      optionSource: {
+        resource: "cities-municipalities",
+        valueField: "id",
+        labelField: "name",
+        pageSize: PHILIPPINE_CITIES_OPTION_PAGE_SIZE,
+        fetchAllPages: true,
+        dependencyFilter: {
+          sourceField: "provinceId",
+          targetField: "provinceId",
+        },
+      },
+    },
+  ],
   users: [
     { name: "name", label: "Name", type: "text", required: true },
     { name: "email", label: "Email", type: "email", required: true },
@@ -173,6 +263,10 @@ export const ROLE_OPTIONS = Object.values(Role).map((role) => ({
 }));
 
 const CREATE_REQUIRED_FIELDS: Partial<Record<string, string[]>> = {
+  regions: ["code", "name"],
+  provinces: ["code", "name", "regionId"],
+  "cities-municipalities": ["code", "name", "type", "provinceId"],
+  barangays: ["code", "name", "cityMunicipalityId"],
   users: ["name", "email", "password"],
   citizens: ["name", "contactInfo", "preferredChannel"],
   responders: ["name", "agencyId", "role", "contactInfo"],
@@ -202,6 +296,10 @@ const OPERATION_REQUIRED_FIELDS: Partial<
     citizens: [],
   },
   update: {
+    regions: ["code", "name"],
+    provinces: ["code", "name"],
+    "cities-municipalities": ["code", "name"],
+    barangays: ["code", "name"],
     users: [],
     citizens: [],
     responders: [],

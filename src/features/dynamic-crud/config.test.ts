@@ -15,6 +15,14 @@ describe("dynamic crud config", () => {
       ["categories", "get"],
       ["severities", "list"],
       ["severities", "get"],
+      ["regions", "list"],
+      ["regions", "get"],
+      ["provinces", "list"],
+      ["provinces", "get"],
+      ["cities-municipalities", "list"],
+      ["cities-municipalities", "get"],
+      ["barangays", "list"],
+      ["barangays", "get"],
       ["assignments", "list"],
       ["assignments", "get"],
       ["users", "capabilities"],
@@ -90,6 +98,52 @@ describe("dynamic crud config", () => {
     ]);
   });
 
+  it("keeps geography reads open to configured operational roles and splits writes by level", () => {
+    const geographyReadRoles = [
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
+      Role.DISPATCHER,
+      Role.AUDITOR,
+    ];
+
+    expect(getCrudEndpoint("regions", "list")?.allowedRoles).toEqual(
+      geographyReadRoles,
+    );
+    expect(getCrudEndpoint("provinces", "get")?.allowedRoles).toEqual(
+      geographyReadRoles,
+    );
+    expect(
+      getCrudEndpoint("cities-municipalities", "list")?.allowedRoles,
+    ).toEqual(geographyReadRoles);
+    expect(getCrudEndpoint("barangays", "get")?.allowedRoles).toEqual(
+      geographyReadRoles,
+    );
+
+    expect(getCrudEndpoint("regions", "create")?.allowedRoles).toEqual([
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+    ]);
+    expect(getCrudEndpoint("provinces", "update")?.allowedRoles).toEqual([
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+    ]);
+    expect(
+      getCrudEndpoint("cities-municipalities", "create")?.allowedRoles,
+    ).toEqual([
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+    ]);
+    expect(getCrudEndpoint("barangays", "update")?.allowedRoles).toEqual([
+      Role.NATIONAL_ADMIN,
+      Role.REGIONAL_DIRECTOR,
+      Role.PROVINCIAL_ADMIN,
+      Role.CITY_ADMIN,
+    ]);
+  });
+
   it("exposes restore endpoints for soft-deletable resources", () => {
     expect(getCrudEndpoint("citizens", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("agencies", "restore")?.method).toBe("POST");
@@ -97,6 +151,12 @@ describe("dynamic crud config", () => {
     expect(getCrudEndpoint("statuses", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("categories", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("severities", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("regions", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("provinces", "restore")?.method).toBe("POST");
+    expect(getCrudEndpoint("cities-municipalities", "restore")?.method).toBe(
+      "POST",
+    );
+    expect(getCrudEndpoint("barangays", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("incidents", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("assignments", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("users", "restore")?.method).toBe("POST");

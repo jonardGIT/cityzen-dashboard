@@ -90,6 +90,19 @@ export interface CrudFieldOptionSource {
   resource: string;
   valueField?: string;
   labelField?: string;
+  pageSize?: number;
+  fetchAllPages?: boolean;
+  dependencyFilter?: {
+    sourceField: string;
+    targetField: string;
+  };
+}
+
+export interface CrudSelectOption {
+  value: string;
+  label: string;
+  description?: string;
+  record?: Record<string, unknown>;
 }
 
 export interface CrudFieldConfig {
@@ -97,5 +110,6 @@ export interface CrudFieldConfig {
   label: string;
   type: CrudFieldType;
   required?: boolean;
+  submit?: boolean;
   optionSource?: CrudFieldOptionSource;
 }

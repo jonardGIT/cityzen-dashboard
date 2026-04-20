@@ -24,6 +24,7 @@ const DEFAULT_STATE: ListQueryState = DEFAULT_LIST_QUERY_STATE;
 export function useCrudResource(
   resourceName: string,
   queryState: ListQueryState = DEFAULT_STATE,
+  enabled = true,
 ) {
   const queryClient = useQueryClient();
   const config = useMemo(() => getCrudResource(resourceName), [resourceName]);
@@ -39,7 +40,7 @@ export function useCrudResource(
 
   const listQuery = useQuery({
     queryKey: ["crud", resourceName, "list", fetchParams],
-    enabled: Boolean(listEndpoint),
+    enabled: Boolean(listEndpoint) && enabled,
     queryFn: async ({ signal }): Promise<PaginatedResponse<BaseEntity>> => {
       if (!listEndpoint) {
         return adaptPaginatedResponse<BaseEntity>(

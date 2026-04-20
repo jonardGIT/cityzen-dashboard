@@ -7,6 +7,7 @@ import {
   Form,
   Input,
   Modal,
+  Result,
   Select,
   Statistic,
   Typography,
@@ -27,6 +28,7 @@ import {
 } from "@/features/assignments/api";
 import { useIncidentsQuery } from "@/features/incidents/api";
 import { useRespondersQuery } from "@/features/reference-data/api";
+import { canAccessCrudResource } from "@/lib/auth/navigation";
 import { CAN_CREATE_ASSIGNMENT } from "@/lib/auth/permissions";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
@@ -55,8 +57,16 @@ interface AssignmentFormValues {
 
 export default function AssignmentsPage() {
   const { message } = App.useApp();
-  const { hasRole } = useAuth();
+  const { user, capabilities, isAuthenticated, hasRole } = useAuth();
   const router = useRouter();
+  const canAccessPage = canAccessCrudResource(
+    {
+      role: user?.role,
+      capabilities,
+      isAuthenticated,
+    },
+    "assignments",
+  );
   const listQuery = useListQueryParams();
   const optionQueryState: ListQueryState = {
     page: 1,
@@ -67,9 +77,9 @@ export default function AssignmentsPage() {
     filters: [],
   };
 
-  const assignmentsQuery = useAssignmentsQuery(listQuery);
-  const incidentsQuery = useIncidentsQuery(optionQueryState);
-  const respondersQuery = useRespondersQuery(optionQueryState);
+  const assignmentsQuery = useAssignmentsQuery(listQuery, canAccessPage);
+  const incidentsQuery = useIncidentsQuery(optionQueryState, canAccessPage);
+  const respondersQuery = useRespondersQuery(optionQueryState, canAccessPage);
   const createMutation = useCreateAssignmentMutation();
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<AssignmentFormValues>();
@@ -87,6 +97,16 @@ export default function AssignmentsPage() {
       JSON.stringify(item).toLowerCase().includes(searchValue),
     );
   }, [listQuery.search, rows]);
+
+  if (!canAccessPage) {
+    return (
+      <Result
+        status="403"
+        title="Forbidden"
+        subTitle="You do not have permission to access assignments."
+      />
+    );
+  }
 
   const pagination = assignmentsQuery.data?.pagination;
   const incidents = incidentsQuery.data?.data ?? [];

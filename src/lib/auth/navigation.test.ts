@@ -146,7 +146,7 @@ describe("auth navigation", () => {
       label: "Citizen Reporter",
       permissions: [
         "incident:create:self",
-        "incident:read:own",
+        "incident:read:self",
         "citizen:link:self",
       ],
       scope: ["own"],
@@ -168,5 +168,96 @@ describe("auth navigation", () => {
     expect(
       items.some((item) => item.href === "/dashboard/mobile-content"),
     ).toBe(false);
+    expect(items.some((item) => item.href === "/dashboard/regions")).toBe(
+      false,
+    );
+    expect(items.some((item) => item.href === "/dashboard/provinces")).toBe(
+      false,
+    );
+    expect(
+      items.some((item) => item.href === "/dashboard/cities-municipalities"),
+    ).toBe(false);
+    expect(items.some((item) => item.href === "/dashboard/barangays")).toBe(
+      false,
+    );
+  });
+
+  it("hides capability-scoped resource tabs for a national admin with no matching permissions", () => {
+    const nationalAdminCaps = capabilities({
+      role: Role.NATIONAL_ADMIN,
+      label: "National Admin",
+      permissions: [],
+      scope: ["global"],
+      canUpdateUser: true,
+      canDeleteUser: true,
+    });
+
+    const items = getNavigationItems({
+      role: Role.NATIONAL_ADMIN,
+      capabilities: nationalAdminCaps,
+      isAuthenticated: true,
+    });
+
+    expect(items.some((item) => item.href === "/incidents")).toBe(false);
+    expect(items.some((item) => item.href === "/assignments")).toBe(false);
+    expect(items.some((item) => item.href === "/dashboard/agencies")).toBe(
+      false,
+    );
+    expect(items.some((item) => item.href === "/statuses")).toBe(false);
+    expect(items.some((item) => item.href === "/categories")).toBe(false);
+    expect(items.some((item) => item.href === "/severities")).toBe(false);
+    expect(
+      items.some((item) => item.href === "/dashboard/mobile-content"),
+    ).toBe(false);
+    expect(items.some((item) => item.href === "/dashboard/regions")).toBe(true);
+    expect(items.some((item) => item.href === "/dashboard/provinces")).toBe(
+      true,
+    );
+    expect(
+      items.some((item) => item.href === "/dashboard/cities-municipalities"),
+    ).toBe(true);
+    expect(items.some((item) => item.href === "/dashboard/barangays")).toBe(
+      true,
+    );
+    expect(items.some((item) => item.href === "/users")).toBe(true);
+  });
+
+  it("shows geography navigation for read-allowed operational roles", () => {
+    const dispatcherCaps = capabilities({
+      role: Role.DISPATCHER,
+      label: "Dispatcher",
+      permissions: [],
+      scope: ["city:city-1"],
+    });
+
+    const items = getNavigationItems({
+      role: Role.DISPATCHER,
+      capabilities: dispatcherCaps,
+      isAuthenticated: true,
+    });
+
+    expect(items.some((item) => item.href === "/dashboard/regions")).toBe(true);
+  });
+
+  it("hides geography management navigation for roles without geography access", () => {
+    const citizenCaps = capabilities({
+      role: Role.CITIZEN_REPORTER,
+      label: "Citizen Reporter",
+      permissions: ["incident:create:self", "incident:read:self"],
+      scope: ["own"],
+    });
+
+    const items = getNavigationItems({
+      role: Role.CITIZEN_REPORTER,
+      capabilities: citizenCaps,
+      isAuthenticated: true,
+    });
+
+    expect(items.some((item) => item.resource === "regions")).toBe(false);
+    expect(items.some((item) => item.resource === "provinces")).toBe(false);
+    expect(
+      items.some((item) => item.resource === "cities-municipalities"),
+    ).toBe(false);
+    expect(items.some((item) => item.resource === "barangays")).toBe(false);
   });
 });

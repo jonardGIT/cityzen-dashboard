@@ -31,8 +31,8 @@ export interface UserCapabilities {
   label: string;
   permissions: string[];
   scope: string[];
-  canUpdateUser: boolean;
-  canDeleteUser: boolean;
+  canUpdateUser?: boolean;
+  canDeleteUser?: boolean;
 }
 
 export interface LoginRequest {

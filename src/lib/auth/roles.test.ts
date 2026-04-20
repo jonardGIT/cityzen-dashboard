@@ -43,4 +43,38 @@ describe("auth role normalization", () => {
       true,
     );
   });
+
+  it("preserves omitted management booleans during capability normalization", () => {
+    const capabilities = normalizeCapabilities({
+      role: Role.CITY_ADMIN,
+      permissions: ["user:create:city"],
+      scope: ["city:city-1"],
+    });
+
+    expect(
+      Object.prototype.hasOwnProperty.call(capabilities, "canUpdateUser"),
+    ).toBe(false);
+    expect(
+      Object.prototype.hasOwnProperty.call(capabilities, "canDeleteUser"),
+    ).toBe(false);
+    expect(capabilities.canUpdateUser).toBeUndefined();
+    expect(capabilities.canDeleteUser).toBeUndefined();
+  });
+
+  it("preserves explicit false management booleans during capability normalization", () => {
+    const capabilities = normalizeCapabilities({
+      role: Role.PROVINCIAL_ADMIN,
+      canUpdateUser: false,
+      canDeleteUser: false,
+    });
+
+    expect(
+      Object.prototype.hasOwnProperty.call(capabilities, "canUpdateUser"),
+    ).toBe(true);
+    expect(
+      Object.prototype.hasOwnProperty.call(capabilities, "canDeleteUser"),
+    ).toBe(true);
+    expect(capabilities.canUpdateUser).toBe(false);
+    expect(capabilities.canDeleteUser).toBe(false);
+  });
 });

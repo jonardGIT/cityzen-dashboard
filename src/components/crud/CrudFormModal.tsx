@@ -19,13 +19,14 @@ import {
 import type { FormInstance } from "antd";
 import { getCrudEndpoint } from "@/features/dynamic-crud/config";
 import { useCrudEndpointAvailability } from "@/features/dynamic-crud/openapi";
-import type { CrudFieldConfig } from "@/features/dynamic-crud/types";
+import type {
+  CrudFieldConfig,
+  CrudSelectOption,
+} from "@/features/dynamic-crud/types";
 import { uploadIncidentMedia } from "@/features/incidents/api";
 import { reverseGeocodeIncidentAddress } from "@/lib/geo/reverse-geocode";
 
 const { Link, Text } = Typography;
-
-type SelectFieldOption = { value: string; label: string; description?: string };
 
 interface CrudFormModalProps {
   resourceName?: string;
@@ -34,13 +35,62 @@ interface CrudFormModalProps {
   submitting?: boolean;
   fields: CrudFieldConfig[];
   form: FormInstance<Record<string, unknown>>;
-  optionsByField: Record<string, SelectFieldOption[]>;
+  optionsByField: Record<string, CrudSelectOption[]>;
   onCancel: () => void;
   onSubmit: () => void;
   isUpdate?: boolean;
   submitDisabled?: boolean;
   submitDisabledMessage?: string;
   onRetrySubmitDependency?: () => void;
+}
+
+function normalizeDependencyValue(value: unknown): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+export function getSelectFieldState(
+  field: CrudFieldConfig,
+  options: CrudSelectOption[],
+  formValues: Record<string, unknown>,
+): {
+  options: CrudSelectOption[];
+  disabled: boolean;
+} {
+  const dependencyFilter = field.optionSource?.dependencyFilter;
+
+  if (!dependencyFilter) {
+    return {
+      options,
+      disabled: false,
+    };
+  }
+
+  const dependencyValue = normalizeDependencyValue(
+    formValues[dependencyFilter.sourceField],
+  );
+
+  if (!dependencyValue) {
+    return {
+      options: [],
+      disabled: true,
+    };
+  }
+
+  return {
+    options: options.filter((option) => {
+      const targetValue = normalizeDependencyValue(
+        option.record?.[dependencyFilter.targetField],
+      );
+
+      return targetValue === dependencyValue;
+    }),
+    disabled: false,
+  };
 }
 
 function joinLocationParts(parts: Array<string | undefined>): string | null {
@@ -50,6 +100,18 @@ function joinLocationParts(parts: Array<string | undefined>): string | null {
   );
 
   return filtered.length > 0 ? filtered.join(", ") : null;
+}
+
+function shouldPreserveDependentValueWhileOptionsHydrate(
+  field: CrudFieldConfig,
+  currentValue: string | null,
+  options: CrudSelectOption[],
+): boolean {
+  return Boolean(
+    field.optionSource?.dependencyFilter &&
+    currentValue &&
+    options.length === 0,
+  );
 }
 
 export function CrudFormModal({
@@ -92,6 +154,8 @@ export function CrudFormModal({
   const regionNameValue = Form.useWatch("regionName", form);
   const postalCodeValue = Form.useWatch("postalCode", form);
   const landmarkValue = Form.useWatch("landmark", form);
+  const watchedFormValues =
+    Form.useWatch((values) => values as Record<string, unknown>, form) ?? {};
 
   const supportsLocationAssist = fields.some(
     (field) => field.name === "latitude" || field.name === "longitude",
@@ -135,6 +199,82 @@ export function CrudFormModal({
       }
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const nextValues: Record<string, unknown> = {};
+
+    for (const field of fields) {
+      if (field.type !== "select") {
+        continue;
+      }
+
+      const dependencyFilter = field.optionSource?.dependencyFilter;
+      const currentValue = normalizeDependencyValue(
+        watchedFormValues[field.name],
+      );
+      const fieldOptions = optionsByField[field.name] ?? [];
+
+      if (dependencyFilter && currentValue) {
+        const dependencyValue = normalizeDependencyValue(
+          watchedFormValues[dependencyFilter.sourceField],
+        );
+
+        if (!dependencyValue) {
+          const selectedOption = fieldOptions.find(
+            (option) => option.value === currentValue,
+          );
+          const derivedDependencyValue = normalizeDependencyValue(
+            selectedOption?.record?.[dependencyFilter.targetField],
+          );
+
+          if (derivedDependencyValue) {
+            nextValues[dependencyFilter.sourceField] = derivedDependencyValue;
+          }
+        }
+      }
+
+      if (!currentValue) {
+        continue;
+      }
+
+      if (
+        shouldPreserveDependentValueWhileOptionsHydrate(
+          field,
+          currentValue,
+          fieldOptions,
+        )
+      ) {
+        continue;
+      }
+
+      const selectState = getSelectFieldState(field, fieldOptions, {
+        ...watchedFormValues,
+        ...nextValues,
+      });
+
+      if (!selectState.disabled) {
+        const stillValid = selectState.options.some(
+          (option) => option.value === currentValue,
+        );
+
+        if (stillValid) {
+          continue;
+        }
+      }
+
+      if (dependencyFilter) {
+        nextValues[field.name] = undefined;
+      }
+    }
+
+    if (Object.keys(nextValues).length > 0) {
+      form.setFieldsValue(nextValues);
+    }
+  }, [fields, form, open, optionsByField, watchedFormValues]);
 
   const applyCurrentLocation = async () => {
     if (!supportsLocationAssist) {
@@ -405,6 +545,12 @@ export function CrudFormModal({
           }
 
           if (field.type === "select") {
+            const selectState = getSelectFieldState(
+              field,
+              optionsByField[field.name] ?? [],
+              watchedFormValues,
+            );
+
             return (
               <Form.Item
                 key={field.name}
@@ -413,7 +559,8 @@ export function CrudFormModal({
                 rules={rules}
               >
                 <Select
-                  options={optionsByField[field.name] ?? []}
+                  options={selectState.options}
+                  disabled={selectState.disabled}
                   optionRender={(option) => {
                     const description = option.data.description;
                     if (
