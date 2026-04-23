@@ -118,4 +118,5 @@ Set backend `CORS_ORIGIN` to include dashboard origins, for example:
 
 - `http://localhost:3001`
 - your LAN/dev origin when testing from another device
+
 - your deployed dashboards domain
