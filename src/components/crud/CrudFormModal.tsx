@@ -205,7 +205,7 @@ export function CrudFormModal({
       return;
     }
 
-    const nextValues: Record<string, unknown> = {};
+    const nextValues: Record<string, {} | undefined> = {};
 
     for (const field of fields) {
       if (field.type !== "select") {

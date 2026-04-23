@@ -6,6 +6,7 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  output: "standalone",
   outputFileTracingRoot: projectRoot,
   turbopack: {
     root: projectRoot,

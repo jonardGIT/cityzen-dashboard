@@ -1,0 +1,103 @@
+name: Publish Minified Mirror
+
+on:
+  workflow_run:
+    workflows:
+      - Security Checks
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish-mirror:
+    if: github.repository == 'jonardGIT/cityzen-dashboard' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      TARGET_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
+      TARGET_REPO: Xypes13/xypes-cityzen-dashboard
+
+    steps:
+      - name: Check out source repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build standalone dashboard runtime
+        run: npm run build
+
+      - name: Assemble standalone runtime mirror
+        env:
+          COMMIT_MESSAGE_FILE: ${{ runner.temp }}/mirror-commit-message.txt
+          STAGE_DIR: ${{ runner.temp }}/minified-mirror
+        run: |
+          set -e
+          rm -rf "$STAGE_DIR"
+          mkdir -p "$STAGE_DIR/.github/workflows" "$STAGE_DIR/.next"
+
+          cp package.json "$STAGE_DIR/package.json"
+          cp package-lock.json "$STAGE_DIR/package-lock.json"
+          cp README.md "$STAGE_DIR/README.md"
+          cp .github/workflows/codeql-analysis.yml "$STAGE_DIR/.github/workflows/codeql-analysis.yml"
+          cp .github/workflows/security-checks.yml "$STAGE_DIR/.github/workflows/security-checks.yml"
+
+          cp -R .next/standalone/. "$STAGE_DIR/"
+          cp -R .next/static "$STAGE_DIR/.next/static"
+
+          if [[ -d public ]]; then
+            cp -R public "$STAGE_DIR/public"
+          fi
+
+          git log -1 --format=%B "$SOURCE_SHA" > "$COMMIT_MESSAGE_FILE"
+
+      - name: Publish to Xypes13 mirror repository
+        env:
+          COMMIT_MESSAGE_FILE: ${{ runner.temp }}/mirror-commit-message.txt
+          MIRROR_PUSH_TOKEN: ${{ secrets['XYPES_MIRROR_TOKEN'] }}
+          PUBLISH_DIR: ${{ runner.temp }}/mirror-publish
+          STAGE_DIR: ${{ runner.temp }}/minified-mirror
+        run: |
+          set -e
+
+          if [[ -z "$MIRROR_PUSH_TOKEN" ]]; then
+            echo "XYPES_MIRROR_TOKEN is required to publish the minified mirror."
+            exit 1
+          fi
+
+          rm -rf "$PUBLISH_DIR"
+          MIRROR_REMOTE="https://x-access-token:${MIRROR_PUSH_TOKEN}@github.com/${TARGET_REPO}.git"
+
+          git clone "$MIRROR_REMOTE" "$PUBLISH_DIR"
+          cd "$PUBLISH_DIR"
+
+          if git show-ref --verify --quiet "refs/remotes/origin/$TARGET_BRANCH"; then
+            git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+          else
+            git checkout -B "$TARGET_BRANCH"
+          fi
+
+          rsync -a --delete --exclude '.git/' "$STAGE_DIR/" "$PUBLISH_DIR/"
+
+          git config user.name "Xypes13"
+          git config user.email "tech@xypes.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No runtime changes detected; creating an empty sync commit so Xypes still records the successful Jonard run."
+          fi
+
+          git commit --allow-empty -F "$COMMIT_MESSAGE_FILE"
+          git push -u origin "$TARGET_BRANCH"
