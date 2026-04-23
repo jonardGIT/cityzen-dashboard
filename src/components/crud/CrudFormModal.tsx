@@ -1,7 +1,7 @@
 "use client";
 
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   App,
@@ -129,6 +129,8 @@ export function CrudFormModal({
   submitDisabledMessage,
   onRetrySubmitDependency,
 }: CrudFormModalProps) {
+  type SetFieldsValueArg = Parameters<typeof form.setFieldsValue>[0];
+
   const { message } = App.useApp();
   const mediaInputRef = useRef<HTMLInputElement | null>(null);
   const [locationLookupPending, setLocationLookupPending] = useState(false);
@@ -154,8 +156,14 @@ export function CrudFormModal({
   const regionNameValue = Form.useWatch("regionName", form);
   const postalCodeValue = Form.useWatch("postalCode", form);
   const landmarkValue = Form.useWatch("landmark", form);
-  const watchedFormValues =
-    Form.useWatch((values) => values as Record<string, unknown>, form) ?? {};
+  const watchedFormValuesSnapshot = Form.useWatch(
+    (values) => values as Record<string, unknown> | undefined,
+    form,
+  );
+  const watchedFormValues = useMemo<Record<string, unknown>>(
+    () => watchedFormValuesSnapshot ?? {},
+    [watchedFormValuesSnapshot],
+  );
 
   const supportsLocationAssist = fields.some(
     (field) => field.name === "latitude" || field.name === "longitude",
@@ -205,7 +213,7 @@ export function CrudFormModal({
       return;
     }
 
-    const nextValues: Record<string, {} | undefined> = {};
+    const nextValues: SetFieldsValueArg = {};
 
     for (const field of fields) {
       if (field.type !== "select") {

@@ -6,6 +6,14 @@ export const CAN_CREATE_INCIDENT: Role[] = [
   Role.PROVINCIAL_ADMIN,
   Role.CITY_ADMIN,
   Role.DISPATCHER,
+];
+
+export const CAN_UPDATE_INCIDENT: Role[] = [
+  Role.NATIONAL_ADMIN,
+  Role.REGIONAL_DIRECTOR,
+  Role.PROVINCIAL_ADMIN,
+  Role.CITY_ADMIN,
+  Role.DISPATCHER,
   Role.RESPONDER,
 ];
 
@@ -38,6 +46,7 @@ export const CAN_MANAGE_MFA: Role[] = [
   Role.REGIONAL_DIRECTOR,
   Role.PROVINCIAL_ADMIN,
   Role.CITY_ADMIN,
+  Role.CITY_CONTENT_EDITOR,
   Role.DISPATCHER,
   Role.AUDITOR,
 ];

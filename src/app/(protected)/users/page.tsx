@@ -15,7 +15,7 @@ import {
   Typography,
 } from "antd";
 import { AxiosError } from "axios";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import {
@@ -325,9 +325,12 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
   type SetFieldsValueArg = Parameters<typeof form.setFieldsValue>[0];
   type GetFieldValueArg = Parameters<typeof form.getFieldValue>[0];
 
-  const setJurisdictionFieldsValue = (values: SetFieldsValueArg) => {
-    form.setFieldsValue(values);
-  };
+  const setJurisdictionFieldsValue = useCallback(
+    (values: SetFieldsValueArg) => {
+      form.setFieldsValue(values);
+    },
+    [form],
+  );
 
   const getJurisdictionFieldValue = <K extends keyof JurisdictionFormValues>(
     field: K,
@@ -458,7 +461,7 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
       provinceId: undefined,
       cityMunicipalityId: undefined,
     } as SetFieldsValueArg);
-  }, [allowedJurisdictionTypes, form, jurisdictionType]);
+  }, [allowedJurisdictionTypes, jurisdictionType, setJurisdictionFieldsValue]);
 
   useEffect(() => {
     if (
@@ -504,11 +507,11 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
     allowedJurisdictionTypes,
     cityAdminScopeLocked,
     cityMunicipalityId,
-    form,
     jurisdictionId,
     jurisdictionType,
     provinceId,
     regionId,
+    setJurisdictionFieldsValue,
   ]);
 
   useEffect(() => {
@@ -543,11 +546,11 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
     derivedCityId,
     derivedProvinceId,
     derivedRegionId,
-    form,
     jurisdictionId,
     jurisdictionType,
     provinceId,
     regionId,
+    setJurisdictionFieldsValue,
   ]);
 
   const typeOptions = allowedJurisdictionTypes.map((value) => ({
@@ -562,10 +565,12 @@ function JurisdictionFields<T extends JurisdictionFormValues>({
     value: province.id,
     label: province.name ?? province.code ?? province.id,
   }));
-  const cityOptions = (citiesQuery.data?.data ?? []).map((city) => ({
-    value: city.id,
-    label: city.name ?? city.code ?? city.id,
-  }));
+  const cityOptions = (citiesQuery.data?.data ?? [])
+    .filter((city) => city.type == null || city.type === "CITY")
+    .map((city) => ({
+      value: city.id,
+      label: city.name ?? city.code ?? city.id,
+    }));
   const barangayOptions = (barangaysQuery.data?.data ?? []).map((barangay) => ({
     value: barangay.id,
     label: barangay.name ?? barangay.code ?? barangay.id,

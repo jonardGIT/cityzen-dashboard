@@ -70,6 +70,7 @@ describe("auth permissions", () => {
       Role.REGIONAL_DIRECTOR,
       Role.PROVINCIAL_ADMIN,
       Role.CITY_ADMIN,
+      Role.CITY_CONTENT_EDITOR,
       Role.DISPATCHER,
       Role.AUDITOR,
     ]);
