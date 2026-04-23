@@ -117,5 +117,5 @@ See `docs/developer-testing-setup.md` (gitignored) for QA account credentials an
 Set backend `CORS_ORIGIN` to include dashboard origins, for example:
 
 - `http://localhost:3001`
-- your LAN/dev origin when testing from another device
-- your deployed dashboard domain
+- your LAN/dev origin when testing from another device 
+- your deployed dashboards domain
