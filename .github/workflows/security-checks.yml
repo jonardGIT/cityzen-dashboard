@@ -113,11 +113,24 @@ jobs:
       - name: Run Gitleaks on current tree
         run: |
           if [ "${{ github.repository }}" = "Xypes13/xypes-cityzen-dashboard" ]; then
+            printf '%s\n' \
+              'title = "Mirror repo Gitleaks configuration"' \
+              '' \
+              '[extend]' \
+              'useDefault = true' \
+              '' \
+              '[[allowlists]]' \
+              'description = "Ignore generated standalone runtime artifacts"' \
+              'paths = [' \
+              "  '''^server\\.js$'''," \
+              "  '''^\\.next/.*'''," \
+              ']' \
+              > "$RUNNER_TEMP/gitleaks-mirror.toml"
+
             gitleaks dir . \
               --no-banner \
               --redact \
-              --exclude-path server.js \
-              --exclude-path .next
+              --config "$RUNNER_TEMP/gitleaks-mirror.toml"
           else
             gitleaks dir . --no-banner --redact
           fi
