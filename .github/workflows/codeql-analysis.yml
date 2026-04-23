@@ -62,7 +62,7 @@ jobs:
 
       - name: Verify standalone runtime exists
         if: (github.event.repository.private == false || vars.ENABLE_GITHUB_CODE_SCANNING == 'true') && github.repository == 'Xypes13/xypes-cityzen-dashboard'
-        run: test -f .next/standalone/server.js
+        run: test -f server.js
 
       - name: Analyze
         if: github.event.repository.private == false || vars.ENABLE_GITHUB_CODE_SCANNING == 'true'

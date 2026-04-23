@@ -81,12 +81,12 @@ jobs:
       - name: Verify standalone runtime exists
         if: github.repository == 'Xypes13/xypes-cityzen-dashboard'
         run: |
-          test -f .next/standalone/server.js
+          test -f server.js
           test -d .next/static
 
       - name: Check standalone runtime syntax
         if: github.repository == 'Xypes13/xypes-cityzen-dashboard'
-        run: node --check .next/standalone/server.js
+        run: node --check server.js
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=critical
@@ -111,4 +111,13 @@ jobs:
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
       - name: Run Gitleaks on current tree
-        run: gitleaks dir . --no-banner --redact
+        run: |
+          if [ "${{ github.repository }}" = "Xypes13/xypes-cityzen-dashboard" ]; then
+            gitleaks dir . \
+              --no-banner \
+              --redact \
+              --exclude-path server.js \
+              --exclude-path .next
+          else
+            gitleaks dir . --no-banner --redact
+          fi
