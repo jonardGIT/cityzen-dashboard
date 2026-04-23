@@ -158,10 +158,10 @@ describe("AuditLogsPage", () => {
 
   it("shows a forbidden state for authorized users when the backend returns 403", () => {
     useAuthMock.mockReturnValue({
-      user: { role: Role.SYSTEM_ADMIN },
+      user: { role: Role.NATIONAL_ADMIN },
       capabilities: {
         permissions: ["audit:read:global"],
-        role: Role.SYSTEM_ADMIN,
+        role: Role.NATIONAL_ADMIN,
       },
       isAuthenticated: true,
     });
@@ -181,7 +181,7 @@ describe("AuditLogsPage", () => {
     expect(screen.getByText("Forbidden")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Only System Admin and Auditor accounts can access audit logs.",
+        "Only National Admin and Auditor accounts can access audit logs.",
       ),
     ).toBeInTheDocument();
   });

@@ -1,0 +1,114 @@
+name: Security Checks
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dependency-review:
+    if: (github.repository == 'jonardGIT/cityzen-dashboard' || github.repository == 'Xypes13/xypes-cityzen-dashboard') && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain current dependency review mode
+        run: |
+          if [ "${{ github.event.repository.private }}" = "false" ] || [ "${{ vars.ENABLE_GITHUB_DEPENDENCY_REVIEW }}" = "true" ]; then
+            echo "Dependency review is enabled for this run."
+          else
+            echo "Dependency review is disabled for this private repository. Enable Dependency Graph and GitHub Advanced Security, then set ENABLE_GITHUB_DEPENDENCY_REVIEW=true to turn it back on."
+          fi
+
+      - name: Checkout repository
+        if: github.event.repository.private == false || vars.ENABLE_GITHUB_DEPENDENCY_REVIEW == 'true'
+        uses: actions/checkout@v4
+
+      - name: Review dependency changes
+        if: github.event.repository.private == false || vars.ENABLE_GITHUB_DEPENDENCY_REVIEW == 'true'
+        uses: actions/dependency-review-action@v4
+
+  source-tests:
+    if: github.repository == 'jonardGIT/cityzen-dashboard'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run source test suite
+        run: npm test
+
+  build-and-audit:
+    if: github.repository == 'jonardGIT/cityzen-dashboard' || github.repository == 'Xypes13/xypes-cityzen-dashboard'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build source project
+        if: github.repository == 'jonardGIT/cityzen-dashboard'
+        run: npm run build
+
+      - name: Lint source project
+        if: github.repository == 'jonardGIT/cityzen-dashboard'
+        run: npm run lint
+
+      - name: Verify standalone runtime exists
+        if: github.repository == 'Xypes13/xypes-cityzen-dashboard'
+        run: |
+          test -f .next/standalone/server.js
+          test -d .next/static
+
+      - name: Check standalone runtime syntax
+        if: github.repository == 'Xypes13/xypes-cityzen-dashboard'
+        run: node --check .next/standalone/server.js
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical
+
+  secret-scan:
+    if: github.repository == 'jonardGIT/cityzen-dashboard' || github.repository == 'Xypes13/xypes-cityzen-dashboard'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install Gitleaks
+        run: |
+          set -e
+          version=8.24.2
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Run Gitleaks on current tree
+        run: gitleaks dir . --no-banner --redact

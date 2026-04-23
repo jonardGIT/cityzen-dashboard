@@ -2,6 +2,8 @@
 
 Production-style Next.js App Router dashboard built with TypeScript, Ant Design, TanStack Query, and Axios.
 
+This repository includes GitHub Actions workflows for source validation on `jonardGIT/cityzen-dashboard` and standalone runtime mirroring to `Xypes13/xypes-cityzen-dashboard`.
+
 ## Stack
 
 - Next.js App Router + TypeScript (strict)

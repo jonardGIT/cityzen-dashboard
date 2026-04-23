@@ -179,7 +179,6 @@ describe("dynamic crud config", () => {
       Role.PROVINCIAL_ADMIN,
       Role.CITY_ADMIN,
       Role.DISPATCHER,
-      Role.RESPONDER,
     ]);
   });
 
