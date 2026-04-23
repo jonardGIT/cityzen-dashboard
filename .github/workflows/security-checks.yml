@@ -119,7 +119,7 @@ jobs:
               '[extend]' \
               'useDefault = true' \
               '' \
-              '[[allowlists]]' \
+              '[allowlist]' \
               'description = "Ignore generated standalone runtime artifacts"' \
               'paths = [' \
               "  '''^server\\.js$'''," \
