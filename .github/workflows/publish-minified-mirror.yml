@@ -7,6 +7,12 @@ on:
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      force_push:
+        description: Force push the deployment branch for this manual run only
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -19,6 +25,7 @@ jobs:
       SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       TARGET_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
       TARGET_REPO: Xypes13/xypes-cityzen-dashboard
+      FORCE_PUSH: ${{ github.event_name == 'workflow_dispatch' && inputs.force_push || false }}
 
     steps:
       - name: Check out source repo
@@ -59,7 +66,13 @@ jobs:
           cp .github/workflows/codeql-analysis.yml "$STAGE_DIR/.github/workflows/codeql-analysis.yml"
           cp .github/workflows/security-checks.yml "$STAGE_DIR/.github/workflows/security-checks.yml"
 
-          cp -R src "$STAGE_DIR/src"
+          rsync -a \
+            --exclude='**/*.test.ts' \
+            --exclude='**/*.test.tsx' \
+            --exclude='**/*.spec.ts' \
+            --exclude='**/*.spec.tsx' \
+            --exclude='test/' \
+            src/ "$STAGE_DIR/src/"
 
           if [[ -d public ]]; then
             cp -R public "$STAGE_DIR/public"
@@ -104,4 +117,8 @@ jobs:
           fi
 
           git commit --allow-empty -F "$COMMIT_MESSAGE_FILE"
-          git push -u origin "$TARGET_BRANCH"
+          if [[ "$FORCE_PUSH" = 'true' ]]; then
+            git push --force -u origin "$TARGET_BRANCH"
+          else
+            git push -u origin "$TARGET_BRANCH"
+          fi
