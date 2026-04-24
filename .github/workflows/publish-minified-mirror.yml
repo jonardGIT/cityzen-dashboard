@@ -7,12 +7,6 @@ on:
     types:
       - completed
   workflow_dispatch:
-    inputs:
-      force_push:
-        description: Force push the deployment branch for this manual run only
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -25,7 +19,6 @@ jobs:
       SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       TARGET_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
       TARGET_REPO: Xypes13/xypes-cityzen-dashboard
-      FORCE_PUSH: ${{ github.event_name == 'workflow_dispatch' && inputs.force_push || false }}
 
     steps:
       - name: Check out source repo
@@ -117,8 +110,4 @@ jobs:
           fi
 
           git commit --allow-empty -F "$COMMIT_MESSAGE_FILE"
-          if [[ "$FORCE_PUSH" = 'true' ]]; then
-            git push --force -u origin "$TARGET_BRANCH"
-          else
-            git push -u origin "$TARGET_BRANCH"
-          fi
+          git push -u origin "$TARGET_BRANCH"
