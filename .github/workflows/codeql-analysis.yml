@@ -57,12 +57,8 @@ jobs:
         run: npm ci
 
       - name: Build source project
-        if: (github.event.repository.private == false || vars.ENABLE_GITHUB_CODE_SCANNING == 'true') && github.repository == 'jonardGIT/cityzen-dashboard'
+        if: github.event.repository.private == false || vars.ENABLE_GITHUB_CODE_SCANNING == 'true'
         run: npm run build
-
-      - name: Verify standalone runtime exists
-        if: (github.event.repository.private == false || vars.ENABLE_GITHUB_CODE_SCANNING == 'true') && github.repository == 'Xypes13/xypes-cityzen-dashboard'
-        run: test -f server.js
 
       - name: Analyze
         if: github.event.repository.private == false || vars.ENABLE_GITHUB_CODE_SCANNING == 'true'

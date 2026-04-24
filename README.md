@@ -2,7 +2,40 @@
 
 Production-style Next.js App Router dashboard built with TypeScript, Ant Design, TanStack Query, and Axios.
 
-This repository includes GitHub Actions workflows for source validation on `jonardGIT/cityzen-dashboard` and standalone runtime mirroring to `Xypes13/xypes-cityzen-dashboard`.
+This repository includes GitHub Actions workflows for source validation on `jonardGIT/cityzen-dashboard` and a deployment-focused source copy in `Xypes13/xypes-cityzen-dashboard`.
+
+## Deploy To Vercel
+
+Vercel can deploy either the source repository or the deployment repository.
+
+The deployment repository at `Xypes13/xypes-cityzen-dashboard` is a reduced source copy intended for deployment. It includes the buildable Next.js source tree and Vercel config, but omits local-only and non-deployment files. Production JavaScript is still minified during `next build` on Vercel.
+
+Recommended Vercel project settings for this source repo:
+
+- Framework Preset: `Next.js`
+- Root Directory: repository root
+- Install Command: `npm ci`
+- Build Command: `npm run build`
+- Output Directory: leave empty
+- Node.js Version: `20.x`
+
+Set these environment variables in Vercel for Preview and Production as needed:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://your-api-host.example/api/v1
+NEXT_PUBLIC_API_KEY=your-public-api-key-if-required
+API_KEY=your-server-side-api-key-if-required
+CIRS_API_BASE_URL=https://your-api-host.example
+CIRS_API_BASE_PATH=/api/v1
+CIRS_API_KEY=your-server-side-api-key-if-required
+NEXT_PUBLIC_OPENAPI_SOURCE=config
+```
+
+Notes:
+
+- `NEXT_PUBLIC_API_BASE_URL` is the browser-facing API base URL.
+- `API_KEY` is used by server-side proxy routes and may reuse the same backend API key when your API requires `x-api-key`.
+- `NEXT_PUBLIC_OPENAPI_SOURCE=config` keeps runtime CRUD behavior on the checked-in contract instead of requiring live OpenAPI on Vercel.
 
 ## Stack
 

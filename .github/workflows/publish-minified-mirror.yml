@@ -36,26 +36,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build standalone dashboard runtime
+      - name: Validate source project build
         run: npm run build
 
-      - name: Assemble standalone runtime mirror
+      - name: Assemble Vercel-ready source mirror
         env:
           COMMIT_MESSAGE_FILE: ${{ runner.temp }}/mirror-commit-message.txt
           STAGE_DIR: ${{ runner.temp }}/minified-mirror
         run: |
           set -e
           rm -rf "$STAGE_DIR"
-          mkdir -p "$STAGE_DIR/.github/workflows" "$STAGE_DIR/.next"
+          mkdir -p "$STAGE_DIR/.github/workflows"
 
           cp package.json "$STAGE_DIR/package.json"
           cp package-lock.json "$STAGE_DIR/package-lock.json"
+          cp vercel.json "$STAGE_DIR/vercel.json"
+          cp next.config.ts "$STAGE_DIR/next.config.ts"
+          cp next-env.d.ts "$STAGE_DIR/next-env.d.ts"
+          cp tsconfig.json "$STAGE_DIR/tsconfig.json"
+          cp dashboard-crud-config.flat.json "$STAGE_DIR/dashboard-crud-config.flat.json"
           cp README.md "$STAGE_DIR/README.md"
           cp .github/workflows/codeql-analysis.yml "$STAGE_DIR/.github/workflows/codeql-analysis.yml"
           cp .github/workflows/security-checks.yml "$STAGE_DIR/.github/workflows/security-checks.yml"
 
-          cp -R .next/standalone/. "$STAGE_DIR/"
-          cp -R .next/static "$STAGE_DIR/.next/static"
+          cp -R src "$STAGE_DIR/src"
 
           if [[ -d public ]]; then
             cp -R public "$STAGE_DIR/public"
