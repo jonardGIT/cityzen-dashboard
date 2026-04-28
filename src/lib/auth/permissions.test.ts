@@ -66,13 +66,10 @@ describe("auth permissions", () => {
 
   it("limits MFA management to privileged roles", () => {
     expect(CAN_MANAGE_MFA).toEqual([
-      Role.NATIONAL_ADMIN,
-      Role.REGIONAL_DIRECTOR,
-      Role.PROVINCIAL_ADMIN,
-      Role.CITY_ADMIN,
-      Role.CITY_CONTENT_EDITOR,
+      Role.SYSTEM_ADMIN,
+      Role.DEPARTMENT_MANAGER,
+      Role.SUPERVISOR,
       Role.DISPATCHER,
-      Role.AUDITOR,
     ]);
   });
 });

@@ -36,12 +36,10 @@
         "fullPath": "/api/v1/auth/mfa/setup",
         "authRequired": true,
         "allowedRoles": [
-          "NATIONAL_ADMIN",
-          "REGIONAL_DIRECTOR",
-          "PROVINCIAL_ADMIN",
-          "CITY_ADMIN",
-          "DISPATCHER",
-          "AUDITOR"
+          "SYSTEM_ADMIN",
+          "DEPARTMENT_MANAGER",
+          "SUPERVISOR",
+          "DISPATCHER"
         ],
         "featureGate": {
           "feature": "mfaMode",
@@ -56,12 +54,10 @@
         "fullPath": "/api/v1/auth/mfa/enable",
         "authRequired": true,
         "allowedRoles": [
-          "NATIONAL_ADMIN",
-          "REGIONAL_DIRECTOR",
-          "PROVINCIAL_ADMIN",
-          "CITY_ADMIN",
-          "DISPATCHER",
-          "AUDITOR"
+          "SYSTEM_ADMIN",
+          "DEPARTMENT_MANAGER",
+          "SUPERVISOR",
+          "DISPATCHER"
         ],
         "featureGate": {
           "feature": "mfaMode",
@@ -76,12 +72,10 @@
         "fullPath": "/api/v1/auth/mfa/disable",
         "authRequired": true,
         "allowedRoles": [
-          "NATIONAL_ADMIN",
-          "REGIONAL_DIRECTOR",
-          "PROVINCIAL_ADMIN",
-          "CITY_ADMIN",
-          "DISPATCHER",
-          "AUDITOR"
+          "SYSTEM_ADMIN",
+          "DEPARTMENT_MANAGER",
+          "SUPERVISOR",
+          "DISPATCHER"
         ],
         "featureGate": {
           "feature": "mfaMode",

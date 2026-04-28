@@ -257,7 +257,19 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
   ],
 };
 
-export const ROLE_OPTIONS = Object.values(Role).map((role) => ({
+const ROLE_OPTION_VALUES: Role[] = [
+  Role.SYSTEM_ADMIN,
+  Role.REGIONAL_DIRECTOR,
+  Role.SUPERVISOR,
+  Role.DEPARTMENT_MANAGER,
+  Role.CITY_CONTENT_EDITOR,
+  Role.DISPATCHER,
+  Role.RESPONDER,
+  Role.CITIZEN_REPORTER,
+  Role.AUDITOR,
+];
+
+export const ROLE_OPTIONS = ROLE_OPTION_VALUES.map((role) => ({
   value: role,
   label: getRoleLabel(role),
 }));

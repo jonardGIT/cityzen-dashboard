@@ -1,12 +1,29 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { publicClientGetMock } = vi.hoisted(() => ({
+  publicClientGetMock: vi.fn(),
+}));
+
+vi.mock("@/lib/api/clients", () => ({
+  publicClient: {
+    get: publicClientGetMock,
+  },
+}));
+
 import {
   collectContractDriftIssues,
   collectOpenApiOperationKeys,
+  fetchOpenApiOperationKeys,
   getCheckedInOpenApiOperationKeys,
   isCrudEndpointAvailableInOpenApi,
 } from "@/features/dynamic-crud/openapi";
 
 describe("dynamic crud OpenAPI helpers", () => {
+  beforeEach(() => {
+    publicClientGetMock.mockReset();
+    delete process.env.NEXT_PUBLIC_OPENAPI_SOURCE;
+  });
+
   it("collects operation keys from an OpenAPI paths object", () => {
     expect(
       collectOpenApiOperationKeys({
@@ -110,6 +127,30 @@ describe("dynamic crud OpenAPI helpers", () => {
     ).toBe(false);
   });
 
+  it("prefers the live OpenAPI document by default for feature-aware availability", async () => {
+    publicClientGetMock.mockResolvedValueOnce({
+      data: {
+        paths: {
+          "/incidents/media/upload": { post: {} },
+        },
+      },
+    });
+
+    await expect(fetchOpenApiOperationKeys()).resolves.toEqual([
+      "POST /incidents/media/upload",
+    ]);
+    expect(publicClientGetMock).toHaveBeenCalledWith("/openapi.json");
+  });
+
+  it("uses the checked-in contract only when explicitly requested", async () => {
+    process.env.NEXT_PUBLIC_OPENAPI_SOURCE = "checked-in";
+
+    const result = await fetchOpenApiOperationKeys();
+
+    expect(publicClientGetMock).not.toHaveBeenCalled();
+    expect(result).toEqual(getCheckedInOpenApiOperationKeys());
+  });
+
   it("reports active config operations that are missing from the active spec", () => {
     expect(collectContractDriftIssues(["GET /citizens"])).toEqual(
       expect.arrayContaining([
@@ -142,13 +183,11 @@ describe("dynamic crud OpenAPI helpers", () => {
     );
   });
 
-  it("includes mobile-content operations in the checked-in contract", () => {
-    expect(getCheckedInOpenApiOperationKeys()).toEqual(
-      expect.arrayContaining([
-        "GET /mobile-content",
-        "POST /mobile-content",
-        "PATCH /mobile-content/{id}",
-      ]),
+  it("falls back to the checked-in contract when the live OpenAPI request fails", async () => {
+    publicClientGetMock.mockRejectedValueOnce(new Error("offline"));
+
+    await expect(fetchOpenApiOperationKeys()).resolves.toEqual(
+      getCheckedInOpenApiOperationKeys(),
     );
   });
 });

@@ -42,13 +42,10 @@ export const CAN_MANAGE_USERS: Role[] = [
 ];
 
 export const CAN_MANAGE_MFA: Role[] = [
-  Role.NATIONAL_ADMIN,
-  Role.REGIONAL_DIRECTOR,
-  Role.PROVINCIAL_ADMIN,
-  Role.CITY_ADMIN,
-  Role.CITY_CONTENT_EDITOR,
+  Role.SYSTEM_ADMIN,
+  Role.DEPARTMENT_MANAGER,
+  Role.SUPERVISOR,
   Role.DISPATCHER,
-  Role.AUDITOR,
 ];
 
 const MANAGEABLE_ROLES: Record<Role, Role[]> = {

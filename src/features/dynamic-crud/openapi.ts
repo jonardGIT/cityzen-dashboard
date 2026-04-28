@@ -117,7 +117,7 @@ async function fetchLiveOpenApiOperationKeys() {
 }
 
 export async function fetchOpenApiOperationKeys() {
-  if (process.env.NEXT_PUBLIC_OPENAPI_SOURCE !== "live") {
+  if (process.env.NEXT_PUBLIC_OPENAPI_SOURCE === "checked-in") {
     return getCheckedInOpenApiOperationKeys();
   }
 

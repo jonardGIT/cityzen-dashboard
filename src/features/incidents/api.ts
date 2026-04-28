@@ -189,6 +189,27 @@ export function normalizeIncidentMediaAccessUrl(
   return normalizeIncidentMediaAccessUrl(record.data);
 }
 
+function encodeBytesToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  let binary = "";
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+
+  return btoa(binary);
+}
+
+async function buildIncidentMediaUploadBody(file: File) {
+  const arrayBuffer = await file.arrayBuffer();
+
+  return {
+    fileName: file.name || "upload.bin",
+    contentType: file.type || "application/octet-stream",
+    dataBase64: encodeBytesToBase64(new Uint8Array(arrayBuffer)),
+  };
+}
+
 export interface CreateIncidentDto {
   description: string;
   mediaUrl?: string;
@@ -377,11 +398,8 @@ export async function uploadIncidentMedia(file: File): Promise<string> {
     throw new Error("Incident media upload is not configured.");
   }
 
-  const body = new FormData();
-  body.append("file", file);
-
   const result = await requestCrudEndpoint<unknown>(endpoint, {
-    body,
+    body: await buildIncidentMediaUploadBody(file),
   });
   const payload = assertCrudSuccess(result);
   const url = normalizeIncidentMediaAccessUrl(payload);

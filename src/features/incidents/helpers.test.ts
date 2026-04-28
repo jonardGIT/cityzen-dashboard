@@ -358,7 +358,7 @@ describe("incident helper endpoints", () => {
     ).rejects.toThrow("Incident media access did not return a usable URL.");
   });
 
-  it("uploads incident media with multipart form data and returns the normalized URL", async () => {
+  it("uploads incident media with a base64 JSON payload and returns the normalized URL", async () => {
     getCrudEndpointMock.mockImplementation(
       (_resource: string, operation: string) =>
         operation === "mediaUpload"
@@ -378,15 +378,22 @@ describe("incident helper endpoints", () => {
 
     const endpointArg = requestCrudEndpointMock.mock.calls[0]?.[0];
     const optionsArg = requestCrudEndpointMock.mock.calls[0]?.[1] as {
-      body?: FormData;
+      body?: {
+        fileName: string;
+        contentType: string;
+        dataBase64: string;
+      };
     };
 
     expect(endpointArg).toEqual({
       method: "POST",
       path: "/incidents/media/upload",
     });
-    expect(optionsArg.body).toBeInstanceOf(FormData);
-    expect(optionsArg.body?.get("file")).toBe(file);
+    expect(optionsArg.body).toEqual({
+      fileName: "evidence.jpg",
+      contentType: "image/jpeg",
+      dataBase64: "ZGVtbw==",
+    });
     expect(result).toBe("https://example.com/media/uploaded");
   });
 

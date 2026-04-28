@@ -9,17 +9,18 @@ import { Role } from "@/types/auth";
 
 describe("auth role normalization", () => {
   it("maps legacy cached role names to the new backend roles", () => {
-    expect(normalizeRole("SUPER_ADMIN")).toBe(Role.NATIONAL_ADMIN);
-    expect(normalizeRole("system admin")).toBe(Role.NATIONAL_ADMIN);
-    expect(normalizeRole("ADMIN")).toBe(Role.CITY_ADMIN);
+    expect(normalizeRole("SUPER_ADMIN")).toBe(Role.SYSTEM_ADMIN);
+    expect(normalizeRole("system admin")).toBe(Role.SYSTEM_ADMIN);
+    expect(normalizeRole("ADMIN")).toBe(Role.DEPARTMENT_MANAGER);
     expect(normalizeRole("VIEWER")).toBe(Role.CITIZEN_REPORTER);
-    expect(normalizeRole("SUPERVISOR")).toBe(Role.PROVINCIAL_ADMIN);
+    expect(normalizeRole("SUPERVISOR")).toBe(Role.SUPERVISOR);
     expect(normalizeRole("city content editor")).toBe(Role.CITY_CONTENT_EDITOR);
   });
 
   it("returns human-readable role labels", () => {
-    expect(getRoleLabel(Role.NATIONAL_ADMIN)).toBe("National Admin");
-    expect(getRoleLabel(Role.CITY_ADMIN)).toBe("City/Municipal Admin");
+    expect(getRoleLabel(Role.SYSTEM_ADMIN)).toBe("System Admin");
+    expect(getRoleLabel(Role.DEPARTMENT_MANAGER)).toBe("Department Manager");
+    expect(getRoleLabel(Role.SUPERVISOR)).toBe("Supervisor");
     expect(getRoleLabel(Role.CITY_CONTENT_EDITOR)).toBe("City Content Editor");
     expect(getRoleLabel(Role.CITIZEN_REPORTER)).toBe("Citizen Reporter");
   });
@@ -46,7 +47,7 @@ describe("auth role normalization", () => {
 
   it("preserves omitted management booleans during capability normalization", () => {
     const capabilities = normalizeCapabilities({
-      role: Role.CITY_ADMIN,
+      role: Role.DEPARTMENT_MANAGER,
       permissions: ["user:create:city"],
       scope: ["city:city-1"],
     });
@@ -63,7 +64,7 @@ describe("auth role normalization", () => {
 
   it("preserves explicit false management booleans during capability normalization", () => {
     const capabilities = normalizeCapabilities({
-      role: Role.PROVINCIAL_ADMIN,
+      role: Role.SUPERVISOR,
       canUpdateUser: false,
       canDeleteUser: false,
     });
