@@ -149,7 +149,7 @@ describe("auth feature api", () => {
     });
     expect(result).toEqual({
       role: "NATIONAL_ADMIN",
-      label: "National Admin",
+      label: "System Admin",
       permissions: ["user:manage:global"],
       scope: ["global"],
       canUpdateUser: true,
