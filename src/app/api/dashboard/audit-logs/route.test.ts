@@ -1,14 +1,20 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
-const { requestUpstreamMock, toJsonResponseMock, unauthorizedResponseMock } =
-  vi.hoisted(() => ({
-    requestUpstreamMock: vi.fn(),
-    toJsonResponseMock: vi.fn(),
-    unauthorizedResponseMock: vi.fn(),
-  }));
+const {
+  hasAuthenticatedRequestMock,
+  requestUpstreamMock,
+  toJsonResponseMock,
+  unauthorizedResponseMock,
+} = vi.hoisted(() => ({
+  hasAuthenticatedRequestMock: vi.fn(),
+  requestUpstreamMock: vi.fn(),
+  toJsonResponseMock: vi.fn(),
+  unauthorizedResponseMock: vi.fn(),
+}));
 
 vi.mock("@/app/api/users/proxy", () => ({
+  hasAuthenticatedRequest: hasAuthenticatedRequestMock,
   requestUpstream: requestUpstreamMock,
   toJsonResponse: toJsonResponseMock,
   unauthorizedResponse: unauthorizedResponseMock,
@@ -17,11 +23,19 @@ vi.mock("@/app/api/users/proxy", () => ({
 import { GET } from "@/app/api/dashboard/audit-logs/route";
 
 describe("GET /api/dashboard/audit-logs", () => {
+  beforeEach(() => {
+    hasAuthenticatedRequestMock.mockReset();
+    requestUpstreamMock.mockReset();
+    toJsonResponseMock.mockReset();
+    unauthorizedResponseMock.mockReset();
+  });
+
   it("returns the shared unauthorized response when the bearer token is missing", async () => {
     const unauthorized = NextResponse.json(
-      { message: "Missing Authorization header." },
+      { message: "Missing authenticated session." },
       { status: 401 },
     );
+    hasAuthenticatedRequestMock.mockReturnValueOnce(false);
     unauthorizedResponseMock.mockReturnValueOnce(unauthorized);
 
     const response = await GET({
@@ -45,6 +59,7 @@ describe("GET /api/dashboard/audit-logs", () => {
       { data: [], pagination: {} },
       { status: 200 },
     );
+    hasAuthenticatedRequestMock.mockReturnValueOnce(true);
     requestUpstreamMock.mockResolvedValueOnce(upstream);
     toJsonResponseMock.mockResolvedValueOnce(proxied);
 
@@ -67,6 +82,7 @@ describe("GET /api/dashboard/audit-logs", () => {
   });
 
   it("returns a 500 response when the upstream request throws", async () => {
+    hasAuthenticatedRequestMock.mockReturnValueOnce(true);
     requestUpstreamMock.mockRejectedValueOnce(new Error("network failed"));
 
     const response = await GET({

@@ -5,6 +5,10 @@ function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
+function isProductionBuildPhase(): boolean {
+  return process.env.NEXT_PHASE === "phase-production-build";
+}
+
 function normalizeUrl(value: string): string {
   return value.trim().replace(/\/$/, "");
 }
@@ -16,6 +20,10 @@ function resolveRequiredValue(
   const trimmed = value?.trim();
   if (trimmed) {
     return trimmed;
+  }
+
+  if (isProductionBuildPhase()) {
+    return undefined;
   }
 
   if (isProduction()) {
@@ -43,6 +51,10 @@ export function resolveDashboardProxyApiKey(): string {
 
   if (!isProduction() && resolveDashboardApiBaseUrl() === LOCAL_API_BASE_URL) {
     return "local-dev-key";
+  }
+
+  if (isProductionBuildPhase()) {
+    return "";
   }
 
   if (isProduction()) {
@@ -84,6 +96,10 @@ export function resolveCirsApiKey(): string {
 
   if (!isProduction() && resolveCirsApiBaseUrl() === LOCAL_API_HOST) {
     return "local-dev-key";
+  }
+
+  if (isProductionBuildPhase()) {
+    return "";
   }
 
   if (isProduction()) {
