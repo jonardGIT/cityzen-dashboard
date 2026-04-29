@@ -1,36 +1,24 @@
-# Xypes CIRS API: Users Capabilities Endpoint Implementation
+# Xypes CIRS API: Users Capabilities Contract Alignment
 
-> **SUPERSEDED** — This prompt was written against legacy role names (`SUPER_ADMIN`, `ADMIN`, `VIEWER`) and the original boolean-only contract (`canUpdateUser`, `canDeleteUser`).  
-> The backend now uses the current role set (`SYSTEM_ADMIN`, `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, `CITIZEN_REPORTER`, `AUDITOR`) and returns scoped capability keys (e.g. `incident:read:department`, `assignment:create:department`).  
-> Refer to `docs/user-capabilities-testing.md` for the current capability matrix.
+Use this prompt when validating or updating `GET /api/v1/users/capabilities` for the dashboard.
 
----
+## Current Objective
 
-## Original Objective (historical)
+Keep the endpoint aligned with the dashboard's current capability-aware user-management flow.
 
-Implement `GET /users/capabilities` so the dashboard can dynamically determine whether the current authenticated user can update and delete users.
+This endpoint is no longer a boolean-only admin check. The dashboard expects a capability payload that can drive route access, scoped messaging, and user-management actions from one response.
 
-## Why This Is Needed
+## Active Dashboard Dependency
 
-The frontend Users module already calls this endpoint and expects a stable response contract:
+The dashboard calls this endpoint from:
 
-- `GET /api/users/capabilities`
-- Expected shape:
-  ```json
-  {
-    "canUpdateUser": true,
-    "canDeleteUser": true
-  }
-  ```
+- `src/features/users/api.ts` via `fetchUsersCapabilities`
+- `src/app/(protected)/users/page.tsx`
+- auth bootstrap and permission helpers that normalize roles and capability payloads
 
-Current behavior observed in QA:
+The frontend normalizes the payload through `normalizeCapabilities`, so the backend should preserve a stable shape instead of relying on UI inference.
 
-- `SUPER_ADMIN` and `ADMIN` receive `500`
-- non-admin roles receive `403`
-
-The `500` for authorized roles should be fixed.
-
-## Endpoint Contract
+## Route Contract
 
 ### Route
 
@@ -39,132 +27,93 @@ The `500` for authorized roles should be fixed.
 ### Auth
 
 - Requires authenticated user (`Bearer` token)
-- Requires API key if backend key enforcement is enabled
+- Requires `x-api-key` when backend API-key enforcement is enabled
 
 ### Authorization
 
-- Recommended role policy:
-  - `SUPER_ADMIN`, `ADMIN`: allowed
-  - `DISPATCHER`, `RESPONDER`, `VIEWER`: forbidden (`403`)
+- Any authenticated role may call this endpoint
+- `401` is for missing or invalid auth
+- `403` should be reserved for true policy denial, not used as a substitute for returning a reduced capability payload
 
-### Success Response (200)
+## Success Response Shape (200)
+
+Return a JSON object with these fields:
 
 ```json
 {
+  "role": "CITY_ADMIN",
+  "label": "City/Municipal Admin",
+  "permissions": ["user:create:city", "incident:read:city"],
+  "scope": ["city:city-1"],
   "canUpdateUser": true,
-  "canDeleteUser": true
+  "canDeleteUser": false
 }
 ```
 
-### Error Responses
+### Field Expectations
 
-- `401` unauthenticated / invalid token
-- `403` authenticated but not allowed role
-- `500` only for true unexpected server errors (should not happen for normal authorized flow)
+- `role`: current canonical backend role or supported transitional alias
+- `label`: human-readable role label for UI display
+- `permissions`: scoped capability keys used by dashboard auth and navigation logic
+- `scope`: scope tokens describing the actor's effective operational boundary
+- `canUpdateUser`: optional boolean; include when user-management update behavior should be explicit
+- `canDeleteUser`: optional boolean; include when user-management delete behavior should be explicit
 
-## Capability Rules
+## Compatibility Rules
 
-Return booleans based on current backend policy. At minimum:
+- Canonical contract roles are the current backend role set and any active aliases the frontend already normalizes, such as `NATIONAL_ADMIN` to `SYSTEM_ADMIN` and `CITY_ADMIN` to `DEPARTMENT_MANAGER`.
+- Do not reintroduce `SUPER_ADMIN`, `ADMIN`, or `VIEWER` as the canonical live contract.
+- Preserve capability keys and scope semantics that match backend enforcement.
+- If a role has no user-management access, still return the capability payload with false or omitted user-management booleans instead of failing the endpoint.
+- Do not emit `500` for valid authenticated users because of role-mapping gaps.
 
-- `canUpdateUser`: whether current user can use update-user operations
-- `canDeleteUser`: whether current user can use delete-user operations
+## Backend Implementation Notes
 
-If your backend supports feature flags or temporary policy toggles, apply them here so UI behavior stays in sync with backend state.
+### 1. Compute capabilities centrally
 
-## Implementation Notes
+- Derive role label, permissions, scope, and user-management flags in one backend service path
+- Reuse the same policy source used for protected users routes wherever possible
 
-### 1. Add Controller/Route
+### 2. Keep payload stable
 
-- Add `GET /users/capabilities` handler in Users controller
-- Reuse existing auth/guard middleware
+- `permissions` must always be an array
+- `scope` should resolve to a stable serializable structure that the dashboard can normalize into a string list
+- `canUpdateUser` and `canDeleteUser` should remain boolean when present
 
-### 2. Add Service Method
+### 3. Align with scoped user management
 
-- Implement a service method that computes capability flags for the authenticated principal
-- Keep logic centralized (avoid duplicating role checks in multiple controllers)
+- `SYSTEM_ADMIN` or equivalent global admins may have full user-management booleans
+- scoped admins such as `DEPARTMENT_MANAGER` or `CITY_ADMIN` may have `canUpdateUser: true` and `canDeleteUser: false`
+- operational and read-only roles should still receive their read capabilities without user-management rights
 
-### 3. Return Stable DTO
+### 4. Error handling
 
-- Return a typed DTO/object with exactly:
-  - `canUpdateUser: boolean`
-  - `canDeleteUser: boolean`
+- return `401` for missing or invalid auth
+- return `403` only when the endpoint itself is intentionally blocked
+- reserve `500` for real unexpected server failures
 
-### 4. Error Handling
-
-- Do not throw generic errors for valid admin users
-- Return explicit `403` for disallowed roles
-- Log exceptions with context for debugging
-
-### 5. OpenAPI/Swagger
+## OpenAPI And Docs
 
 Document:
 
-- endpoint path
-- auth requirements
-- response schema
-- 401/403 responses
+- endpoint path and auth requirements
+- full success schema including `role`, `label`, `permissions`, `scope`, and optional booleans
+- `401` and `403` responses
+- examples for both a scoped admin and a non-user-management role
 
-## Frontend Dependency (Already Implemented)
+## Focused Validation Checklist
 
-The dashboard already calls this endpoint from:
-
-- `src/features/users/api.ts` (`fetchUsersCapabilities`)
-- `src/app/(protected)/users/page.tsx`
-
-UI behavior currently depends on this response to:
-
-- enable/disable edit and delete actions
-- show capability warnings
-
-No frontend change required once backend contract is implemented correctly.
-
-## Testing Checklist
-
-### Functional
-
-- [ ] `SUPER_ADMIN` receives `200` with boolean flags
-- [ ] `ADMIN` receives `200` with boolean flags
-- [ ] `DISPATCHER` receives `403`
-- [ ] `RESPONDER` receives `403`
-- [ ] `VIEWER` receives `403`
-- [ ] Unauthenticated request receives `401`
-
-### Contract
-
-- [ ] Response includes both keys: `canUpdateUser`, `canDeleteUser`
-- [ ] Values are booleans (never null/string)
-- [ ] Response shape is stable across environments
-
-### Regression
-
-- [ ] Existing `/users` list/create/update/delete endpoints remain unchanged
-- [ ] User role hierarchy and restrictions still enforced
-
-## Example Responses
-
-### Allowed (SUPER_ADMIN)
-
-```json
-HTTP 200
-{
-  "canUpdateUser": true,
-  "canDeleteUser": true
-}
-```
-
-### Forbidden (VIEWER)
-
-```json
-HTTP 403
-{
-  "message": "Forbidden"
-}
-```
+- [ ] `SYSTEM_ADMIN` or `NATIONAL_ADMIN` receives `200` with full capability payload
+- [ ] `DEPARTMENT_MANAGER` or `CITY_ADMIN` receives `200` with scoped permissions and correct booleans
+- [ ] `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, `CITIZEN_REPORTER`, and `AUDITOR` receive `200` with role-appropriate capabilities
+- [ ] unauthenticated request receives `401`
+- [ ] response never regresses to boolean-only payload when role, label, permissions, and scope are available
+- [ ] existing `/users` list, create, update, delete, and restore enforcement stays unchanged
 
 ## Acceptance Criteria
 
 - Endpoint exists at `GET /api/v1/users/capabilities`
-- Authorized admin roles return `200` with valid payload
-- Non-admin roles return `403`
-- Frontend Users page no longer sees `500` for admin roles
-- QA script `scripts/qa/role-capabilities.ps1` shows non-error status for admin capability check
+- Authenticated users receive a stable capability payload instead of role-mapping errors
+- Dashboard user-management UI can rely on role, permission, scope, and boolean flags together
+- Legacy role names remain normalization-only compatibility paths, not the documented primary contract
+- QA guidance in `docs/user-capabilities-testing.md` remains consistent with endpoint behavior

@@ -421,6 +421,19 @@ export function useIncidentsQuery(state: ListQueryState, enabled = true) {
   });
 }
 
+export function useAuditorIncidentsQuery(
+  state: ListQueryState,
+  enabled = true,
+) {
+  const fetchParams = state;
+  return useQuery({
+    queryKey: ["incidents", "audit", fetchParams],
+    queryFn: ({ signal }) => fetchAuditorIncidents(fetchParams, signal),
+    placeholderData: (previous) => previous,
+    enabled,
+  });
+}
+
 export function useIncidentQuery(id: string) {
   return useQuery({
     queryKey: ["incidents", id],

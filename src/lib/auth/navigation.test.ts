@@ -33,7 +33,7 @@ function capabilitiesWithoutManagementBooleans(
 }
 
 describe("auth navigation", () => {
-  it("shows users navigation for a regional director with user-management capability", () => {
+  it("does not show users navigation for a regional director under the checked-in contract", () => {
     const regionalDirectorCaps = capabilitiesWithoutManagementBooleans({
       role: Role.REGIONAL_DIRECTOR,
       label: "Regional Director",
@@ -47,17 +47,17 @@ describe("auth navigation", () => {
       isAuthenticated: true,
     });
 
-    expect(items.some((item) => item.href === "/users")).toBe(true);
+    expect(items.some((item) => item.href === "/users")).toBe(false);
     expect(
       canAccessUserManagement({
         role: Role.REGIONAL_DIRECTOR,
         capabilities: regionalDirectorCaps,
         isAuthenticated: true,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("shows users navigation for a city admin with scoped /users permission hints", () => {
+  it("does not show users navigation for a city admin even with scoped /users permission hints", () => {
     const cityAdminCaps = capabilitiesWithoutManagementBooleans({
       role: Role.CITY_ADMIN,
       label: "City/Municipal Admin",
@@ -71,14 +71,14 @@ describe("auth navigation", () => {
       isAuthenticated: true,
     });
 
-    expect(items.some((item) => item.href === "/users")).toBe(true);
+    expect(items.some((item) => item.href === "/users")).toBe(false);
     expect(
       canAccessUserManagement({
         role: Role.CITY_ADMIN,
         capabilities: cityAdminCaps,
         isAuthenticated: true,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("does not treat read-only user permissions as management access when booleans deny it", () => {
@@ -107,7 +107,7 @@ describe("auth navigation", () => {
     ).toBe(false);
   });
 
-  it("shows audit logs but not standard incidents for auditors", () => {
+  it("shows audit logs and the auditor-safe incident list for auditors", () => {
     const auditorCaps = capabilities({
       role: Role.AUDITOR,
       label: "Auditor",
@@ -121,7 +121,7 @@ describe("auth navigation", () => {
       isAuthenticated: true,
     });
 
-    expect(items.some((item) => item.href === "/incidents")).toBe(false);
+    expect(items.some((item) => item.href === "/incidents")).toBe(true);
     expect(items.some((item) => item.href === "/audit-logs")).toBe(true);
     expect(items.some((item) => item.href === "/users")).toBe(false);
     expect(

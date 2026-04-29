@@ -46,6 +46,12 @@ export interface LoginRequest {
   mfaCode?: string;
 }
 
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
 export interface RefreshRequest {
   refreshToken: string;
 }
@@ -118,6 +124,13 @@ export interface MessageResponse {
 export interface LoginResult {
   mfaRequired: boolean;
   auth?: AuthResponse;
+}
+
+export interface RegisterResult {
+  emailConfirmationRequired: boolean;
+  auth?: AuthResponse;
+  user?: AuthUser;
+  message?: string;
 }
 
 export type LoginReason =

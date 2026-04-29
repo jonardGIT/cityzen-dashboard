@@ -21,7 +21,7 @@ export async function GET(
     const { id } = await context.params;
     const upstream = await requestUpstreamWithFallback(
       request,
-      [`/users/${id}`, `/admin/users/${id}`],
+      [`/users/${id}`],
       {
         method: "GET",
       },
@@ -49,33 +49,10 @@ export async function PATCH(
     const payload = await request.json();
 
     const primaryPath = `/users/${id}`;
-    const fallbackPath = `/admin/users/${id}`;
     const primaryPatch = await requestUpstream(request, primaryPath, {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
-
-    if (primaryPatch.status !== 404 && primaryPatch.status !== 405) {
-      return toJsonResponse(primaryPatch);
-    }
-
-    const fallbackPatch = await requestUpstream(request, fallbackPath, {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    });
-
-    if (fallbackPatch.status !== 404 && fallbackPatch.status !== 405) {
-      return toJsonResponse(fallbackPatch);
-    }
-
-    if (fallbackPatch.status === 405) {
-      const fallbackPut = await requestUpstream(request, fallbackPath, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      });
-
-      return toJsonResponse(fallbackPut);
-    }
 
     if (primaryPatch.status === 405) {
       const primaryPut = await requestUpstream(request, primaryPath, {
@@ -86,7 +63,7 @@ export async function PATCH(
       return toJsonResponse(primaryPut);
     }
 
-    return toJsonResponse(fallbackPatch);
+    return toJsonResponse(primaryPatch);
   } catch {
     return NextResponse.json(
       { message: "Failed to update user." },
@@ -107,7 +84,7 @@ export async function DELETE(
     const { id } = await context.params;
     const upstream = await requestUpstreamWithFallback(
       request,
-      [`/users/${id}`, `/admin/users/${id}`],
+      [`/users/${id}`],
       {
         method: "DELETE",
       },

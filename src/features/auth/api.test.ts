@@ -47,6 +47,7 @@ import {
   loginWithPassword,
   logoutCurrentSession,
   refreshAuthSession,
+  registerAccount,
   requestPasswordReset,
 } from "@/features/auth/api";
 
@@ -95,6 +96,105 @@ describe("auth feature api", () => {
     });
 
     expect(result).toEqual({ mfaRequired: true });
+  });
+
+  it("registers and normalizes an authenticated citizen session", async () => {
+    publicPostMock.mockResolvedValueOnce({
+      data: {
+        token: "citizen-access-token",
+        refreshToken: "citizen-refresh-token",
+        tokenType: "Bearer",
+        sessionId: "session-2",
+        expiresAt: "2026-04-06T12:00:00.000Z",
+        refreshExpiresAt: "2026-04-07T12:00:00.000Z",
+        user: {
+          id: "citizen-1",
+          email: "citizen@example.com",
+          name: "Citizen Reporter",
+          role: "CITIZEN_REPORTER",
+          mfaEnabled: false,
+          mfaEnabledAt: null,
+        },
+      },
+    });
+
+    const result = await registerAccount({
+      name: "Citizen Reporter",
+      email: "citizen@example.com",
+      password: "CitizenPassword123!",
+    });
+
+    expect(publicPostMock).toHaveBeenCalledWith("/auth/register", {
+      name: "Citizen Reporter",
+      email: "citizen@example.com",
+      password: "CitizenPassword123!",
+    });
+    expect(result).toEqual({
+      emailConfirmationRequired: false,
+      auth: {
+        token: "citizen-access-token",
+        accessToken: "citizen-access-token",
+        refreshToken: "citizen-refresh-token",
+        tokenType: "Bearer",
+        sessionId: "session-2",
+        expiresAt: "2026-04-06T12:00:00.000Z",
+        refreshExpiresAt: "2026-04-07T12:00:00.000Z",
+        user: {
+          id: "citizen-1",
+          email: "citizen@example.com",
+          name: "Citizen Reporter",
+          role: "CITIZEN_REPORTER",
+          mfaEnabled: false,
+          mfaEnabledAt: null,
+        },
+      },
+      user: {
+        id: "citizen-1",
+        email: "citizen@example.com",
+        name: "Citizen Reporter",
+        role: "CITIZEN_REPORTER",
+        mfaEnabled: false,
+        mfaEnabledAt: null,
+      },
+      message: undefined,
+    });
+  });
+
+  it("returns the email-confirmation registration result when signup is pending verification", async () => {
+    publicPostMock.mockResolvedValueOnce({
+      data: {
+        message:
+          "Registration succeeded. Confirm your email before signing in.",
+        emailConfirmationRequired: true,
+        user: {
+          id: "citizen-2",
+          email: "pending@example.com",
+          name: "Pending Citizen",
+          role: "CITIZEN_REPORTER",
+          mfaEnabled: false,
+          mfaEnabledAt: null,
+        },
+      },
+    });
+
+    const result = await registerAccount({
+      name: "Pending Citizen",
+      email: "pending@example.com",
+      password: "CitizenPassword123!",
+    });
+
+    expect(result).toEqual({
+      emailConfirmationRequired: true,
+      message: "Registration succeeded. Confirm your email before signing in.",
+      user: {
+        id: "citizen-2",
+        email: "pending@example.com",
+        name: "Pending Citizen",
+        role: "CITIZEN_REPORTER",
+        mfaEnabled: false,
+        mfaEnabledAt: null,
+      },
+    });
   });
 
   it("does not treat an invalid submitted MFA code as a missing second factor", async () => {

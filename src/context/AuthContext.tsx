@@ -23,11 +23,13 @@ import {
   fetchCurrentUser,
   loginWithPassword,
   logoutCurrentSession,
+  registerAccount,
 } from "@/features/auth/api";
 import type {
   AuthUser,
   LoginReason,
   LoginResult,
+  RegisterResult,
   Role,
   UserCapabilities,
 } from "@/types/auth";
@@ -48,6 +50,11 @@ interface AuthContextValue {
     password: string,
     mfaCode?: string,
   ) => Promise<LoginResult>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+  ) => Promise<RegisterResult>;
   logout: (options?: LogoutOptions) => Promise<void>;
   clearSession: () => void;
   restoreSession: () => Promise<void>;
@@ -162,6 +169,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [clearLocalSession, refreshUser],
   );
 
+  const register = useCallback(
+    async (name: string, email: string, password: string) => {
+      const result = await registerAccount({ name, email, password });
+
+      if (!result.auth) {
+        return result;
+      }
+
+      storeAuthResponse(result.auth);
+
+      try {
+        await refreshUser();
+      } catch (error) {
+        clearLocalSession();
+        throw error;
+      }
+
+      return result;
+    },
+    [clearLocalSession, refreshUser],
+  );
+
   const hasRole = useCallback(
     (...roles: Role[]) => {
       if (!user) {
@@ -180,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: Boolean(user),
       isRestoring,
       login,
+      register,
       logout,
       clearSession: clearLocalSession,
       restoreSession,
@@ -191,6 +221,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       capabilities,
       isRestoring,
       login,
+      register,
       logout,
       clearLocalSession,
       restoreSession,

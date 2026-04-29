@@ -248,6 +248,9 @@ function LoginPageContent() {
           </Space>
 
           <div style={{ marginTop: 16, textAlign: "right" }}>
+            <div style={{ marginBottom: 8 }}>
+              <Link href="/register">Create a citizen account</Link>
+            </div>
             <Link href="/forgot-password">Forgot password?</Link>
           </div>
         </Form>

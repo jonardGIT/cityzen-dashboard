@@ -10,9 +10,19 @@ import type { AuthResponse, LoginReason } from "@/types/auth";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api/v1";
+const PROXY_API_BASE_URL = "/api/cirs";
+
+function isBrowserRuntime() {
+  return typeof window !== "undefined";
+}
+
+function resolveDefaultBaseUrl() {
+  return isBrowserRuntime() ? PROXY_API_BASE_URL : API_BASE_URL;
+}
 
 function resolveApiKey(): string {
-  const configuredKey = process.env.NEXT_PUBLIC_API_KEY?.trim();
+  const configuredKey =
+    process.env.API_KEY?.trim() ?? process.env.NEXT_PUBLIC_API_KEY?.trim();
   if (configuredKey) {
     return configuredKey;
   }
@@ -28,6 +38,7 @@ function resolveApiKey(): string {
 }
 
 const API_KEY = resolveApiKey();
+const DEFAULT_API_BASE_URL = resolveDefaultBaseUrl();
 
 type UnauthorizedHandler = (reason: LoginReason) => void;
 const unauthorizedHandlers = new Set<UnauthorizedHandler>();
@@ -72,15 +83,17 @@ function notifyUnauthorized(reason: LoginReason) {
 }
 
 function createBaseConfig() {
-  return createBaseConfigFor(API_BASE_URL);
+  return createBaseConfigFor(DEFAULT_API_BASE_URL);
 }
 
 function createBaseConfigFor(baseURL: string) {
+  const shouldAttachApiKey = !baseURL.startsWith("/api");
+
   return {
     baseURL,
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": API_KEY,
+      ...(shouldAttachApiKey && API_KEY ? { "x-api-key": API_KEY } : {}),
     },
   };
 }
@@ -191,11 +204,11 @@ refreshClient.interceptors.response.use(
   },
 );
 
-export function createPublicClient(baseURL = API_BASE_URL) {
+export function createPublicClient(baseURL = DEFAULT_API_BASE_URL) {
   return buildClient(baseURL, false);
 }
 
-export function createAuthenticatedClient(baseURL = API_BASE_URL) {
+export function createAuthenticatedClient(baseURL = DEFAULT_API_BASE_URL) {
   return buildClient(baseURL, true);
 }
 

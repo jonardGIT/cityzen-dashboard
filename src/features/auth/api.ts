@@ -25,6 +25,8 @@ import type {
   PasswordResetRequestRequest,
   PasswordResetRequestResponse,
   RefreshRequest,
+  RegisterRequest,
+  RegisterResult,
   UserCapabilities,
 } from "@/types/auth";
 
@@ -78,6 +80,38 @@ export async function loginWithPassword(
 
     throw error;
   }
+}
+
+export async function registerAccount(
+  payload: RegisterRequest,
+): Promise<RegisterResult> {
+  const response = await publicClient.post<unknown>("/auth/register", payload);
+  const data = response.data as
+    | (Partial<AuthResponse> & {
+        emailConfirmationRequired?: boolean;
+        message?: string;
+        user?: AuthUser;
+      })
+    | undefined;
+
+  if (data?.token || data?.accessToken || data?.refreshToken) {
+    const auth = normalizeAuthResponse(data as AuthResponse);
+    return {
+      emailConfirmationRequired: false,
+      auth,
+      user: auth.user,
+      message: typeof data.message === "string" ? data.message : undefined,
+    };
+  }
+
+  return {
+    emailConfirmationRequired: Boolean(data?.emailConfirmationRequired),
+    user: data?.user ? normalizeAuthUser(data.user) : undefined,
+    message:
+      typeof data?.message === "string" && data.message.trim().length > 0
+        ? data.message
+        : "Registration succeeded. Confirm your email before signing in.",
+  };
 }
 
 export async function refreshAuthSession(

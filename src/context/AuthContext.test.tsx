@@ -16,6 +16,7 @@ const {
   fetchCurrentUserCapabilitiesMock,
   loginWithPasswordMock,
   logoutCurrentSessionMock,
+  registerAccountMock,
   normalizeCapabilitiesMock,
   normalizeRoleMock,
 } = vi.hoisted(() => ({
@@ -33,6 +34,7 @@ const {
   fetchCurrentUserCapabilitiesMock: vi.fn(),
   loginWithPasswordMock: vi.fn(),
   logoutCurrentSessionMock: vi.fn(),
+  registerAccountMock: vi.fn(),
   normalizeCapabilitiesMock: vi.fn(),
   normalizeRoleMock: vi.fn(),
 }));
@@ -58,6 +60,7 @@ vi.mock("@/features/auth/api", () => ({
   fetchCurrentUserCapabilities: fetchCurrentUserCapabilitiesMock,
   loginWithPassword: loginWithPasswordMock,
   logoutCurrentSession: logoutCurrentSessionMock,
+  registerAccount: registerAccountMock,
 }));
 
 vi.mock("@/lib/auth/roles", () => ({
@@ -87,6 +90,7 @@ describe("AuthContext", () => {
     fetchCurrentUserCapabilitiesMock.mockReset();
     loginWithPasswordMock.mockReset();
     logoutCurrentSessionMock.mockReset();
+    registerAccountMock.mockReset();
     normalizeCapabilitiesMock.mockImplementation((value) => value ?? null);
     normalizeRoleMock.mockImplementation((value) => value ?? null);
   });
@@ -291,6 +295,71 @@ describe("AuthContext", () => {
       role: "DISPATCHER",
       permissions: ["incidents.read"],
     });
+  });
+
+  it("stores auth payloads and hydrates the active user on successful registration", async () => {
+    registerAccountMock.mockResolvedValue({
+      emailConfirmationRequired: false,
+      auth: {
+        token: "access-token",
+        refreshToken: "refresh-token",
+        tokenType: "Bearer",
+        sessionId: "session-3",
+        expiresAt: "2026-04-06T10:00:00.000Z",
+        refreshExpiresAt: "2026-04-07T10:00:00.000Z",
+        user: {
+          id: "user-2",
+          email: "citizen@example.com",
+          name: "Citizen Reporter",
+          role: "CITIZEN_REPORTER",
+          mfaEnabled: false,
+          mfaEnabledAt: null,
+        },
+      },
+    });
+    fetchCurrentUserMock.mockResolvedValue({
+      id: "user-2",
+      email: "citizen@example.com",
+      name: "Citizen Reporter",
+      role: "CITIZEN_REPORTER",
+      mfaEnabled: false,
+      mfaEnabledAt: null,
+    });
+    fetchCurrentUserCapabilitiesMock.mockResolvedValue({
+      role: "CITIZEN_REPORTER",
+      permissions: ["incident:create:self"],
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await act(async () => {
+      await result.current.register(
+        "Citizen Reporter",
+        "citizen@example.com",
+        "CitizenPassword123!",
+      );
+    });
+
+    expect(storeAuthResponseMock).toHaveBeenCalledWith({
+      token: "access-token",
+      refreshToken: "refresh-token",
+      tokenType: "Bearer",
+      sessionId: "session-3",
+      expiresAt: "2026-04-06T10:00:00.000Z",
+      refreshExpiresAt: "2026-04-07T10:00:00.000Z",
+      user: {
+        id: "user-2",
+        email: "citizen@example.com",
+        name: "Citizen Reporter",
+        role: "CITIZEN_REPORTER",
+        mfaEnabled: false,
+        mfaEnabledAt: null,
+      },
+    });
+    await waitFor(() => {
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+    expect(result.current.user?.email).toBe("citizen@example.com");
   });
 
   it("clears the optimistic session when post-login hydration fails", async () => {

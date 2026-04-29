@@ -130,6 +130,14 @@ describe("auth api clients", () => {
         response: { use: authResponseUseMockLocal },
       },
     });
+    const extraAuthRequestUseMock = vi.fn();
+    const extraAuthResponseUseMock = vi.fn();
+    const extraAuthInstanceMock = Object.assign(vi.fn(), {
+      interceptors: {
+        request: { use: extraAuthRequestUseMock },
+        response: { use: extraAuthResponseUseMock },
+      },
+    });
 
     createMock
       .mockReturnValueOnce({
@@ -145,12 +153,27 @@ describe("auth api clients", () => {
           response: { use: publicResponseUseMock },
         },
       } as never)
-      .mockReturnValueOnce(authInstanceMockLocal as never);
+      .mockReturnValueOnce(authInstanceMockLocal as never)
+      .mockReturnValueOnce(extraAuthInstanceMock as never);
 
-    await import("@/lib/api/clients");
+    const clientsModule = await import("@/lib/api/clients");
 
     expect(createMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        baseURL: "/api/cirs",
+        headers: expect.not.objectContaining({
+          "x-api-key": expect.any(String),
+        }),
+      }),
+    );
+
+    createMock.mockClear();
+
+    clientsModule.createAuthenticatedClient("http://localhost:3000/api/v1");
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: "http://localhost:3000/api/v1",
         headers: expect.objectContaining({
           "x-api-key": "local-dev-key",
         }),

@@ -153,6 +153,10 @@ function canAccessCitizenSelfService(context: NavigationContext): boolean {
 }
 
 function canAccessIncidents(context: NavigationContext): boolean {
+  if (context.role === Role.AUDITOR) {
+    return permissionsAllow(context.capabilities, INCIDENT_PERMISSION_HINTS);
+  }
+
   return canAccessCrudResource(context, "incidents");
 }
 

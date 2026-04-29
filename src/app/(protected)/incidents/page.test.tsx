@@ -12,6 +12,7 @@ const {
   getCrudEndpointMock,
   useCrudEndpointAvailabilityMock,
   useCreateIncidentMutationMock,
+  useAuditorIncidentsQueryMock,
   useIncidentsQueryMock,
   useReportIncidentMutationMock,
   uploadIncidentMediaMock,
@@ -30,6 +31,7 @@ const {
   getCrudEndpointMock: vi.fn(),
   useCrudEndpointAvailabilityMock: vi.fn(),
   useCreateIncidentMutationMock: vi.fn(),
+  useAuditorIncidentsQueryMock: vi.fn(),
   useIncidentsQueryMock: vi.fn(),
   useReportIncidentMutationMock: vi.fn(),
   uploadIncidentMediaMock: vi.fn(),
@@ -65,6 +67,7 @@ vi.mock("@/features/dynamic-crud/openapi", () => ({
 
 vi.mock("@/features/incidents/api", () => ({
   useCreateIncidentMutation: useCreateIncidentMutationMock,
+  useAuditorIncidentsQuery: useAuditorIncidentsQueryMock,
   useIncidentsQuery: useIncidentsQueryMock,
   useReportIncidentMutation: useReportIncidentMutationMock,
   uploadIncidentMedia: uploadIncidentMediaMock,
@@ -188,6 +191,7 @@ describe("IncidentsPage", () => {
       mutateAsync: vi.fn(),
       isPending: false,
     });
+    useAuditorIncidentsQueryMock.mockReturnValue(buildPaginatedResult());
     useReportIncidentMutationMock.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
@@ -358,5 +362,69 @@ describe("IncidentsPage", () => {
       expect.anything(),
       false,
     );
+  });
+
+  it("loads the auditor-safe incident list and hides creation actions for auditors", () => {
+    useAuthMock.mockReturnValue({
+      user: {
+        id: "user-3",
+        email: "auditor@example.com",
+        name: "Auditor",
+        role: Role.AUDITOR,
+        mfaEnabled: false,
+      },
+      capabilities: {
+        role: Role.AUDITOR,
+        label: "Auditor",
+        permissions: ["incident:read:global", "audit:read:global"],
+        scope: ["global"],
+      },
+      isAuthenticated: true,
+      hasRole: (...roles: Role[]) => roles.includes(Role.AUDITOR),
+    });
+    useCrudEndpointAvailabilityMock.mockReturnValue({
+      isAvailable: false,
+      isLoading: false,
+    });
+    useAuditorIncidentsQueryMock.mockReturnValue(
+      buildPaginatedResult([
+        {
+          id: "incident-audit-1",
+          publicReference: "CASE-0001",
+          status: { id: "status-1", name: "Open" },
+          category: { id: "category-1", name: "Flood" },
+          severity: { id: "severity-1", level: "High" },
+          dateReported: "2026-04-05T08:00:00.000Z",
+          createdAt: "2026-04-05T08:00:00.000Z",
+          updatedAt: "2026-04-05T09:00:00.000Z",
+          barangay: "Centro 1",
+          cityName: "Tuguegarao City",
+          provinceName: "Cagayan",
+          regionName: "Region II",
+          hasMedia: true,
+          assignmentCount: 1,
+          statusHistoryCount: 2,
+        },
+      ]),
+    );
+
+    renderPage();
+
+    expect(useAuditorIncidentsQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      true,
+    );
+    expect(useIncidentsQueryMock).toHaveBeenCalledWith(
+      expect.anything(),
+      false,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Create Incident" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Review the backend redacted incident projection for audit and compliance workflows.",
+      ),
+    ).toBeInTheDocument();
   });
 });

@@ -34,12 +34,7 @@ export const CAN_CREATE_ASSIGNMENT: Role[] = [
 
 export const CAN_VIEW_AUDIT_LOGS: Role[] = [Role.NATIONAL_ADMIN, Role.AUDITOR];
 
-export const CAN_MANAGE_USERS: Role[] = [
-  Role.NATIONAL_ADMIN,
-  Role.REGIONAL_DIRECTOR,
-  Role.PROVINCIAL_ADMIN,
-  Role.CITY_ADMIN,
-];
+export const CAN_MANAGE_USERS: Role[] = [Role.NATIONAL_ADMIN];
 
 export const CAN_MANAGE_MFA: Role[] = [
   Role.SYSTEM_ADMIN,

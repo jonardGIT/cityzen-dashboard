@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const search = request.nextUrl.search;
     const upstream = await requestUpstreamWithFallback(
       request,
-      [`/users${search}`, `/admin/users${search}`],
+      [`/users${search}`],
       {
         method: "GET",
       },
@@ -39,14 +39,10 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = await request.json();
-    const upstream = await requestUpstreamWithFallback(
-      request,
-      ["/users", "/admin/users"],
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      },
-    );
+    const upstream = await requestUpstreamWithFallback(request, ["/users"], {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
 
     return toJsonResponse(upstream);
   } catch {

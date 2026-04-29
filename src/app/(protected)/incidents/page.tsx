@@ -34,7 +34,9 @@ import {
 import { getCrudEndpoint } from "@/features/dynamic-crud/config";
 import { useCrudEndpointAvailability } from "@/features/dynamic-crud/openapi";
 import {
+  type AuditorIncident,
   uploadIncidentMedia,
+  useAuditorIncidentsQuery,
   useCreateIncidentMutation,
   useIncidentsQuery,
   useReportIncidentMutation,
@@ -138,6 +140,7 @@ export default function IncidentsPage() {
     },
     "incidents",
   );
+  const isAuditor = hasRole(Role.AUDITOR);
   const isCitizenReporter = hasRole(Role.CITIZEN_REPORTER);
   const canCreateAdminIncident = hasRole(...CAN_CREATE_INCIDENT);
   const optionQueryState: ListQueryState = {
@@ -148,7 +151,7 @@ export default function IncidentsPage() {
     sortOrder: DEFAULT_SORT_ORDER,
     filters: [],
   };
-  const canLoadAdminOptions = canAccessPage && !isCitizenReporter;
+  const canLoadAdminOptions = canAccessPage && !isCitizenReporter && !isAuditor;
   const citizensQuery = useCitizensQuery(optionQueryState, canLoadAdminOptions);
   const categoriesQuery = useCategoriesQuery(optionQueryState, canAccessPage);
   const severitiesQuery = useSeveritiesQuery(optionQueryState, canAccessPage);
@@ -189,10 +192,22 @@ export default function IncidentsPage() {
 
   const listQuery = useListQueryParams();
 
-  const incidentsListQuery = useIncidentsQuery(listQuery, canAccessPage);
+  const incidentsListQuery = useIncidentsQuery(
+    listQuery,
+    canAccessPage && !isAuditor,
+  );
+  const auditorIncidentsListQuery = useAuditorIncidentsQuery(
+    listQuery,
+    canAccessPage && isAuditor,
+  );
+  const incidentListQuery = isAuditor
+    ? auditorIncidentsListQuery
+    : incidentsListQuery;
   const rows = incidentsListQuery.data?.data ?? [];
-  const pagination = incidentsListQuery.data?.pagination;
-  const totalIncidents = pagination?.total ?? rows.length;
+  const auditorRows = auditorIncidentsListQuery.data?.data ?? [];
+  const pagination = incidentListQuery.data?.pagination;
+  const totalIncidents =
+    pagination?.total ?? (isAuditor ? auditorRows.length : rows.length);
 
   const severityOptions = useMemo(
     () =>
@@ -375,35 +390,123 @@ export default function IncidentsPage() {
     },
   ];
 
-  if (incidentsListQuery.isLoading) {
+  const auditorColumns: Array<SharedTableColumn<AuditorIncident>> = [
+    {
+      key: "publicReference",
+      title: "Reference",
+      filterKind: "text",
+      width: 180,
+    },
+    {
+      key: "category",
+      title: "Category",
+      filterKind: "text",
+      width: 220,
+      render: (_value, row) => row.category.name,
+    },
+    {
+      key: "severity",
+      title: "Severity",
+      width: 160,
+      render: (_value, row) => row.severity.level,
+    },
+    {
+      key: "status",
+      title: "Status",
+      width: 160,
+      render: (_value, row) => (
+        <Tag color={getStatusColor(row.status.name)}>{row.status.name}</Tag>
+      ),
+    },
+    {
+      key: "location",
+      title: "Location",
+      width: 260,
+      render: (_value, row) =>
+        joinDisplayParts([
+          row.barangay,
+          row.cityName,
+          row.provinceName,
+          row.regionName,
+        ]) || "N/A",
+    },
+    {
+      key: "assignmentCount",
+      title: "Assignments",
+      width: 140,
+    },
+    {
+      key: "statusHistoryCount",
+      title: "Status history",
+      width: 150,
+    },
+    {
+      key: "dateReported",
+      title: "Reported",
+      filterKind: "date",
+      width: 170,
+      render: (value) => formatDisplayDateTime(value),
+    },
+    {
+      key: "createdAt",
+      title: "Created",
+      filterKind: "date",
+      sortable: true,
+      width: 170,
+      render: (value) => formatDisplayDateTime(value),
+    },
+    {
+      key: "updatedAt",
+      title: "Updated",
+      filterKind: "date",
+      sortable: true,
+      width: 170,
+      render: (value) => formatDisplayDateTime(value),
+    },
+  ];
+
+  if (incidentListQuery.isLoading) {
     return <LoadingState />;
   }
 
-  if (incidentsListQuery.error) {
-    return <ErrorState message={String(incidentsListQuery.error)} />;
+  if (incidentListQuery.error) {
+    return <ErrorState message={String(incidentListQuery.error)} />;
   }
 
   const canOpenIncidentModal = canCreateAdminIncident || isCitizenReporter;
-  const geocodedCount = rows.filter(hasCoordinates).length;
-  const addressSnapshotCount = rows.filter(hasAddressSnapshot).length;
-  const reportedTodayCount = rows.filter((incident) => {
-    const value = incident.dateReported ?? incident.createdAt;
-    if (!value) {
-      return false;
-    }
+  const geocodedCount = isAuditor ? 0 : rows.filter(hasCoordinates).length;
+  const addressSnapshotCount = isAuditor
+    ? auditorRows.filter((incident) =>
+        Boolean(
+          joinDisplayParts([
+            incident.barangay,
+            incident.cityName,
+            incident.provinceName,
+            incident.regionName,
+          ]),
+        ),
+      ).length
+    : rows.filter(hasAddressSnapshot).length;
+  const reportedTodayCount = (isAuditor ? auditorRows : rows).filter(
+    (incident) => {
+      const value = incident.dateReported ?? incident.createdAt;
+      if (!value) {
+        return false;
+      }
 
-    const parsed = new Date(String(value));
-    if (Number.isNaN(parsed.getTime())) {
-      return false;
-    }
+      const parsed = new Date(String(value));
+      if (Number.isNaN(parsed.getTime())) {
+        return false;
+      }
 
-    const now = new Date();
-    return (
-      parsed.getFullYear() === now.getFullYear() &&
-      parsed.getMonth() === now.getMonth() &&
-      parsed.getDate() === now.getDate()
-    );
-  }).length;
+      const now = new Date();
+      return (
+        parsed.getFullYear() === now.getFullYear() &&
+        parsed.getMonth() === now.getMonth() &&
+        parsed.getDate() === now.getDate()
+      );
+    },
+  ).length;
   const previewAddress = joinDisplayParts([
     addressLine1Value,
     addressLine2Value,
@@ -570,7 +673,9 @@ export default function IncidentsPage() {
               <Text className={styles.heroDescription}>
                 {isCitizenReporter
                   ? "Report incidents with the required location snapshot fields and track the records attached to your account."
-                  : "Keep the live queue searchable, verify location snapshots quickly, and create new incident records with the backend-aligned address contract."}
+                  : isAuditor
+                    ? "Review the redacted auditor-safe incident projection and monitor incident activity without exposing operationally sensitive fields."
+                    : "Keep the live queue searchable, verify location snapshots quickly, and create new incident records with the backend-aligned address contract."}
               </Text>
             </div>
             {canOpenIncidentModal ? (
@@ -593,7 +698,10 @@ export default function IncidentsPage() {
               </Text>
             </div>
             <div className={styles.metricTile}>
-              <Statistic value={rows.length} title="Visible rows" />
+              <Statistic
+                value={isAuditor ? auditorRows.length : rows.length}
+                title="Visible rows"
+              />
               <Text className={styles.metricLabel}>
                 Current page after filters and search.
               </Text>
@@ -644,70 +752,114 @@ export default function IncidentsPage() {
               Live incident queue
             </Title>
             <Text className={styles.sectionDescription}>
-              Review current incident records, verify address quality, and move
-              into follow-up actions.
+              {isAuditor
+                ? "Review the backend redacted incident projection for audit and compliance workflows."
+                : "Review current incident records, verify address quality, and move into follow-up actions."}
             </Text>
           </div>
-          <SharedTable<Incident>
-            rows={rows}
-            columns={columns}
-            storageKey="incidents-shared-table"
-            loading={incidentsListQuery.isFetching}
-            page={listQuery.page}
-            pageSize={listQuery.pageSize}
-            paginationMeta={pagination}
-            onPageChange={listQuery.setPage}
-            onPageSizeChange={listQuery.setPageSize}
-            globalSearch={listQuery.search}
-            sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
-            onSortChange={(columnKey, order) => {
-              if (columnKey === "createdAt" || columnKey === "updatedAt") {
-                listQuery.setSort(columnKey, order);
-              }
-            }}
-            serverDateFilters={{
-              createdAt: {
-                from: listQuery.createdFrom,
-                to: listQuery.createdTo,
-              },
-              updatedAt: {
-                from: listQuery.updatedFrom,
-                to: listQuery.updatedTo,
-              },
-            }}
-            onServerDateFilterChange={(columnKey, value) => {
-              if (columnKey === "createdAt") {
-                listQuery.setCreatedRange(value.from, value.to);
-                return;
-              }
+          {isAuditor ? (
+            <SharedTable<AuditorIncident>
+              rows={auditorRows}
+              columns={auditorColumns}
+              storageKey="incidents-auditor-shared-table"
+              loading={incidentListQuery.isFetching}
+              page={listQuery.page}
+              pageSize={listQuery.pageSize}
+              paginationMeta={pagination}
+              onPageChange={listQuery.setPage}
+              onPageSizeChange={listQuery.setPageSize}
+              globalSearch={listQuery.search}
+              sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
+              onSortChange={(columnKey, order) => {
+                if (columnKey === "createdAt" || columnKey === "updatedAt") {
+                  listQuery.setSort(columnKey, order);
+                }
+              }}
+              serverDateFilters={{
+                createdAt: {
+                  from: listQuery.createdFrom,
+                  to: listQuery.createdTo,
+                },
+                updatedAt: {
+                  from: listQuery.updatedFrom,
+                  to: listQuery.updatedTo,
+                },
+              }}
+              onServerDateFilterChange={(columnKey, value) => {
+                if (columnKey === "createdAt") {
+                  listQuery.setCreatedRange(value.from, value.to);
+                  return;
+                }
 
-              listQuery.setUpdatedRange(value.from, value.to);
-            }}
-            topToolbar={null}
-            scrollX={1360}
-            actionColumn={{
-              title: "Actions",
-              width: 180,
-              render: (row) => (
-                <Space size={4} wrap>
-                  <Button
-                    type="link"
-                    onClick={() => router.push(`/incidents/${row.id}`)}
-                  >
-                    Open workspace
-                  </Button>
-                  {!isCitizenReporter && row.citizenId ? (
+                listQuery.setUpdatedRange(value.from, value.to);
+              }}
+              topToolbar={null}
+              scrollX={1600}
+            />
+          ) : (
+            <SharedTable<Incident>
+              rows={rows}
+              columns={columns}
+              storageKey="incidents-shared-table"
+              loading={incidentListQuery.isFetching}
+              page={listQuery.page}
+              pageSize={listQuery.pageSize}
+              paginationMeta={pagination}
+              onPageChange={listQuery.setPage}
+              onPageSizeChange={listQuery.setPageSize}
+              globalSearch={listQuery.search}
+              sortState={{ key: listQuery.sortBy, order: listQuery.sortOrder }}
+              onSortChange={(columnKey, order) => {
+                if (columnKey === "createdAt" || columnKey === "updatedAt") {
+                  listQuery.setSort(columnKey, order);
+                }
+              }}
+              serverDateFilters={{
+                createdAt: {
+                  from: listQuery.createdFrom,
+                  to: listQuery.createdTo,
+                },
+                updatedAt: {
+                  from: listQuery.updatedFrom,
+                  to: listQuery.updatedTo,
+                },
+              }}
+              onServerDateFilterChange={(columnKey, value) => {
+                if (columnKey === "createdAt") {
+                  listQuery.setCreatedRange(value.from, value.to);
+                  return;
+                }
+
+                listQuery.setUpdatedRange(value.from, value.to);
+              }}
+              topToolbar={null}
+              scrollX={1360}
+              actionColumn={{
+                title: "Actions",
+                width: 180,
+                render: (row) => (
+                  <Space size={4} wrap>
                     <Button
                       type="link"
-                      onClick={() => router.push(`/citizens/${row.citizenId}`)}
+                      onClick={() => router.push(`/incidents/${row.id}`)}
                     >
-                      Citizen
+                      Open workspace
                     </Button>
-                  ) : null}
-                </Space>
-              ),
-            }}
-          />
+                    {!isCitizenReporter && row.citizenId ? (
+                      <Button
+                        type="link"
+                        onClick={() =>
+                          router.push(`/citizens/${row.citizenId}`)
+                        }
+                      >
+                        Citizen
+                      </Button>
+                    ) : null}
+                  </Space>
+                ),
+              }}
+            />
+          )}
         </Card>
 
         <Card className={styles.sidebarCard}>

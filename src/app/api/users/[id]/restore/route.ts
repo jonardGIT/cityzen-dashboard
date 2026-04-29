@@ -20,7 +20,7 @@ export async function POST(
     const { id } = await context.params;
     const upstream = await requestUpstreamWithFallback(
       request,
-      [`/users/${id}/restore`, `/admin/users/${id}/restore`],
+      [`/users/${id}/restore`],
       {
         method: "POST",
       },
