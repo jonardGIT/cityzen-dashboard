@@ -17,7 +17,7 @@ import {
   type FetchListParams,
   type ListQueryState,
 } from "@/lib/api/list-query-params";
-import type { Incident } from "@/types/api";
+import type { BaseEntity, Incident } from "@/types/api";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -26,7 +26,7 @@ export interface IncidentMediaReference {
   fallbackUrl?: string;
 }
 
-export interface AuditorIncident {
+export interface AuditorIncident extends BaseEntity {
   id: string;
   publicReference: string;
   status: {

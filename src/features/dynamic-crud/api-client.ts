@@ -1,20 +1,62 @@
 import type { AxiosError, AxiosRequestConfig } from "axios";
 import { authClient, publicClient } from "@/lib/api/clients";
 import type { ApiErrorPayload } from "@/types/api";
-import type { CrudEndpoint, NormalizedApiResult } from "@/features/dynamic-crud/types";
+import type {
+  CrudEndpoint,
+  NormalizedApiResult,
+} from "@/features/dynamic-crud/types";
 
 export class CrudRequestError extends Error {
   readonly status: number;
   readonly details?: unknown;
+  readonly retryAfter?: number;
 
-  constructor(status: number, message: string, details?: unknown) {
+  constructor(
+    status: number,
+    message: string,
+    details?: unknown,
+    retryAfter?: number,
+  ) {
     super(message);
     this.status = status;
     this.details = details;
+    this.retryAfter = retryAfter;
   }
 }
 
-function replacePathParams(path: string, params?: Record<string, string | number>): string {
+function parseRetryAfterHeader(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const parsed = parseRetryAfterHeader(entry);
+      if (parsed !== undefined) {
+        return parsed;
+      }
+    }
+
+    return undefined;
+  }
+
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const asSeconds = Number.parseInt(trimmed, 10);
+  return Number.isNaN(asSeconds) ? undefined : asSeconds;
+}
+
+function replacePathParams(
+  path: string,
+  params?: Record<string, string | number>,
+): string {
   if (!params) {
     return path;
   }
@@ -32,8 +74,12 @@ function replacePathParams(path: string, params?: Record<string, string | number
 function parseAxiosError(error: AxiosError<ApiErrorPayload>) {
   const status = error.response?.status ?? 500;
   const payload = error.response?.data;
-  const message = payload?.message ?? payload?.error ?? error.message ?? "Request failed";
-  return { status, message, details: payload };
+  const message =
+    payload?.message ?? payload?.error ?? error.message ?? "Request failed";
+  const retryAfter = parseRetryAfterHeader(
+    error.response?.headers?.["retry-after"],
+  );
+  return { status, message, details: payload, retryAfter };
 }
 
 export async function requestCrudEndpoint<TResponse = unknown>(
@@ -74,6 +120,7 @@ export async function requestCrudEndpoint<TResponse = unknown>(
         status: parsed.status,
         message: parsed.message,
         details: parsed.details,
+        retryAfter: parsed.retryAfter,
       },
     };
   }
@@ -83,7 +130,12 @@ export function assertCrudSuccess<T>(result: NormalizedApiResult<T>): T {
   if (!result.success || !result.data) {
     const status = result.error?.status ?? 500;
     const message = result.error?.message ?? "Request failed";
-    throw new CrudRequestError(status, message, result.error?.details);
+    throw new CrudRequestError(
+      status,
+      message,
+      result.error?.details,
+      result.error?.retryAfter,
+    );
   }
 
   return result.data;

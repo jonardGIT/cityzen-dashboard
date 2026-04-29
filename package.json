@@ -11,6 +11,7 @@
     "start": "next start -p 3001",
     "lint": "eslint",
     "check:openapi-drift": "node scripts/check-openapi-drift.mjs",
+    "smoke:dashboard": "node scripts/smoke-dashboard.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

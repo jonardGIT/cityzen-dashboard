@@ -18,9 +18,9 @@ describe("auth role normalization", () => {
   });
 
   it("returns human-readable role labels", () => {
-    expect(getRoleLabel(Role.SYSTEM_ADMIN)).toBe("System Admin");
-    expect(getRoleLabel(Role.DEPARTMENT_MANAGER)).toBe("Department Manager");
-    expect(getRoleLabel(Role.SUPERVISOR)).toBe("Supervisor");
+    expect(getRoleLabel(Role.SYSTEM_ADMIN)).toBe("National Admin");
+    expect(getRoleLabel(Role.DEPARTMENT_MANAGER)).toBe("City Admin");
+    expect(getRoleLabel(Role.SUPERVISOR)).toBe("Provincial Admin");
     expect(getRoleLabel(Role.CITY_CONTENT_EDITOR)).toBe("City Content Editor");
     expect(getRoleLabel(Role.CITIZEN_REPORTER)).toBe("Citizen Reporter");
   });
@@ -30,8 +30,10 @@ describe("auth role normalization", () => {
       role: "VIEWER",
       permissions: ["incident:create:self", "citizen:link:self"],
       scope: ["self"],
+      canCreateUser: false,
       canUpdateUser: false,
       canDeleteUser: false,
+      canManageUsers: false,
     });
 
     expect(capabilities.role).toBe(Role.CITIZEN_REPORTER);
@@ -53,29 +55,47 @@ describe("auth role normalization", () => {
     });
 
     expect(
+      Object.prototype.hasOwnProperty.call(capabilities, "canCreateUser"),
+    ).toBe(false);
+    expect(
       Object.prototype.hasOwnProperty.call(capabilities, "canUpdateUser"),
     ).toBe(false);
     expect(
       Object.prototype.hasOwnProperty.call(capabilities, "canDeleteUser"),
     ).toBe(false);
+    expect(
+      Object.prototype.hasOwnProperty.call(capabilities, "canManageUsers"),
+    ).toBe(false);
+    expect(capabilities.canCreateUser).toBeUndefined();
     expect(capabilities.canUpdateUser).toBeUndefined();
     expect(capabilities.canDeleteUser).toBeUndefined();
+    expect(capabilities.canManageUsers).toBeUndefined();
   });
 
   it("preserves explicit false management booleans during capability normalization", () => {
     const capabilities = normalizeCapabilities({
       role: Role.SUPERVISOR,
+      canCreateUser: false,
       canUpdateUser: false,
       canDeleteUser: false,
+      canManageUsers: false,
     });
 
+    expect(
+      Object.prototype.hasOwnProperty.call(capabilities, "canCreateUser"),
+    ).toBe(true);
     expect(
       Object.prototype.hasOwnProperty.call(capabilities, "canUpdateUser"),
     ).toBe(true);
     expect(
       Object.prototype.hasOwnProperty.call(capabilities, "canDeleteUser"),
     ).toBe(true);
+    expect(
+      Object.prototype.hasOwnProperty.call(capabilities, "canManageUsers"),
+    ).toBe(true);
+    expect(capabilities.canCreateUser).toBe(false);
     expect(capabilities.canUpdateUser).toBe(false);
     expect(capabilities.canDeleteUser).toBe(false);
+    expect(capabilities.canManageUsers).toBe(false);
   });
 });

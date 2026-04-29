@@ -301,6 +301,10 @@ function canCreateUsersFromCapabilities(
     return false;
   }
 
+  if (Object.prototype.hasOwnProperty.call(capabilities, "canCreateUser")) {
+    return Boolean(capabilities.canCreateUser);
+  }
+
   return permissionListIncludes(
     capabilities.permissions,
     USER_CREATE_PERMISSION_HINTS,

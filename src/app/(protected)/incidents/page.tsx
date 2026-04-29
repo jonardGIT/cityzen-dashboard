@@ -22,6 +22,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilterToolbar } from "@/components/common/FilterToolbar";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
+import { CrudRequestError } from "@/features/dynamic-crud/api-client";
 import {
   SharedTable,
   type SharedTableColumn,
@@ -126,6 +127,81 @@ function getAssignmentTimestamp(assignment: {
     assignment.assignedDate ?? assignment.createdAt ?? assignment.updatedAt;
   const parsed = value ? new Date(value).getTime() : Number.NaN;
   return Number.isNaN(parsed) ? -1 : parsed;
+}
+
+function optionalText(value: string | null | undefined): string | undefined {
+  return value ?? undefined;
+}
+
+function getRetryAfterValue(
+  error: AxiosError<ApiErrorPayload>,
+): number | undefined {
+  const retryAfterHeader = error.response?.headers?.["retry-after"];
+
+  if (typeof retryAfterHeader === "string") {
+    const parsed = Number.parseInt(retryAfterHeader, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  if (Array.isArray(retryAfterHeader)) {
+    const firstHeader = retryAfterHeader[0];
+    if (typeof firstHeader === "string") {
+      const parsed = Number.parseInt(firstHeader, 10);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    }
+  }
+
+  return undefined;
+}
+
+function getIncidentActionErrorMessage(
+  error: unknown,
+  fallback: string,
+): string {
+  if (error instanceof CrudRequestError) {
+    if (error.status === 403) {
+      return "You are not authorized to perform this incident action.";
+    }
+
+    if (error.status === 404) {
+      return "The requested incident resource was not found.";
+    }
+
+    if (error.status === 409) {
+      return "Conflict detected. The incident could not be saved because it conflicts with an existing record.";
+    }
+
+    if (error.status === 429) {
+      return typeof error.retryAfter === "number"
+        ? `Rate limit exceeded. Retry after ${error.retryAfter} seconds.`
+        : "Rate limit exceeded. Please retry shortly.";
+    }
+
+    return error.message || fallback;
+  }
+
+  const axiosError = error as AxiosError<ApiErrorPayload>;
+
+  if (axiosError.response?.status === 403) {
+    return "You are not authorized to perform this incident action.";
+  }
+
+  if (axiosError.response?.status === 404) {
+    return "The requested incident resource was not found.";
+  }
+
+  if (axiosError.response?.status === 409) {
+    return "Conflict detected. The incident could not be saved because it conflicts with an existing record.";
+  }
+
+  if (axiosError.response?.status === 429) {
+    const retryAfter = getRetryAfterValue(axiosError);
+    return retryAfter
+      ? `Rate limit exceeded. Retry after ${retryAfter} seconds.`
+      : "Rate limit exceeded. Please retry shortly.";
+  }
+
+  return axiosError.response?.data?.message ?? axiosError.message ?? fallback;
 }
 
 export default function IncidentsPage() {
@@ -424,10 +500,10 @@ export default function IncidentsPage() {
       width: 260,
       render: (_value, row) =>
         joinDisplayParts([
-          row.barangay,
-          row.cityName,
-          row.provinceName,
-          row.regionName,
+          optionalText(row.barangay),
+          optionalText(row.cityName),
+          optionalText(row.provinceName),
+          optionalText(row.regionName),
         ]) || "N/A",
     },
     {
@@ -479,10 +555,10 @@ export default function IncidentsPage() {
     ? auditorRows.filter((incident) =>
         Boolean(
           joinDisplayParts([
-            incident.barangay,
-            incident.cityName,
-            incident.provinceName,
-            incident.regionName,
+            optionalText(incident.barangay),
+            optionalText(incident.cityName),
+            optionalText(incident.provinceName),
+            optionalText(incident.regionName),
           ]),
         ),
       ).length
@@ -620,10 +696,12 @@ export default function IncidentsPage() {
     } catch (error) {
       const mapped = mapValidationErrorsToForm(form, error);
       if (!mapped) {
-        const axiosError = error as AxiosError<ApiErrorPayload>;
-        if (axiosError.response?.data?.message) {
-          message.error(axiosError.response.data.message);
-        }
+        message.error(
+          getIncidentActionErrorMessage(
+            error,
+            "Unable to save the incident right now.",
+          ),
+        );
       }
     }
   };
@@ -645,10 +723,10 @@ export default function IncidentsPage() {
       form.setFieldValue("mediaUrl", mediaUrl);
       message.success("Media uploaded and attached to the incident draft.");
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Failed to upload incident media.";
+      const errorMessage = getIncidentActionErrorMessage(
+        error,
+        "Failed to upload incident media.",
+      );
 
       setMediaUploadError(errorMessage);
       message.error(errorMessage);

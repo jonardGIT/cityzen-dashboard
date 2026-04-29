@@ -5,11 +5,11 @@ import {
   getRefreshToken,
   storeAuthResponse,
 } from "@/lib/auth/token-storage";
+import { resolveDashboardApiBaseUrl } from "@/lib/config/runtime-env";
 import type { ApiErrorPayload } from "@/types/api";
 import type { AuthResponse, LoginReason } from "@/types/auth";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api/v1";
+const API_BASE_URL = resolveDashboardApiBaseUrl();
 const PROXY_API_BASE_URL = "/api/cirs";
 
 function isBrowserRuntime() {

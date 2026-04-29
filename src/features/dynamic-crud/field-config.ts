@@ -363,7 +363,6 @@ export function getResourceFieldsForOperation(
   if (resourceName === "incidents" && operation === "report") {
     const reportFields = [
       "description",
-      "mediaUrl",
       "dateReported",
       "latitude",
       "longitude",

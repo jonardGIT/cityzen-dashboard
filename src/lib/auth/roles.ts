@@ -31,10 +31,10 @@ const ROLE_ALIASES: Record<string, Role> = {
 };
 
 const ROLE_LABELS: Record<Role, string> = {
-  [Role.SYSTEM_ADMIN]: "System Admin",
+  [Role.SYSTEM_ADMIN]: "National Admin",
   [Role.REGIONAL_DIRECTOR]: "Regional Director",
-  [Role.SUPERVISOR]: "Supervisor",
-  [Role.DEPARTMENT_MANAGER]: "Department Manager",
+  [Role.SUPERVISOR]: "Provincial Admin",
+  [Role.DEPARTMENT_MANAGER]: "City Admin",
   [Role.CITY_CONTENT_EDITOR]: "City Content Editor",
   [Role.DISPATCHER]: "Dispatcher",
   [Role.RESPONDER]: "Responder",
@@ -197,9 +197,17 @@ export function normalizeCapabilities(
     payload,
     "canUpdateUser",
   );
+  const hasCanCreateUser = Object.prototype.hasOwnProperty.call(
+    payload,
+    "canCreateUser",
+  );
   const hasCanDeleteUser = Object.prototype.hasOwnProperty.call(
     payload,
     "canDeleteUser",
+  );
+  const hasCanManageUsers = Object.prototype.hasOwnProperty.call(
+    payload,
+    "canManageUsers",
   );
 
   return {
@@ -210,11 +218,17 @@ export function normalizeCapabilities(
         : getRoleLabel(role),
     permissions,
     scope,
+    ...(hasCanCreateUser
+      ? { canCreateUser: Boolean(payload.canCreateUser) }
+      : {}),
     ...(hasCanUpdateUser
       ? { canUpdateUser: Boolean(payload.canUpdateUser) }
       : {}),
     ...(hasCanDeleteUser
       ? { canDeleteUser: Boolean(payload.canDeleteUser) }
+      : {}),
+    ...(hasCanManageUsers
+      ? { canManageUsers: Boolean(payload.canManageUsers) }
       : {}),
   };
 }

@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Source_Serif_4 } from "next/font/google";
 import "antd/dist/reset.css";
+import { validateDashboardProductionEnv } from "@/lib/config/runtime-env";
 import { AppProviders } from "@/providers/AppProviders";
 import "./globals.css";
+
+validateDashboardProductionEnv();
 
 const displayFont = Space_Grotesk({
   variable: "--font-display",

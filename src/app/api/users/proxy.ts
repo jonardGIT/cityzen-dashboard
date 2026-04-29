@@ -1,30 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  resolveDashboardApiBaseUrl,
+  resolveDashboardProxyApiKey,
+} from "@/lib/config/runtime-env";
 
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api/v1"
-).replace(/\/$/, "");
-
-function resolveApiKey(): string {
-  const configuredKey =
-    process.env.API_KEY?.trim() ??
-    process.env.NEXT_PUBLIC_API_KEY?.trim() ??
-    "";
-
-  if (configuredKey) {
-    return configuredKey;
-  }
-
-  if (
-    process.env.NODE_ENV !== "production" &&
-    API_BASE_URL.startsWith("http://localhost:3000/api/v1")
-  ) {
-    return "local-dev-key";
-  }
-
-  return "";
-}
-
-const API_KEY = resolveApiKey();
+const API_BASE_URL = resolveDashboardApiBaseUrl();
+const API_KEY = resolveDashboardProxyApiKey();
 
 function buildUrl(path: string) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;

@@ -1,8 +1,11 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
+import { validateDashboardProductionEnv } from "./src/lib/config/runtime-env";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+
+validateDashboardProductionEnv();
 
 const nextConfig: NextConfig = {
   reactCompiler: true,

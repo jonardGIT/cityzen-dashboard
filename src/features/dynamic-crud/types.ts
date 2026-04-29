@@ -67,6 +67,7 @@ export interface NormalizedApiError {
   status: number;
   message: string;
   details?: unknown;
+  retryAfter?: number;
 }
 
 export interface NormalizedApiResult<T> {

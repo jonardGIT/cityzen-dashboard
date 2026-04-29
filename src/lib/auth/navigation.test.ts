@@ -33,7 +33,7 @@ function capabilitiesWithoutManagementBooleans(
 }
 
 describe("auth navigation", () => {
-  it("does not show users navigation for a regional director under the checked-in contract", () => {
+  it("shows users navigation for a regional director with explicit management access", () => {
     const regionalDirectorCaps = capabilitiesWithoutManagementBooleans({
       role: Role.REGIONAL_DIRECTOR,
       label: "Regional Director",
@@ -47,22 +47,23 @@ describe("auth navigation", () => {
       isAuthenticated: true,
     });
 
-    expect(items.some((item) => item.href === "/users")).toBe(false);
+    expect(items.some((item) => item.href === "/users")).toBe(true);
     expect(
       canAccessUserManagement({
         role: Role.REGIONAL_DIRECTOR,
         capabilities: regionalDirectorCaps,
         isAuthenticated: true,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("does not show users navigation for a city admin even with scoped /users permission hints", () => {
-    const cityAdminCaps = capabilitiesWithoutManagementBooleans({
+  it("shows users navigation for a city admin when the backend returns canManageUsers", () => {
+    const cityAdminCaps = capabilities({
       role: Role.CITY_ADMIN,
       label: "City/Municipal Admin",
       permissions: ["user:create:city"],
       scope: ["city:city-1"],
+      canManageUsers: true,
     });
 
     const items = getNavigationItems({
@@ -71,14 +72,14 @@ describe("auth navigation", () => {
       isAuthenticated: true,
     });
 
-    expect(items.some((item) => item.href === "/users")).toBe(false);
+    expect(items.some((item) => item.href === "/users")).toBe(true);
     expect(
       canAccessUserManagement({
         role: Role.CITY_ADMIN,
         capabilities: cityAdminCaps,
         isAuthenticated: true,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("does not treat read-only user permissions as management access when booleans deny it", () => {

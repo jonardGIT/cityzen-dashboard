@@ -220,6 +220,7 @@ function extractErrorDetails(error: unknown) {
       status: error.status,
       message: error.message,
       details: error.details,
+      retryAfter: error.retryAfter,
     };
   }
 
@@ -228,10 +229,15 @@ function extractErrorDetails(error: unknown) {
     message:
       error instanceof Error ? error.message : "Unexpected request error",
     details: undefined,
+    retryAfter: undefined,
   };
 }
 
-function messageForStatus(status: number, fallback: string): string {
+function messageForStatus(
+  status: number,
+  fallback: string,
+  retryAfter?: number,
+): string {
   if (status === 403) {
     return "You are not authorized to perform this action.";
   }
@@ -242,6 +248,14 @@ function messageForStatus(status: number, fallback: string): string {
 
   if (status === 404) {
     return "Resource not found.";
+  }
+
+  if (status === 429) {
+    if (typeof retryAfter === "number") {
+      return `Rate limit exceeded. Retry after ${retryAfter} seconds.`;
+    }
+
+    return "Rate limit exceeded. Please retry shortly.";
   }
 
   return fallback;
@@ -827,7 +841,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         return;
       }
 
-      message.error(messageForStatus(parsed.status, parsed.message));
+      message.error(
+        messageForStatus(parsed.status, parsed.message, parsed.retryAfter),
+      );
     }
   };
 
@@ -854,7 +870,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         return;
       }
 
-      message.error(messageForStatus(parsed.status, parsed.message));
+      message.error(
+        messageForStatus(parsed.status, parsed.message, parsed.retryAfter),
+      );
     }
   };
 
@@ -870,7 +888,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       setSelected(null);
     } catch (error) {
       const parsed = extractErrorDetails(error);
-      message.error(messageForStatus(parsed.status, parsed.message));
+      message.error(
+        messageForStatus(parsed.status, parsed.message, parsed.retryAfter),
+      );
     }
   };
 
@@ -886,7 +906,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       setSelected(null);
     } catch (error) {
       const parsed = extractErrorDetails(error);
-      message.error(messageForStatus(parsed.status, parsed.message));
+      message.error(
+        messageForStatus(parsed.status, parsed.message, parsed.retryAfter),
+      );
     }
   };
 
@@ -915,7 +937,9 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         return;
       }
 
-      message.error(messageForStatus(parsed.status, parsed.message));
+      message.error(
+        messageForStatus(parsed.status, parsed.message, parsed.retryAfter),
+      );
     }
   };
 

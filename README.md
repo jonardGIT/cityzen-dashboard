@@ -35,6 +35,7 @@ Notes:
 
 - `NEXT_PUBLIC_API_BASE_URL` is the browser-facing API base URL.
 - `API_KEY` is used by server-side proxy routes and may reuse the same backend API key when your API requires `x-api-key`.
+- Production builds now fail closed when `NEXT_PUBLIC_API_BASE_URL`, `API_KEY` or `NEXT_PUBLIC_API_KEY`, `CIRS_API_BASE_URL`, or `CIRS_API_KEY` are missing.
 - `NEXT_PUBLIC_OPENAPI_SOURCE=config` keeps runtime CRUD behavior on the checked-in contract instead of requiring live OpenAPI on Vercel.
 
 ## Stack
@@ -49,6 +50,15 @@ Notes:
 ```bash
 npm install
 npm run dev
+```
+
+Optional deployed smoke check:
+
+```bash
+DASHBOARD_BASE_URL=https://dashboard.example.gov \
+DASHBOARD_SMOKE_ADMIN_EMAIL=admin@example.gov \
+DASHBOARD_SMOKE_ADMIN_PASSWORD='your-password' \
+npm run smoke:dashboard
 ```
 
 The dashboard runtime derives a checked-in contract from `dashboard-crud-config.flat.json` by default so production deployments do not depend on `/api/v1/openapi.json` existing.
@@ -95,9 +105,21 @@ See `docs/auth-operation-endpoint-flow.md` (gitignored) for detailed auth flow d
 
 ## Roles
 
-Seven roles are defined. See internal docs for the full permission matrix and capabilities.
+Nine roles are defined. See internal docs for the full permission matrix and capabilities.
 
 Legacy cached frontend role labels (e.g. `SUPER_ADMIN`, `ADMIN`, `VIEWER`) are normalized automatically.
+
+Current canonical labels used in the dashboard:
+
+- National Admin
+- Regional Director
+- Provincial Admin
+- City Admin
+- City Content Editor
+- Dispatcher
+- Responder
+- Citizen Reporter
+- Auditor
 
 ## Required Routes Implemented
 

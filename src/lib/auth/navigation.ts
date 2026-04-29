@@ -174,7 +174,12 @@ export function canAccessUserManagement(context: NavigationContext): boolean {
   }
 
   if (context.capabilities) {
+    if (context.capabilities.canManageUsers) {
+      return true;
+    }
+
     if (
+      context.capabilities.canCreateUser ||
       context.capabilities.canUpdateUser ||
       context.capabilities.canDeleteUser
     ) {
@@ -182,6 +187,14 @@ export function canAccessUserManagement(context: NavigationContext): boolean {
     }
 
     if (
+      Object.prototype.hasOwnProperty.call(
+        context.capabilities,
+        "canManageUsers",
+      ) ||
+      Object.prototype.hasOwnProperty.call(
+        context.capabilities,
+        "canCreateUser",
+      ) ||
       Object.prototype.hasOwnProperty.call(
         context.capabilities,
         "canUpdateUser",
