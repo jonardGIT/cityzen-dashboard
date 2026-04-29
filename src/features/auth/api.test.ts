@@ -3,38 +3,48 @@ import { AxiosError, AxiosHeaders } from "axios";
 
 const {
   publicPostMock,
-  authGetMock,
-  authPostMock,
-  authDeleteMock,
+  authProxyGetMock,
+  authProxyPostMock,
+  authProxyDeleteMock,
   proxiedAuthGetMock,
   createAuthenticatedClientMock,
-  getRefreshTokenMock,
-} = vi.hoisted(() => ({
-  publicPostMock: vi.fn(),
-  authGetMock: vi.fn(),
-  authPostMock: vi.fn(),
-  authDeleteMock: vi.fn(),
-  proxiedAuthGetMock: vi.fn(),
-  createAuthenticatedClientMock: vi.fn(),
-  getRefreshTokenMock: vi.fn(() => "mock-refresh-token"),
-}));
+  createPublicClientMock,
+} = vi.hoisted(() => {
+  const publicPostMock = vi.fn();
+  const authProxyGetMock = vi.fn();
+  const authProxyPostMock = vi.fn();
+  const authProxyDeleteMock = vi.fn();
+  const proxiedAuthGetMock = vi.fn();
+  const createAuthenticatedClientMock = vi
+    .fn()
+    .mockReturnValueOnce({
+      get: authProxyGetMock,
+      post: authProxyPostMock,
+      delete: authProxyDeleteMock,
+    })
+    .mockReturnValueOnce({
+      get: proxiedAuthGetMock,
+    });
+  const createPublicClientMock = vi.fn().mockReturnValue({
+    post: publicPostMock,
+  });
 
-vi.mock("@/lib/auth/token-storage", () => ({
-  getRefreshToken: getRefreshTokenMock,
-}));
+  return {
+    publicPostMock,
+    authProxyGetMock,
+    authProxyPostMock,
+    authProxyDeleteMock,
+    proxiedAuthGetMock,
+    createAuthenticatedClientMock,
+    createPublicClientMock,
+  };
+});
 
 vi.mock("@/lib/api/clients", () => ({
+  createPublicClient: createPublicClientMock,
   createAuthenticatedClient: createAuthenticatedClientMock.mockReturnValue({
     get: proxiedAuthGetMock,
   }),
-  publicClient: {
-    post: publicPostMock,
-  },
-  authClient: {
-    get: authGetMock,
-    post: authPostMock,
-    delete: authDeleteMock,
-  },
 }));
 
 import {
@@ -53,10 +63,12 @@ import {
 
 describe("auth feature api", () => {
   beforeEach(() => {
+    createAuthenticatedClientMock.mockClear();
+    createPublicClientMock.mockClear();
     publicPostMock.mockReset();
-    authGetMock.mockReset();
-    authPostMock.mockReset();
-    authDeleteMock.mockReset();
+    authProxyGetMock.mockReset();
+    authProxyPostMock.mockReset();
+    authProxyDeleteMock.mockReset();
     proxiedAuthGetMock.mockReset();
   });
 
@@ -218,13 +230,13 @@ describe("auth feature api", () => {
   });
 
   it("fetches authenticated sessions from the server", async () => {
-    authGetMock.mockResolvedValueOnce({
+    authProxyGetMock.mockResolvedValueOnce({
       data: [{ id: "session-1", isCurrent: true }],
     });
 
     const result = await fetchAuthSessions();
 
-    expect(authGetMock).toHaveBeenCalledWith("/auth/sessions", {
+    expect(authProxyGetMock).toHaveBeenCalledWith("/auth/sessions", {
       signal: undefined,
     });
     expect(result).toEqual([{ id: "session-1", isCurrent: true }]);
@@ -243,7 +255,6 @@ describe("auth feature api", () => {
 
     const result = await fetchCurrentUserCapabilities();
 
-    expect(createAuthenticatedClientMock).toHaveBeenCalledWith("/api");
     expect(proxiedAuthGetMock).toHaveBeenCalledWith("/users/capabilities", {
       signal: undefined,
     });
@@ -290,27 +301,25 @@ describe("auth feature api", () => {
   });
 
   it("posts MFA enable and disable requests to the expected endpoints", async () => {
-    authPostMock
+    authProxyPostMock
       .mockResolvedValueOnce({ data: { message: "enabled" } })
       .mockResolvedValueOnce({ data: { message: "disabled" } });
 
     const enabled = await enableMfa({ code: "123456" });
     const disabled = await disableMfa({ code: "654321" });
 
-    expect(authPostMock).toHaveBeenNthCalledWith(1, "/auth/mfa/enable", {
+    expect(authProxyPostMock).toHaveBeenNthCalledWith(1, "/auth/mfa/enable", {
       code: "123456",
-      refreshToken: "mock-refresh-token",
     });
-    expect(authPostMock).toHaveBeenNthCalledWith(2, "/auth/mfa/disable", {
+    expect(authProxyPostMock).toHaveBeenNthCalledWith(2, "/auth/mfa/disable", {
       code: "654321",
-      refreshToken: "mock-refresh-token",
     });
     expect(enabled).toEqual({ message: "enabled" });
     expect(disabled).toEqual({ message: "disabled" });
   });
 
   it("requests MFA setup from the authenticated auth endpoint", async () => {
-    authPostMock.mockResolvedValueOnce({
+    authProxyPostMock.mockResolvedValueOnce({
       data: {
         issuer: "Xypes CIRS",
         accountName: "dispatcher@example.com",
@@ -321,9 +330,9 @@ describe("auth feature api", () => {
 
     const result = await createMfaSetup();
 
-    expect(authPostMock).toHaveBeenCalledWith(
+    expect(authProxyPostMock).toHaveBeenCalledWith(
       "/auth/mfa/setup",
-      { refreshToken: "mock-refresh-token" },
+      {},
       {
         signal: undefined,
       },
@@ -337,11 +346,11 @@ describe("auth feature api", () => {
   });
 
   it("posts logout to revoke the current server-side session", async () => {
-    authPostMock.mockResolvedValueOnce({ data: undefined });
+    authProxyPostMock.mockResolvedValueOnce({ data: undefined });
 
     await logoutCurrentSession();
 
-    expect(authPostMock).toHaveBeenCalledWith("/auth/logout");
+    expect(authProxyPostMock).toHaveBeenCalledWith("/auth/logout");
   });
 
   it("requests password reset using the public auth client", async () => {

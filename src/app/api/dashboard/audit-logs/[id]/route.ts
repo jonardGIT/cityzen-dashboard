@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  hasAuthenticatedRequest,
   requestUpstream,
   toJsonResponse,
   unauthorizedResponse,
@@ -13,7 +14,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!request.headers.get("authorization")) {
+    if (!hasAuthenticatedRequest(request)) {
       return unauthorizedResponse();
     }
 

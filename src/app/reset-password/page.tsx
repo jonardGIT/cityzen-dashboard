@@ -44,9 +44,14 @@ function ResetPasswordPageContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const token = searchParams.get("token");
+    const token =
+      window.sessionStorage.getItem("xypes_password_reset_token") ??
+      searchParams.get("token");
     if (token) {
       form.setFieldValue("token", token);
+      if (searchParams.get("token")) {
+        window.history.replaceState(null, "", "/reset-password");
+      }
     }
   }, [form, searchParams]);
 
@@ -71,6 +76,7 @@ function ResetPasswordPageContent() {
         token: values.token,
         password: values.password,
       });
+      window.sessionStorage.removeItem("xypes_password_reset_token");
       clearSession();
       setTokenState("success");
       form.resetFields();
@@ -82,6 +88,7 @@ function ResetPasswordPageContent() {
       const mapped = mapValidationErrorsToForm(form, error);
 
       if (axiosError.response?.status === 401) {
+        window.sessionStorage.removeItem("xypes_password_reset_token");
         setTokenState("invalid");
         setErrorMessage(
           axiosError.response?.data?.message ??

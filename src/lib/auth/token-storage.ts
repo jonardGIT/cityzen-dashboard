@@ -13,19 +13,11 @@ function canUseStorage(): boolean {
 }
 
 export function getAccessToken(): string | null {
-  if (!canUseStorage()) {
-    return null;
-  }
-
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  return null;
 }
 
 export function setAccessToken(token: string): void {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  void token;
 }
 
 export function clearAccessToken(): void {
@@ -37,19 +29,11 @@ export function clearAccessToken(): void {
 }
 
 export function getRefreshToken(): string | null {
-  if (!canUseStorage()) {
-    return null;
-  }
-
-  return window.localStorage.getItem(REFRESH_TOKEN_KEY);
+  return null;
 }
 
 export function setRefreshToken(token: string): void {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  void token;
 }
 
 export function clearRefreshToken(): void {
@@ -96,8 +80,8 @@ export function clearStoredAuthSession(): void {
 export function storeAuthResponse(response: AuthResponse): void {
   const normalizedUser = normalizeAuthUser(response.user);
 
-  setAccessToken(response.token);
-  setRefreshToken(response.refreshToken);
+  clearAccessToken();
+  clearRefreshToken();
   setStoredAuthSession({
     tokenType: response.tokenType,
     sessionId: response.sessionId,

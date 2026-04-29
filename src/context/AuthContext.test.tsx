@@ -8,7 +8,7 @@ const {
   registerUnauthorizedHandlerMock,
   unauthorizedHandlerRef,
   clearAuthStorageMock,
-  getAccessTokenMock,
+  getStoredAuthSessionMock,
   getStoredUserMock,
   setStoredUserMock,
   storeAuthResponseMock,
@@ -26,7 +26,7 @@ const {
     current: undefined as undefined | ((reason: string) => void),
   },
   clearAuthStorageMock: vi.fn(),
-  getAccessTokenMock: vi.fn(),
+  getStoredAuthSessionMock: vi.fn(),
   getStoredUserMock: vi.fn(),
   setStoredUserMock: vi.fn(),
   storeAuthResponseMock: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock("@/lib/api/clients", () => ({
 
 vi.mock("@/lib/auth/token-storage", () => ({
   clearAuthStorage: clearAuthStorageMock,
-  getAccessToken: getAccessTokenMock,
+  getStoredAuthSession: getStoredAuthSessionMock,
   getStoredUser: getStoredUserMock,
   setStoredUser: setStoredUserMock,
   storeAuthResponse: storeAuthResponseMock,
@@ -82,7 +82,7 @@ describe("AuthContext", () => {
       return vi.fn();
     });
     clearAuthStorageMock.mockReset();
-    getAccessTokenMock.mockReturnValue(null);
+    getStoredAuthSessionMock.mockReturnValue(null);
     getStoredUserMock.mockReturnValue(null);
     setStoredUserMock.mockReset();
     storeAuthResponseMock.mockReset();
@@ -110,7 +110,12 @@ describe("AuthContext", () => {
   });
 
   it("restores an authenticated session from stored auth and backend profile data", async () => {
-    getAccessTokenMock.mockReturnValue("access-token");
+    getStoredAuthSessionMock.mockReturnValue({
+      tokenType: "Bearer",
+      sessionId: "session-1",
+      expiresAt: "2026-04-06T10:00:00.000Z",
+      refreshExpiresAt: "2026-04-07T10:00:00.000Z",
+    });
     getStoredUserMock.mockReturnValue({
       id: "user-1",
       email: "stored@example.com",
@@ -162,7 +167,12 @@ describe("AuthContext", () => {
   });
 
   it("falls back to role-derived capabilities when capabilities fetch returns 401", async () => {
-    getAccessTokenMock.mockReturnValue("access-token");
+    getStoredAuthSessionMock.mockReturnValue({
+      tokenType: "Bearer",
+      sessionId: "session-1",
+      expiresAt: "2026-04-06T10:00:00.000Z",
+      refreshExpiresAt: "2026-04-07T10:00:00.000Z",
+    });
     getStoredUserMock.mockReturnValue({
       id: "user-1",
       email: "stored@example.com",
@@ -208,7 +218,12 @@ describe("AuthContext", () => {
   });
 
   it("clears a stale stored session when profile refresh fails during restore", async () => {
-    getAccessTokenMock.mockReturnValue("stale-token");
+    getStoredAuthSessionMock.mockReturnValue({
+      tokenType: "Bearer",
+      sessionId: "session-1",
+      expiresAt: "2026-04-06T10:00:00.000Z",
+      refreshExpiresAt: "2026-04-07T10:00:00.000Z",
+    });
     getStoredUserMock.mockReturnValue({
       id: "user-1",
       email: "stale@example.com",
@@ -251,7 +266,6 @@ describe("AuthContext", () => {
         },
       },
     });
-    getAccessTokenMock.mockReturnValue("access-token");
     fetchCurrentUserMock.mockResolvedValue({
       id: "user-1",
       email: "dispatcher@example.com",

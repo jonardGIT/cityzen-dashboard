@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  hasAuthenticatedRequest,
   requestUpstream,
   toJsonResponse,
   unauthorizedResponse,
@@ -10,7 +11,7 @@ export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   try {
-    if (!request.headers.get("authorization")) {
+    if (!hasAuthenticatedRequest(request)) {
       return unauthorizedResponse();
     }
 

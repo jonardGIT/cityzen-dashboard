@@ -13,7 +13,7 @@ import { registerUnauthorizedHandler } from "@/lib/api/clients";
 import { normalizeCapabilities, normalizeRole } from "@/lib/auth/roles";
 import {
   clearAuthStorage,
-  getAccessToken,
+  getStoredAuthSession,
   getStoredUser,
   setStoredUser,
   storeAuthResponse,
@@ -111,10 +111,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const restoreSession = useCallback(async () => {
-    const token = getAccessToken();
+    const storedSession = getStoredAuthSession();
     const storedUser = getStoredUser<AuthUser>();
 
-    if (!token) {
+    if (!storedSession) {
       setUser(null);
       setIsRestoring(false);
       return;

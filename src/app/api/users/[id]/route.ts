@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  hasAuthenticatedRequest,
   requestUpstream,
   requestUpstreamWithFallback,
   toJsonResponse,
@@ -14,7 +15,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!request.headers.get("authorization")) {
+    if (!hasAuthenticatedRequest(request)) {
       return unauthorizedResponse();
     }
 
@@ -41,7 +42,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!request.headers.get("authorization")) {
+    if (!hasAuthenticatedRequest(request)) {
       return unauthorizedResponse();
     }
 
@@ -77,7 +78,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!request.headers.get("authorization")) {
+    if (!hasAuthenticatedRequest(request)) {
       return unauthorizedResponse();
     }
 

@@ -74,9 +74,9 @@ export interface PasswordResetConfirmRequest {
 }
 
 export interface AuthResponse {
-  token: string;
+  token?: string;
   accessToken?: string;
-  refreshToken: string;
+  refreshToken?: string;
   tokenType: string;
   sessionId: string;
   expiresAt: string;
@@ -116,7 +116,7 @@ export interface MfaSetupResponse {
 
 export interface MfaCodeRequest {
   code: string;
-  refreshToken: string;
+  refreshToken?: string;
 }
 
 export interface MessageResponse {

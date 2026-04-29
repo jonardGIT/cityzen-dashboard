@@ -8,6 +8,8 @@ This repository includes GitHub Actions workflows for source validation on `jona
 
 Vercel can deploy either the source repository or the deployment repository.
 
+For a full production readiness and rollout checklist, see `docs/production-deployment.md`.
+
 The deployment repository at `Xypes13/xypes-cityzen-dashboard` is a reduced source copy intended for deployment. It includes the buildable Next.js source tree and Vercel config, but omits local-only and non-deployment files. Production JavaScript is still minified during `next build` on Vercel.
 
 Recommended Vercel project settings for this source repo:
@@ -23,7 +25,6 @@ Set these environment variables in Vercel for Preview and Production as needed:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=https://your-api-host.example/api/v1
-NEXT_PUBLIC_API_KEY=your-public-api-key-if-required
 API_KEY=your-server-side-api-key-if-required
 CIRS_API_BASE_URL=https://your-api-host.example
 CIRS_API_BASE_PATH=/api/v1
@@ -35,7 +36,8 @@ Notes:
 
 - `NEXT_PUBLIC_API_BASE_URL` is the browser-facing API base URL.
 - `API_KEY` is used by server-side proxy routes and may reuse the same backend API key when your API requires `x-api-key`.
-- Production builds now fail closed when `NEXT_PUBLIC_API_BASE_URL`, `API_KEY` or `NEXT_PUBLIC_API_KEY`, `CIRS_API_BASE_URL`, or `CIRS_API_KEY` are missing.
+- Do not expose backend API keys through `NEXT_PUBLIC_*` variables. The dashboard proxies browser traffic through server routes instead.
+- Production builds now fail closed when `NEXT_PUBLIC_API_BASE_URL`, `API_KEY`, `CIRS_API_BASE_URL`, or `CIRS_API_KEY` are missing.
 - `NEXT_PUBLIC_OPENAPI_SOURCE=config` keeps runtime CRUD behavior on the checked-in contract instead of requiring live OpenAPI on Vercel.
 
 ## Stack
@@ -89,7 +91,7 @@ Create `.env.local`:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api/v1
-NEXT_PUBLIC_API_KEY=local-dev-key
+API_KEY=local-dev-key
 ```
 
 ## API Client Architecture
@@ -98,10 +100,13 @@ NEXT_PUBLIC_API_KEY=local-dev-key
 - `authClient`: API-key + Bearer token with one refresh retry on `401`
 - Both clients are in `src/lib/api/clients.ts`
 - Unauthorized sessions are cleared only after refresh is unavailable or rejected
+- Browser auth now flows through same-origin `src/app/api/auth/` proxy routes, which store bearer tokens in `HttpOnly` cookies instead of `localStorage`.
 
 ## Auth and Session Behavior
 
 See `docs/auth-operation-endpoint-flow.md` (gitignored) for detailed auth flow documentation.
+
+For production setup prerequisites, rollout sequencing, smoke checks, and go-live controls, see `docs/production-deployment.md`.
 
 ## Roles
 

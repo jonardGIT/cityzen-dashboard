@@ -181,6 +181,65 @@ describe("auth api clients", () => {
     );
   });
 
+  it("ignores NEXT_PUBLIC_API_KEY when building direct API clients", async () => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://api.example.com/api/v1");
+    vi.stubEnv("NEXT_PUBLIC_API_KEY", "public-key-should-not-be-used");
+    delete process.env.API_KEY;
+
+    const axiosModule = await import("axios");
+    const createMock = vi.mocked(axiosModule.default.create);
+    createMock.mockReset();
+
+    createMock
+      .mockReturnValueOnce({
+        post: vi.fn(),
+        interceptors: {
+          request: { use: vi.fn() },
+          response: { use: vi.fn() },
+        },
+      } as never)
+      .mockReturnValueOnce({
+        interceptors: {
+          request: { use: vi.fn() },
+          response: { use: vi.fn() },
+        },
+      } as never)
+      .mockReturnValueOnce(
+        Object.assign(vi.fn(), {
+          interceptors: {
+            request: { use: vi.fn() },
+            response: { use: vi.fn() },
+          },
+        }) as never,
+      )
+      .mockReturnValueOnce(
+        Object.assign(vi.fn(), {
+          interceptors: {
+            request: { use: vi.fn() },
+            response: { use: vi.fn() },
+          },
+        }) as never,
+      );
+
+    const clientsModule = await import("@/lib/api/clients");
+
+    createMock.mockClear();
+
+    clientsModule.createAuthenticatedClient("https://api.example.com/api/v1");
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseURL: "https://api.example.com/api/v1",
+        headers: expect.not.objectContaining({
+          "x-api-key": expect.any(String),
+        }),
+      }),
+    );
+  });
+
   it("refreshes the session and retries a protected request once on 401", async () => {
     getRefreshTokenMock.mockReturnValue("refresh-token");
     refreshPostMock.mockResolvedValueOnce({

@@ -1,16 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import {
-  authClient,
   createAuthenticatedClient,
-  publicClient,
+  createPublicClient,
 } from "@/lib/api/clients";
 import {
   normalizeAuthResponse,
   normalizeAuthUser,
   normalizeCapabilities,
 } from "@/lib/auth/roles";
-import { getRefreshToken } from "@/lib/auth/token-storage";
 import type { ApiErrorPayload } from "@/types/api";
 import type {
   AuthResponse,
@@ -31,6 +29,8 @@ import type {
 } from "@/types/auth";
 
 const AUTH_SESSIONS_QUERY_KEY = ["auth", "sessions"] as const;
+const publicAuthProxyClient = createPublicClient("/api");
+const authProxyClient = createAuthenticatedClient("/api");
 const usersProxyClient = createAuthenticatedClient("/api");
 
 type MfaAwareErrorPayload = ApiErrorPayload & { mfaRequired?: boolean };
@@ -64,7 +64,7 @@ export async function loginWithPassword(
   payload: LoginRequest,
 ): Promise<LoginResult> {
   try {
-    const response = await publicClient.post<AuthResponse>(
+    const response = await publicAuthProxyClient.post<AuthResponse>(
       "/auth/login",
       payload,
     );
@@ -85,7 +85,10 @@ export async function loginWithPassword(
 export async function registerAccount(
   payload: RegisterRequest,
 ): Promise<RegisterResult> {
-  const response = await publicClient.post<unknown>("/auth/register", payload);
+  const response = await publicAuthProxyClient.post<unknown>(
+    "/auth/register",
+    payload,
+  );
   const data = response.data as
     | (Partial<AuthResponse> & {
         emailConfirmationRequired?: boolean;
@@ -117,7 +120,7 @@ export async function registerAccount(
 export async function refreshAuthSession(
   payload: RefreshRequest,
 ): Promise<AuthResponse> {
-  const response = await publicClient.post<AuthResponse>(
+  const response = await publicAuthProxyClient.post<AuthResponse>(
     "/auth/refresh",
     payload,
   );
@@ -127,17 +130,18 @@ export async function refreshAuthSession(
 export async function requestPasswordReset(
   payload: PasswordResetRequestRequest,
 ): Promise<PasswordResetRequestResponse> {
-  const response = await publicClient.post<PasswordResetRequestResponse>(
-    "/auth/password-reset/request",
-    payload,
-  );
+  const response =
+    await publicAuthProxyClient.post<PasswordResetRequestResponse>(
+      "/auth/password-reset/request",
+      payload,
+    );
   return response.data;
 }
 
 export async function confirmPasswordReset(
   payload: PasswordResetConfirmRequest,
 ): Promise<MessageResponse> {
-  const response = await publicClient.post<MessageResponse>(
+  const response = await publicAuthProxyClient.post<MessageResponse>(
     "/auth/password-reset/confirm",
     payload,
   );
@@ -147,7 +151,7 @@ export async function confirmPasswordReset(
 export async function fetchCurrentUser(
   signal?: AbortSignal,
 ): Promise<AuthUser> {
-  const response = await authClient.get<AuthUser>("/auth/me", { signal });
+  const response = await authProxyClient.get<AuthUser>("/auth/me", { signal });
   return normalizeAuthUser(response.data);
 }
 
@@ -161,13 +165,13 @@ export async function fetchCurrentUserCapabilities(
 }
 
 export async function logoutCurrentSession(): Promise<void> {
-  await authClient.post("/auth/logout");
+  await authProxyClient.post("/auth/logout");
 }
 
 export async function fetchAuthSessions(
   signal?: AbortSignal,
 ): Promise<AuthSessionSummary[]> {
-  const response = await authClient.get<AuthSessionSummary[]>(
+  const response = await authProxyClient.get<AuthSessionSummary[]>(
     "/auth/sessions",
     {
       signal,
@@ -177,16 +181,15 @@ export async function fetchAuthSessions(
 }
 
 export async function revokeAuthSession(sessionId: string): Promise<void> {
-  await authClient.delete(`/auth/sessions/${sessionId}`);
+  await authProxyClient.delete(`/auth/sessions/${sessionId}`);
 }
 
 export async function createMfaSetup(
   signal?: AbortSignal,
 ): Promise<MfaSetupResponse> {
-  const refreshToken = getRefreshToken();
-  const response = await authClient.post<MfaSetupResponse>(
+  const response = await authProxyClient.post<MfaSetupResponse>(
     "/auth/mfa/setup",
-    { refreshToken },
+    {},
     { signal },
   );
   return response.data;
@@ -195,22 +198,20 @@ export async function createMfaSetup(
 export async function enableMfa(
   payload: Omit<MfaCodeRequest, "refreshToken">,
 ): Promise<MessageResponse> {
-  const refreshToken = getRefreshToken();
-  const response = await authClient.post<MessageResponse>("/auth/mfa/enable", {
-    ...payload,
-    refreshToken,
-  });
+  const response = await authProxyClient.post<MessageResponse>(
+    "/auth/mfa/enable",
+    payload,
+  );
   return response.data;
 }
 
 export async function disableMfa(
   payload: Omit<MfaCodeRequest, "refreshToken">,
 ): Promise<MessageResponse> {
-  const refreshToken = getRefreshToken();
-  const response = await authClient.post<MessageResponse>("/auth/mfa/disable", {
-    ...payload,
-    refreshToken,
-  });
+  const response = await authProxyClient.post<MessageResponse>(
+    "/auth/mfa/disable",
+    payload,
+  );
   return response.data;
 }
 

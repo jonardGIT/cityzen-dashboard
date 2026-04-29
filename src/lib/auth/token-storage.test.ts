@@ -23,7 +23,7 @@ describe("auth token storage", () => {
     window.localStorage.clear();
   });
 
-  it("stores and reads auth tokens, session metadata, and user records", () => {
+  it("stores session metadata and user records without persisting tokens", () => {
     const session: StoredAuthSession = {
       tokenType: "Bearer",
       sessionId: "session-1",
@@ -39,13 +39,11 @@ describe("auth token storage", () => {
       mfaEnabledAt: null,
     } as AuthUser;
 
-    setAccessToken("access-token");
-    setRefreshToken("refresh-token");
     setStoredAuthSession(session);
     setStoredUser(user);
 
-    expect(getAccessToken()).toBe("access-token");
-    expect(getRefreshToken()).toBe("refresh-token");
+    expect(getAccessToken()).toBeNull();
+    expect(getRefreshToken()).toBeNull();
     expect(getStoredAuthSession()).toEqual(session);
     expect(getStoredUser<AuthUser>()).toEqual(user);
   });
@@ -70,8 +68,8 @@ describe("auth token storage", () => {
 
     storeAuthResponse(response);
 
-    expect(getAccessToken()).toBe("access-token");
-    expect(getRefreshToken()).toBe("refresh-token");
+    expect(getAccessToken()).toBeNull();
+    expect(getRefreshToken()).toBeNull();
     expect(getStoredAuthSession()).toEqual({
       tokenType: "Bearer",
       sessionId: "session-1",

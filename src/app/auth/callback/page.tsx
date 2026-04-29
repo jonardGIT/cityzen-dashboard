@@ -47,7 +47,7 @@ function AuthCallbackContent() {
   const errorParam = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
   const callbackError = errorParam
-    ? errorDescription ?? errorParam
+    ? (errorDescription ?? errorParam)
     : callbackType === "magiclink" || callbackType === "oauth"
       ? "This dashboard authenticates against the CIRS API login flow. Complete sign-in from the login page."
       : null;
@@ -67,9 +67,14 @@ function AuthCallbackContent() {
       "";
 
     if (callbackType === "recovery") {
-      router.replace(
-        `/reset-password${recoveryToken ? `?token=${encodeURIComponent(recoveryToken)}` : ""}`,
-      );
+      if (recoveryToken) {
+        window.sessionStorage.setItem(
+          "xypes_password_reset_token",
+          recoveryToken,
+        );
+      }
+
+      router.replace("/reset-password");
       return;
     }
 

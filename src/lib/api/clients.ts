@@ -10,6 +10,7 @@ import type { ApiErrorPayload } from "@/types/api";
 import type { AuthResponse, LoginReason } from "@/types/auth";
 
 const API_BASE_URL = resolveDashboardApiBaseUrl();
+const PROXY_AUTH_BASE_URL = "/api";
 const PROXY_API_BASE_URL = "/api/cirs";
 
 function isBrowserRuntime() {
@@ -20,9 +21,12 @@ function resolveDefaultBaseUrl() {
   return isBrowserRuntime() ? PROXY_API_BASE_URL : API_BASE_URL;
 }
 
+function resolveRefreshBaseUrl() {
+  return isBrowserRuntime() ? PROXY_AUTH_BASE_URL : API_BASE_URL;
+}
+
 function resolveApiKey(): string {
-  const configuredKey =
-    process.env.API_KEY?.trim() ?? process.env.NEXT_PUBLIC_API_KEY?.trim();
+  const configuredKey = process.env.API_KEY?.trim();
   if (configuredKey) {
     return configuredKey;
   }
@@ -110,14 +114,18 @@ function setAuthorizationHeader(
 
 async function refreshAuthenticatedSession(): Promise<AuthResponse | null> {
   const refreshToken = getRefreshToken();
+  const payload = refreshToken ? { refreshToken } : undefined;
   if (!refreshToken) {
-    return null;
+    if (!isBrowserRuntime()) {
+      return null;
+    }
   }
 
   try {
-    const response = await refreshClient.post<AuthResponse>("/auth/refresh", {
-      refreshToken,
-    });
+    const response = await refreshClient.post<AuthResponse>(
+      "/auth/refresh",
+      payload,
+    );
     storeAuthResponse(response.data);
     return response.data;
   } catch {
@@ -127,6 +135,7 @@ async function refreshAuthenticatedSession(): Promise<AuthResponse | null> {
 
 function buildClient(baseURL: string, includeAuth: boolean) {
   const client = axios.create(createBaseConfigFor(baseURL));
+  const usesProxyAuth = baseURL.startsWith("/api");
 
   if (includeAuth) {
     client.interceptors.request.use((config) => {
@@ -172,11 +181,20 @@ function buildClient(baseURL: string, includeAuth: boolean) {
           return Promise.reject(error);
         }
 
-        originalRequest.headers = setAuthorizationHeader(
-          originalRequest.headers,
-          refreshedAuth.token,
-          refreshedAuth.tokenType,
-        );
+        if (!usesProxyAuth) {
+          const refreshedToken =
+            refreshedAuth.token || refreshedAuth.accessToken;
+          if (!refreshedToken) {
+            notifyUnauthorized(resolveUnauthorizedReason(error));
+            return Promise.reject(error);
+          }
+
+          originalRequest.headers = setAuthorizationHeader(
+            originalRequest.headers,
+            refreshedToken,
+            refreshedAuth.tokenType,
+          );
+        }
 
         return client(originalRequest);
       },
@@ -191,7 +209,9 @@ function buildClient(baseURL: string, includeAuth: boolean) {
   return client;
 }
 
-const refreshClient = axios.create(createBaseConfig());
+const refreshClient = axios.create(
+  createBaseConfigFor(resolveRefreshBaseUrl()),
+);
 
 refreshClient.interceptors.response.use(
   (response) => response,

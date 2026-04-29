@@ -35,8 +35,7 @@ export function resolveDashboardApiBaseUrl(): string {
 }
 
 export function resolveDashboardProxyApiKey(): string {
-  const configured =
-    process.env.API_KEY?.trim() ?? process.env.NEXT_PUBLIC_API_KEY?.trim();
+  const configured = process.env.API_KEY?.trim();
 
   if (configured) {
     return configured;
@@ -48,7 +47,7 @@ export function resolveDashboardProxyApiKey(): string {
 
   if (isProduction()) {
     throw new Error(
-      "API_KEY or NEXT_PUBLIC_API_KEY is required in production for dashboard proxy requests.",
+      "API_KEY is required in production for dashboard proxy requests.",
     );
   }
 

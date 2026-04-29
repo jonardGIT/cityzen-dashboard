@@ -1,8 +1,26 @@
 import { NextRequest } from "next/server";
-import { requestUpstream, toJsonResponse } from "@/app/api/users/proxy";
+import {
+  hasAuthenticatedRequest,
+  requestUpstream,
+  toJsonResponse,
+  unauthorizedResponse,
+} from "@/app/api/users/proxy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+function isPublicProxyPath(
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
+  path: string,
+) {
+  if (method !== "GET") {
+    return false;
+  }
+
+  return (
+    path === "/health" || path === "/openapi.json" || path.startsWith("/docs")
+  );
+}
 
 async function forwardRequest(
   request: NextRequest,
@@ -11,6 +29,15 @@ async function forwardRequest(
 ) {
   const { path } = await context.params;
   const upstreamPath = `/${path.join("/")}${request.nextUrl.search}`;
+  const upstreamPathname = `/${path.join("/")}`;
+
+  if (
+    !isPublicProxyPath(method, upstreamPathname) &&
+    !hasAuthenticatedRequest(request)
+  ) {
+    return unauthorizedResponse();
+  }
+
   const contentType = request.headers.get("content-type");
   const body = method === "GET" ? undefined : await request.text();
 

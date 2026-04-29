@@ -3,6 +3,10 @@ import {
   resolveDashboardApiBaseUrl,
   resolveDashboardProxyApiKey,
 } from "@/lib/config/runtime-env";
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+} from "@/lib/auth/session-cookies";
 
 const API_BASE_URL = resolveDashboardApiBaseUrl();
 const API_KEY = resolveDashboardProxyApiKey();
@@ -10,6 +14,24 @@ const API_KEY = resolveDashboardProxyApiKey();
 function buildUrl(path: string) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
+}
+
+export function getRequestAccessToken(request: NextRequest): string | null {
+  const authHeader = request.headers.get("authorization");
+  if (authHeader) {
+    const [, token] = authHeader.split(/\s+/, 2);
+    return token ?? authHeader;
+  }
+
+  return request.cookies.get(ACCESS_TOKEN_COOKIE)?.value ?? null;
+}
+
+export function getRequestRefreshToken(request: NextRequest): string | null {
+  return request.cookies.get(REFRESH_TOKEN_COOKIE)?.value ?? null;
+}
+
+export function hasAuthenticatedRequest(request: NextRequest): boolean {
+  return Boolean(getRequestAccessToken(request));
 }
 
 export async function requestUpstream(
@@ -21,8 +43,11 @@ export async function requestUpstream(
   headers.set("Accept", "application/json");
 
   const authHeader = request.headers.get("authorization");
+  const accessToken = getRequestAccessToken(request);
   if (authHeader) {
     headers.set("Authorization", authHeader);
+  } else if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
   if (API_KEY) {
@@ -86,7 +111,7 @@ export async function toJsonResponse(
 
 export function unauthorizedResponse() {
   return NextResponse.json(
-    { message: "Missing Authorization header." },
+    { message: "Missing authenticated session." },
     { status: 401 },
   );
 }
