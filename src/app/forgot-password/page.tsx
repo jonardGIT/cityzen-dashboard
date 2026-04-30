@@ -1,15 +1,17 @@
 "use client";
 
+import { MailOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Form, Input, Typography } from "antd";
 import { AxiosError } from "axios";
 import Link from "next/link";
 import { useState } from "react";
+import { AuthExperienceShell } from "@/components/auth/AuthExperienceShell";
 import { requestPasswordReset } from "@/features/auth/api";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import type { ApiErrorPayload } from "@/types/api";
 import type { PasswordResetRequestResponse } from "@/types/auth";
 
-const { Paragraph, Text, Title } = Typography;
+const { Paragraph, Text } = Typography;
 
 interface ForgotPasswordFormValues {
   email: string;
@@ -84,81 +86,70 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
-      }}
+    <AuthExperienceShell
+      eyebrow="Recovery flow, same trust signals"
+      heroTitle="Request access recovery from the same responsive, low-noise interface."
+      heroDescription="Password recovery keeps the same security-first presentation while making rate limits, delivery status, and token previews clear when they affect the next step."
+      cardTitle="Reset your password"
+      cardDescription="If an account exists, reset instructions are available."
+      securityPrompt="Recovery is rate limited and may depend on backend delivery configuration. We surface that status near the action so users know whether to wait or retry."
     >
-      <Card style={{ width: "100%", maxWidth: 460 }}>
-        <Title level={3} style={{ marginBottom: 4 }}>
-          Reset your password
-        </Title>
-        <Text type="secondary">
-          If an account exists, reset instructions are available.
-        </Text>
+      {successResponse ? (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="success"
+          showIcon
+          title="Request accepted"
+          description={successResponse.message}
+        />
+      ) : null}
 
-        {successResponse ? (
-          <Alert
-            style={{ marginTop: 16 }}
-            type="success"
-            showIcon
-            title="Request accepted"
-            description={successResponse.message}
-          />
-        ) : null}
+      {errorMessage ? (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          title="Unable to request reset"
+          description={errorMessage}
+        />
+      ) : null}
 
-        {errorMessage ? (
-          <Alert
-            style={{ marginTop: 16 }}
-            type="error"
-            showIcon
-            title="Unable to request reset"
-            description={errorMessage}
-          />
-        ) : null}
+      {successResponse && isDevelopmentResetPreview(successResponse) ? (
+        <Card size="small" style={{ marginTop: 16 }}>
+          <Text strong>Local development reset token</Text>
+          <Paragraph copyable style={{ marginTop: 8, marginBottom: 8 }}>
+            {successResponse.resetToken}
+          </Paragraph>
+          <Text type="secondary">Expires {successResponse.resetExpiresAt}</Text>
+        </Card>
+      ) : null}
 
-        {successResponse && isDevelopmentResetPreview(successResponse) ? (
-          <Card size="small" style={{ marginTop: 16 }}>
-            <Text strong>Local development reset token</Text>
-            <Paragraph copyable style={{ marginTop: 8, marginBottom: 8 }}>
-              {successResponse.resetToken}
-            </Paragraph>
-            <Text type="secondary">
-              Expires {successResponse.resetExpiresAt}
-            </Text>
-          </Card>
-        ) : null}
-
-        <Form<ForgotPasswordFormValues>
-          form={form}
-          layout="vertical"
-          style={{ marginTop: 18 }}
-          onFinish={onFinish}
-          requiredMark={false}
+      <Form<ForgotPasswordFormValues>
+        form={form}
+        layout="vertical"
+        style={{ marginTop: 18 }}
+        onFinish={onFinish}
+        requiredMark={false}
+      >
+        <Form.Item
+          name="email"
+          label="Email"
+          rules={[
+            { required: true, message: "Email is required" },
+            { type: "email", message: "Enter a valid email" },
+          ]}
         >
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: "Email is required" },
-              { type: "email", message: "Enter a valid email" },
-            ]}
-          >
-            <Input placeholder="Enter your email" />
-          </Form.Item>
+          <Input prefix={<MailOutlined />} placeholder="Enter your email" />
+        </Form.Item>
 
-          <Button type="primary" htmlType="submit" loading={submitting} block>
-            Request password reset
-          </Button>
+        <Button type="primary" htmlType="submit" loading={submitting} block>
+          Request password reset
+        </Button>
 
-          <div style={{ marginTop: 16, textAlign: "right" }}>
-            <Link href="/login">Back to sign in</Link>
-          </div>
-        </Form>
-      </Card>
-    </div>
+        <div style={{ marginTop: 16, textAlign: "right" }}>
+          <Link href="/login">Back to sign in</Link>
+        </div>
+      </Form>
+    </AuthExperienceShell>
   );
 }

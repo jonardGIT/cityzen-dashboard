@@ -54,6 +54,16 @@ npm install
 npm run dev
 ```
 
+When `npm run dev` starts locally, the dashboard now checks `http://localhost:3000/api/v1/health` first. If the local API is not running and the sibling repo exists at `/home/nhad/xypes/xypes-cirs-api`, it starts that API in the background and then continues launching the dashboard on port `3001`.
+
+After the API is reachable, the wrapper also probes the auth login endpoint with a harmless invalid credential request. That catches cases where the API process is up but auth is still unusable because local schema or auth dependencies are out of date.
+
+- This behavior is local-only and is skipped in CI.
+- If you want the dashboard without auto-starting the API, run `DASHBOARD_SKIP_LOCAL_API_AUTOSTART=1 npm run dev`.
+- If you only want the raw dashboard server, run `npm run dev:dashboard`.
+- Background API logs are written to the local temp directory under `xypes-cirs-dashboard-dev/local-api-dev.log`.
+- If auth readiness fails, the wrapper logs the backend response message but still starts the dashboard so your workflow is not blocked.
+
 Optional deployed smoke check:
 
 ```bash

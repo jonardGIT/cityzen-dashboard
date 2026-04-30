@@ -1,6 +1,23 @@
 :root {
-  --background: #eff4f8;
+  --background: #f3f6f3;
+  --background-strong: #e7eee7;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-strong: #ffffff;
+  --surface-dark: #0d2237;
   --foreground: #10243f;
+  --foreground-muted: #4f647d;
+  --accent: #1f5fbf;
+  --accent-strong: #17478f;
+  --success: #1f7a5c;
+  --warning: #9b6a12;
+  --danger: #b42318;
+  --border-subtle: rgba(16, 36, 63, 0.1);
+  --border-strong: rgba(16, 36, 63, 0.16);
+  --shadow-soft: 0 20px 60px rgba(9, 26, 42, 0.08);
+  --shadow-raised: 0 28px 80px rgba(9, 26, 42, 0.14);
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
 }
 
 html,
@@ -11,10 +28,27 @@ body {
 
 body {
   color: var(--foreground);
-  background: var(--background);
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(31, 95, 191, 0.1),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at right 20%,
+      rgba(31, 122, 92, 0.08),
+      transparent 28%
+    ),
+    linear-gradient(
+      180deg,
+      #f8fbf8 0%,
+      var(--background) 48%,
+      var(--background-strong) 100%
+    );
   font-family: var(--font-body), Georgia, serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
 }
 
 h1,
@@ -37,18 +71,70 @@ a {
   text-decoration: none;
 }
 
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(31, 95, 191, 0.22);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(31, 95, 191, 0.16);
+}
+
+.ant-app {
+  min-height: 100vh;
+}
+
+.ant-card,
+.ant-alert,
+.ant-modal-content,
+.ant-drawer-content,
+.ant-picker-panel,
+.ant-select-dropdown {
+  box-shadow: var(--shadow-soft);
+}
+
+.ant-form-item-label > label {
+  font-weight: 600;
+  color: var(--foreground) !important;
+}
+
 .ant-table-wrapper .ant-table {
-  border: 1px solid rgba(16, 36, 63, 0.1);
-  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .ant-table-wrapper .ant-table-thead > tr > th {
-  background: #edf3f9;
-  color: #10243f;
+  background: #eef3f1;
+  color: var(--foreground);
   font-weight: 700;
 }
 
 .ant-table-wrapper .ant-table-tbody > tr:hover > td {
-  background: #f6fbff !important;
+  background: #f5f9f7 !important;
+}
+
+@media (max-width: 768px) {
+  body {
+    background:
+      radial-gradient(
+        circle at top left,
+        rgba(31, 95, 191, 0.08),
+        transparent 38%
+      ),
+      linear-gradient(
+        180deg,
+        #f9fbf9 0%,
+        var(--background) 56%,
+        var(--background-strong) 100%
+      );
+  }
 }

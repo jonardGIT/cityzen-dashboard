@@ -6,7 +6,8 @@
     "node": "20.x"
   },
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "node scripts/dev-with-local-api.mjs",
+    "dev:dashboard": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint",

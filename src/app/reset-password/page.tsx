@@ -1,16 +1,16 @@
 "use client";
 
-import { Alert, Button, Card, Form, Input, Typography } from "antd";
+import { KeyOutlined, LockOutlined } from "@ant-design/icons";
+import { Alert, Button, Form, Input } from "antd";
 import { AxiosError } from "axios";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { AuthExperienceShell } from "@/components/auth/AuthExperienceShell";
 import { useAuth } from "@/context/AuthContext";
 import { confirmPasswordReset } from "@/features/auth/api";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import type { ApiErrorPayload } from "@/types/api";
-
-const { Text, Title } = Typography;
 
 interface ResetPasswordFormValues {
   token: string;
@@ -128,94 +128,94 @@ function ResetPasswordPageContent() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
-      }}
+    <AuthExperienceShell
+      eyebrow="Token verification, clear and contained"
+      heroTitle="Complete password recovery without losing the security context."
+      heroDescription="The reset flow keeps the token, password policy, and invalid-token states visible in one place so users can recover access without guessing what failed."
+      cardTitle="Choose a new password"
+      cardDescription="Enter your reset token and a strong new password to regain access."
+      securityPrompt="Reset tokens can expire or be revoked. Invalid-token, policy, and retry-limit states are shown inline so recovery stays explicit and trustworthy."
     >
-      <Card style={{ width: "100%", maxWidth: 480 }}>
-        <Title level={3} style={{ marginBottom: 4 }}>
-          Choose a new password
-        </Title>
-        <Text type="secondary">
-          Enter your reset token and a strong new password to regain access.
-        </Text>
+      {tokenState === "success" ? (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="success"
+          showIcon
+          title="Password reset complete"
+          description="Your password has been updated. You will be redirected to sign in again."
+        />
+      ) : null}
 
-        {tokenState === "success" ? (
-          <Alert
-            style={{ marginTop: 16 }}
-            type="success"
-            showIcon
-            title="Password reset complete"
-            description="Your password has been updated. You will be redirected to sign in again."
-          />
-        ) : null}
+      {tokenState === "invalid" ? (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          title="Invalid or expired reset token"
+          description={errorMessage}
+        />
+      ) : errorMessage ? (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          title="Unable to reset password"
+          description={errorMessage}
+        />
+      ) : null}
 
-        {tokenState === "invalid" ? (
-          <Alert
-            style={{ marginTop: 16 }}
-            type="error"
-            showIcon
-            title="Invalid or expired reset token"
-            description={errorMessage}
-          />
-        ) : errorMessage ? (
-          <Alert
-            style={{ marginTop: 16 }}
-            type="error"
-            showIcon
-            title="Unable to reset password"
-            description={errorMessage}
-          />
-        ) : null}
-
-        <Form<ResetPasswordFormValues>
-          form={form}
-          layout="vertical"
-          style={{ marginTop: 18 }}
-          onFinish={onFinish}
-          requiredMark={false}
+      <Form<ResetPasswordFormValues>
+        form={form}
+        layout="vertical"
+        style={{ marginTop: 18 }}
+        onFinish={onFinish}
+        requiredMark={false}
+      >
+        <Form.Item
+          name="token"
+          label="Reset token"
+          rules={[{ required: true, message: "Reset token is required" }]}
         >
-          <Form.Item
-            name="token"
-            label="Reset token"
-            rules={[{ required: true, message: "Reset token is required" }]}
-          >
-            <Input placeholder="Paste your reset token" />
-          </Form.Item>
+          <Input
+            prefix={<KeyOutlined />}
+            placeholder="Paste your reset token"
+          />
+        </Form.Item>
 
-          <Form.Item
-            name="password"
-            label="New password"
-            rules={[{ required: true, message: "New password is required" }]}
-            extra="Use at least 12 characters with uppercase, lowercase, number, and special character."
-          >
-            <Input.Password placeholder="Enter a strong new password" />
-          </Form.Item>
+        <Form.Item
+          name="password"
+          label="New password"
+          rules={[{ required: true, message: "New password is required" }]}
+          extra="Use at least 12 characters with uppercase, lowercase, number, and special character."
+        >
+          <Input.Password
+            prefix={<LockOutlined />}
+            placeholder="Enter a strong new password"
+          />
+        </Form.Item>
 
-          <Form.Item
-            name="confirmPassword"
-            label="Confirm new password"
-            rules={[
-              { required: true, message: "Please confirm your new password" },
-            ]}
-          >
-            <Input.Password placeholder="Re-enter your new password" />
-          </Form.Item>
+        <Form.Item
+          name="confirmPassword"
+          label="Confirm new password"
+          rules={[
+            { required: true, message: "Please confirm your new password" },
+          ]}
+        >
+          <Input.Password
+            prefix={<LockOutlined />}
+            placeholder="Re-enter your new password"
+          />
+        </Form.Item>
 
-          <Button type="primary" htmlType="submit" loading={submitting} block>
-            Reset password
-          </Button>
+        <Button type="primary" htmlType="submit" loading={submitting} block>
+          Reset password
+        </Button>
 
-          <div style={{ marginTop: 16, textAlign: "right" }}>
-            <Link href="/login">Back to sign in</Link>
-          </div>
-        </Form>
-      </Card>
-    </div>
+        <div style={{ marginTop: 16, textAlign: "right" }}>
+          <Link href="/login">Back to sign in</Link>
+        </div>
+      </Form>
+    </AuthExperienceShell>
   );
 }
 

@@ -58,11 +58,24 @@ export async function requestUpstream(
     headers.set("Content-Type", "application/json");
   }
 
-  return fetch(buildUrl(path), {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
+  try {
+    return await fetch(buildUrl(path), {
+      ...init,
+      headers,
+      cache: "no-store",
+    });
+  } catch {
+    return new Response(
+      JSON.stringify({
+        message:
+          "The CIRS API is unavailable right now. If you are running locally, wait a moment for the API to finish starting and try again.",
+      }),
+      {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      },
+    );
+  }
 }
 
 export async function requestUpstreamWithFallback(

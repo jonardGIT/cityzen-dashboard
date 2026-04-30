@@ -1,120 +1,70 @@
 .pageShell {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  composes: pageShell from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroCard {
-  overflow: hidden;
-  border: 1px solid rgba(16, 36, 63, 0.08);
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(41, 123, 255, 0.16),
-      transparent 32%
-    ),
-    linear-gradient(135deg, #ffffff 0%, #f6f9fd 100%);
-  box-shadow: 0 16px 40px rgba(16, 36, 63, 0.08);
+  composes: heroCard from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroInner {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  composes: heroInner from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroHeader {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 16px;
+  composes: heroHeader from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroCopy {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  composes: heroCopy from "../../../components/layout/ProtectedPage.module.css";
   max-width: 720px;
 }
 
 .eyebrow {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #365d8d;
+  composes: eyebrow from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroTitle {
-  margin: 0 !important;
+  composes: heroTitle from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroDescription {
+  composes: heroDescription from "../../../components/layout/ProtectedPage.module.css";
   max-width: 66ch;
-  color: rgba(16, 36, 63, 0.72);
 }
 
 .heroAction {
-  align-self: flex-start;
+  composes: heroAction from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroMetrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  composes: heroMetrics from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .metricTile {
-  padding: 14px 16px;
-  border: 1px solid rgba(16, 36, 63, 0.08);
-  border-radius: 16px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.96) 0%,
-    #f7fbff 100%
-  );
-}
-
-.metricTile :global(.ant-statistic-title) {
-  color: rgba(16, 36, 63, 0.64) !important;
-  font-weight: 700;
-}
-
-.metricTile :global(.ant-statistic-content) {
-  color: #10243f !important;
+  composes: metricTile from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .metricLabel {
-  display: block;
-  margin-top: 6px;
-  color: rgba(16, 36, 63, 0.62);
+  composes: metricLabel from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .controlCard,
 .tableCard,
 .sidebarCard,
 .previewCard {
-  border: 1px solid rgba(16, 36, 63, 0.08);
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-  box-shadow: 0 10px 24px rgba(16, 36, 63, 0.06);
+  composes: surfaceCard from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .controlStack {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  composes: controlStack from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .controlHeader {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  composes: controlHeader from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .controlMeta {
-  color: rgba(16, 36, 63, 0.64);
+  composes: controlMeta from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .contentGrid {
@@ -124,44 +74,27 @@
 }
 
 .sectionHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
+  composes: sectionHeader from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .sectionTitle {
-  margin: 0 !important;
+  composes: sectionTitle from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .sectionDescription {
-  color: rgba(16, 36, 63, 0.64);
+  composes: sectionDescription from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .sidebarList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  composes: sidebarList from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .sidebarItem {
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(16, 36, 63, 0.08);
-}
-
-.sidebarItem:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
+  composes: sidebarItem from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .sidebarLabel {
-  display: block;
-  margin-bottom: 4px;
-  color: rgba(16, 36, 63, 0.58);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  composes: sidebarLabel from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .modalBody {
@@ -187,30 +120,20 @@
 }
 
 .cellStack {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  composes: cellStack from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .cellMeta {
-  color: rgba(16, 36, 63, 0.56);
+  composes: cellMeta from "../../../components/layout/ProtectedPage.module.css";
 }
 
 @media (max-width: 1100px) {
-  .heroMetrics,
   .sectionGrid {
     grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  .heroHeader,
-  .controlHeader {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .heroMetrics,
   .sectionGrid {
     grid-template-columns: 1fr;
   }

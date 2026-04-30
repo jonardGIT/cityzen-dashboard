@@ -5,6 +5,8 @@ import {
   FileSearchOutlined,
   ExclamationCircleOutlined,
   LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   TeamOutlined,
   UserOutlined,
   UserSwitchOutlined,
@@ -31,6 +33,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useBackendFeatureSurface } from "@/features/dynamic-crud/feature-surface";
 import { getNavigationItems } from "@/lib/auth/navigation";
 import { getRoleLabel } from "@/lib/auth/roles";
+import styles from "./AppShell.module.css";
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -146,80 +149,95 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [menuItems, pathname]);
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout className={styles.shell}>
       <Sider
+        className={styles.sider}
         collapsible
+        trigger={null}
         collapsed={collapsed}
         onCollapse={setCollapsed}
+        breakpoint="lg"
+        collapsedWidth={88}
         width={260}
       >
-        <div style={{ padding: 16 }}>
-          <Title level={4} style={{ color: "#fff", margin: 0 }}>
-            {collapsed ? "XR" : "Xypes Response"}
-          </Title>
-          {!collapsed ? (
-            <Text style={{ color: "rgba(255,255,255,0.65)" }}>
-              LGU Incident Ops
-            </Text>
-          ) : null}
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          onClick={({ key }) => router.push(String(key))}
-        />
-      </Sider>
-      <Layout>
-        <Header
-          style={{
-            background: "#fff",
-            padding: "0 20px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            borderBottom: "1px solid #f0f0f0",
-          }}
-        >
-          <Space size={12} align="center" style={{ minWidth: 0 }}>
-            <Avatar
-              size={36}
-              style={{
-                backgroundColor: "#1677ff",
-                fontWeight: 600,
-                flexShrink: 0,
-              }}
+        <div className={styles.siderInner}>
+          <div className={styles.brandBlock}>
+            <Text className={styles.brandEyebrow}>Secure Workspace</Text>
+            <Title
+              level={4}
+              className={collapsed ? styles.brandMonogram : styles.brandTitle}
             >
-              {avatarInitial}
-            </Avatar>
-            <div style={{ lineHeight: 1.2, minWidth: 0 }}>
-              <Text
-                strong
-                style={{ display: "block" }}
-                ellipsis={{ tooltip: identityLabel }}
-              >
-                {identityLabel}
-              </Text>
-              <Text type="secondary" style={{ display: "block" }}>
-                {roleLabel}
+              {collapsed ? "XR" : "Xypes Response"}
+            </Title>
+            {!collapsed ? (
+              <Text className={styles.brandMeta}>LGU incident operations</Text>
+            ) : null}
+          </div>
+          <Menu
+            className={styles.navigation}
+            theme="dark"
+            mode="inline"
+            selectedKeys={[selectedKey]}
+            items={menuItems}
+            onClick={({ key }) => router.push(String(key))}
+          />
+        </div>
+      </Sider>
+      <Layout className={styles.mainLayout}>
+        <Header className={styles.header}>
+          <div className={styles.headerLead}>
+            <Button
+              aria-label={
+                collapsed ? "Expand navigation" : "Collapse navigation"
+              }
+              className={styles.collapseButton}
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed((current) => !current)}
+            />
+            <div className={styles.headerCopy}>
+              <Text className={styles.eyebrow}>Authenticated workspace</Text>
+              <Title level={2} className={styles.heroTitle}>
+                Operations Console
+              </Title>
+              <Text type="secondary" className={styles.heroSubtitle}>
+                Minimal navigation, responsive layouts, and clear security
+                signals for LGU incident response work.
               </Text>
             </div>
-          </Space>
-          <Button icon={<LogoutOutlined />} onClick={() => void logout()}>
-            Logout
-          </Button>
+          </div>
+          <div className={styles.headerActions}>
+            <div className={styles.identityCard}>
+              <Avatar size={40} className={styles.avatar}>
+                {avatarInitial}
+              </Avatar>
+              <div className={styles.identityText}>
+                <Text
+                  strong
+                  className={styles.identityName}
+                  ellipsis={{ tooltip: identityLabel }}
+                >
+                  {identityLabel}
+                </Text>
+                <Text type="secondary" className={styles.identityRole}>
+                  {roleLabel}
+                </Text>
+              </div>
+            </div>
+            <Button
+              className={styles.logoutButton}
+              icon={<LogoutOutlined />}
+              onClick={() => void logout()}
+            >
+              Logout
+            </Button>
+          </div>
         </Header>
         {isAuthenticated ? (
-          <div
-            style={{
-              background: "#fff",
-              padding: "10px 20px",
-              borderBottom: "1px solid #f0f0f0",
-            }}
-          >
+          <div className={styles.featureRail}>
             <Space size={[8, 8]} wrap>
-              <Text type="secondary">Backend features</Text>
+              <Text className={styles.featureLabel}>
+                Security and backend status
+              </Text>
               {features.map((feature) => (
                 <Tooltip key={feature.key} title={feature.description}>
                   <Tag color={feature.isAvailable ? "green" : "gold"}>
@@ -244,7 +262,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Space>
           </div>
         ) : null}
-        <Content style={{ padding: 20 }}>{children}</Content>
+        <Content className={styles.content}>{children}</Content>
       </Layout>
     </Layout>
   );

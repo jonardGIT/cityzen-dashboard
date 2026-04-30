@@ -1,12 +1,9 @@
 .pageShell {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  composes: pageShell from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroCard {
-  overflow: hidden;
-  border: 1px solid rgba(16, 36, 63, 0.08);
+  composes: heroCard from "../../../components/layout/ProtectedPage.module.css";
   background:
     radial-gradient(
       circle at top right,
@@ -14,48 +11,34 @@
       transparent 30%
     ),
     linear-gradient(135deg, #ffffff 0%, #f5f9fd 100%);
-  box-shadow: 0 16px 40px rgba(16, 36, 63, 0.08);
 }
 
 .heroInner {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  composes: heroInner from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroHeader {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 16px;
+  composes: heroHeader from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroCopy {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 760px;
+  composes: heroCopy from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .eyebrow {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #365d8d;
+  composes: eyebrow from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroTitle {
-  margin: 0 !important;
+  composes: heroTitle from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroDescription {
-  max-width: 68ch;
-  color: rgba(16, 36, 63, 0.72);
+  composes: heroDescription from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .heroAction {
-  align-self: flex-start;
+  composes: heroAction from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .controlBar {

@@ -1,16 +1,17 @@
 "use client";
 
 import { LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Form, Input, Typography } from "antd";
+import { Alert, Button, Form, Input, Typography } from "antd";
 import { AxiosError } from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AuthExperienceShell } from "@/components/auth/AuthExperienceShell";
 import { useAuth } from "@/context/AuthContext";
 import { isCitizenSelfServiceUser } from "@/lib/auth/roles";
 import type { ApiErrorPayload } from "@/types/api";
 
-const { Title, Text, Paragraph } = Typography;
+const { Paragraph } = Typography;
 
 interface RegisterFormValues {
   name: string;
@@ -59,110 +60,97 @@ export default function RegisterPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
-      }}
+    <AuthExperienceShell
+      eyebrow="Citizen access, protected by design"
+      heroTitle="Create a self-service account without leaving the secure flow."
+      heroDescription="Registration uses the same responsive, security-forward experience as sign-in so citizens can create accounts, confirm access, and continue into incident reporting with less friction."
+      cardTitle="Create Citizen Account"
+      cardDescription="Register a citizen self-service account to link your profile and report incidents."
+      securityPrompt="Use a strong password and a valid email address. Some accounts will need email confirmation before access is granted."
     >
-      <Card style={{ width: "100%", maxWidth: 440 }}>
-        <Title level={3} style={{ marginBottom: 4 }}>
-          Create Citizen Account
-        </Title>
-        <Text type="secondary">
-          Register a citizen self-service account to link your profile and
-          report incidents.
-        </Text>
+      <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+        Passwords must be at least 12 characters and include uppercase,
+        lowercase, a number, and a special character.
+      </Paragraph>
 
-        <Paragraph type="secondary" style={{ marginTop: 16, marginBottom: 0 }}>
-          Passwords must be at least 12 characters and include uppercase,
-          lowercase, a number, and a special character.
-        </Paragraph>
+      {errorMessage ? (
+        <Alert
+          style={{ marginTop: 16 }}
+          type="error"
+          showIcon
+          title="Registration Failed"
+          description={errorMessage}
+        />
+      ) : null}
 
-        {errorMessage ? (
-          <Alert
-            style={{ marginTop: 16 }}
-            type="error"
-            showIcon
-            title="Registration Failed"
-            description={errorMessage}
-          />
-        ) : null}
-
-        <Form<RegisterFormValues>
-          form={form}
-          layout="vertical"
-          style={{ marginTop: 18 }}
-          onFinish={onFinish}
-          requiredMark={false}
+      <Form<RegisterFormValues>
+        form={form}
+        layout="vertical"
+        style={{ marginTop: 18 }}
+        onFinish={onFinish}
+        requiredMark={false}
+      >
+        <Form.Item
+          name="name"
+          label="Full name"
+          rules={[{ required: true, message: "Full name is required" }]}
         >
-          <Form.Item
-            name="name"
-            label="Full name"
-            rules={[{ required: true, message: "Full name is required" }]}
-          >
-            <Input
-              prefix={<UserOutlined />}
-              placeholder="Enter your full name"
-            />
-          </Form.Item>
+          <Input prefix={<UserOutlined />} placeholder="Enter your full name" />
+        </Form.Item>
 
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              { required: true, message: "Email is required" },
-              { type: "email", message: "Enter a valid email" },
-            ]}
-          >
-            <Input prefix={<MailOutlined />} placeholder="Enter your email" />
-          </Form.Item>
+        <Form.Item
+          name="email"
+          label="Email"
+          rules={[
+            { required: true, message: "Email is required" },
+            { type: "email", message: "Enter a valid email" },
+          ]}
+        >
+          <Input prefix={<MailOutlined />} placeholder="Enter your email" />
+        </Form.Item>
 
-          <Form.Item
-            name="password"
-            label="Password"
-            rules={[{ required: true, message: "Password is required" }]}
-          >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder="Create a strong password"
-            />
-          </Form.Item>
+        <Form.Item
+          name="password"
+          label="Password"
+          rules={[{ required: true, message: "Password is required" }]}
+        >
+          <Input.Password
+            prefix={<LockOutlined />}
+            placeholder="Create a strong password"
+          />
+        </Form.Item>
 
-          <Form.Item
-            name="confirmPassword"
-            label="Confirm password"
-            dependencies={["password"]}
-            rules={[
-              { required: true, message: "Confirm your password" },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue("password") === value) {
-                    return Promise.resolve();
-                  }
+        <Form.Item
+          name="confirmPassword"
+          label="Confirm password"
+          dependencies={["password"]}
+          rules={[
+            { required: true, message: "Confirm your password" },
+            ({ getFieldValue }) => ({
+              validator(_, value) {
+                if (!value || getFieldValue("password") === value) {
+                  return Promise.resolve();
+                }
 
-                  return Promise.reject(new Error("Passwords do not match"));
-                },
-              }),
-            ]}
-          >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder="Re-enter your password"
-            />
-          </Form.Item>
+                return Promise.reject(new Error("Passwords do not match"));
+              },
+            }),
+          ]}
+        >
+          <Input.Password
+            prefix={<LockOutlined />}
+            placeholder="Re-enter your password"
+          />
+        </Form.Item>
 
-          <Button type="primary" htmlType="submit" loading={submitting} block>
-            Create account
-          </Button>
+        <Button type="primary" htmlType="submit" loading={submitting} block>
+          Create account
+        </Button>
 
-          <div style={{ marginTop: 16, textAlign: "right" }}>
-            <Link href="/login">Already have an account? Sign in</Link>
-          </div>
-        </Form>
-      </Card>
-    </div>
+        <div style={{ marginTop: 16, textAlign: "right" }}>
+          <Link href="/login">Already have an account? Sign in</Link>
+        </div>
+      </Form>
+    </AuthExperienceShell>
   );
 }
