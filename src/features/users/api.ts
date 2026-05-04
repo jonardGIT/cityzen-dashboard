@@ -27,7 +27,10 @@ export const userQueryKeys = {
 };
 
 export interface CreateUserDto {
-  name: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  suffix?: string;
   email: string;
   password: string;
   role: Role;
@@ -36,7 +39,10 @@ export interface CreateUserDto {
 }
 
 export interface UpdateUserDto {
-  name?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
   email?: string;
   password?: string;
   role?: Role;

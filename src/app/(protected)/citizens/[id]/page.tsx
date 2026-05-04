@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { ErrorState, LoadingState } from "@/components/common/PageStates";
 import { useCitizenQuery } from "@/features/reference-data/api";
+import { getPreferredDisplayName } from "@/lib/format/display";
 import { CAN_VIEW_CITIZENS } from "@/lib/auth/permissions";
 
 const { Title } = Typography;
@@ -30,7 +31,9 @@ export default function CitizenDetailPage() {
         <Card>
           <Descriptions column={1}>
             <Descriptions.Item label="ID">{String(query.data.id)}</Descriptions.Item>
-            <Descriptions.Item label="Name">{query.data.name ?? "N/A"}</Descriptions.Item>
+            <Descriptions.Item label="Name">
+              {getPreferredDisplayName(query.data)}
+            </Descriptions.Item>
             <Descriptions.Item label="Contact">{query.data.contactInfo ?? "N/A"}</Descriptions.Item>
             <Descriptions.Item label="Preferred Channel">
               {query.data.preferredChannel ?? "N/A"}

@@ -9,6 +9,7 @@ import { ResizableTable } from "@/components/common/ResizableTable";
 import type { PaginationMeta } from "@/lib/api/pagination";
 import {
   formatDisplayValue,
+  getPreferredDisplayName,
   humanizeKey,
 } from "@/lib/format/display";
 import type { BaseEntity } from "@/types/api";
@@ -60,8 +61,22 @@ interface SharedTableProps<T extends BaseEntity> {
   onServerDateFilterChange?: (columnKey: "createdAt" | "updatedAt", value: DateRangeValue) => void;
 }
 
-function normalizeText(value: unknown, optionLabels?: Map<string, string>): string {
-  return formatDisplayValue(value, optionLabels).toLowerCase();
+function getCellText<T extends BaseEntity>(
+  column: SharedTableColumn<T>,
+  value: unknown,
+  row: T,
+): string {
+  if (column.key === "name") {
+    const preferredDisplayName = getPreferredDisplayName(
+      row as Record<string, unknown>,
+    );
+
+    if (preferredDisplayName !== "N/A") {
+      return preferredDisplayName;
+    }
+  }
+
+  return formatDisplayValue(value, column.selectOptions);
 }
 
 function matchesDateRange(value: unknown, range: DateRangeValue): boolean {
@@ -140,7 +155,7 @@ export function SharedTable<T extends BaseEntity>({
       const localFilter = columnFilters[column.key];
 
       if (column.filterKind === "text" && typeof localFilter === "string" && localFilter.trim()) {
-        if (!normalizeText(value, column.selectOptions).includes(localFilter.trim().toLowerCase())) {
+        if (!getCellText(column, value, row).toLowerCase().includes(localFilter.trim().toLowerCase())) {
           return false;
         }
       }
@@ -299,7 +314,7 @@ export function SharedTable<T extends BaseEntity>({
         key: column.key,
         width: column.width,
         render: (value: unknown, row: T) =>
-          column.render ? column.render(value, row) : formatDisplayValue(value, column.selectOptions),
+          column.render ? column.render(value, row) : getCellText(column, value, row),
       };
     }),
   ];

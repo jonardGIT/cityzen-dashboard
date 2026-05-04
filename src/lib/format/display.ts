@@ -1,5 +1,41 @@
 import { formatDateLikeString } from "@/lib/format/date-time";
 
+function normalizeNamePart(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function getPreferredDisplayName(
+  value:
+    | {
+        firstName?: unknown;
+        middleName?: unknown;
+        lastName?: unknown;
+        suffix?: unknown;
+      }
+    | null
+    | undefined,
+): string {
+  const splitName = [
+    normalizeNamePart(value?.firstName),
+    normalizeNamePart(value?.middleName),
+    normalizeNamePart(value?.lastName),
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(" ");
+
+  const suffix = normalizeNamePart(value?.suffix);
+  const displayName = [splitName, suffix]
+    .filter((part): part is string => Boolean(part))
+    .join(" ");
+
+  return displayName.length > 0 ? displayName : "N/A";
+}
+
 export function humanizeKey(value: string): string {
   return value
     .replace(/([A-Z])/g, " $1")
@@ -29,18 +65,14 @@ export function formatDisplayValue(
 
   if (typeof value === "object") {
     const record = value as Record<string, unknown>;
-    const fullName = [record.firstName, record.lastName]
-      .filter(
-        (part): part is string => typeof part === "string" && part.length > 0,
-      )
-      .join(" ");
+    const preferredDisplayName = getPreferredDisplayName(record);
+
+    if (preferredDisplayName !== "N/A") {
+      return preferredDisplayName;
+    }
 
     if (typeof record.name === "string" && record.name.length > 0) {
       return record.name;
-    }
-
-    if (fullName.length > 0) {
-      return fullName;
     }
 
     if (typeof record.label === "string" && record.label.length > 0) {

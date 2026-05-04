@@ -54,7 +54,10 @@ export interface Severity extends BaseEntity {
 }
 
 export interface Citizen extends BaseEntity {
-  name?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
   contactInfo?: string;
   preferredChannel?: string;
 }
@@ -77,7 +80,10 @@ export interface Responder extends BaseEntity {
 
 export interface User extends BaseEntity {
   email?: string;
-  name?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
   role?: string;
 }
 

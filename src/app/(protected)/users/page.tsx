@@ -50,6 +50,7 @@ import {
   permissionListIncludes,
 } from "@/lib/auth/roles";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
+import { getPreferredDisplayName } from "@/lib/format/display";
 import type { ApiErrorPayload, JurisdictionType, User } from "@/types/api";
 import { Role, type UserCapabilities } from "@/types/auth";
 
@@ -77,14 +78,20 @@ type JurisdictionFormValues = {
 };
 
 interface CreateUserFormValues extends JurisdictionFormValues {
-  name: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  suffix?: string;
   email: string;
   password: string;
   role: Role;
 }
 
 interface EditUserFormValues extends JurisdictionFormValues {
-  name: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
   email: string;
   password?: string;
   role: Role;
@@ -180,8 +187,14 @@ function getAllowedJurisdictionTypes(role?: Role): JurisdictionType[] {
 }
 
 function buildCreatePayload(values: CreateUserFormValues) {
+  const middleName = values.middleName?.trim();
+  const suffix = values.suffix?.trim();
+
   return {
-    name: values.name.trim(),
+    firstName: values.firstName.trim(),
+    ...(middleName ? { middleName } : {}),
+    lastName: values.lastName.trim(),
+    ...(suffix ? { suffix } : {}),
     email: values.email.trim(),
     password: values.password.trim(),
     role: values.role,
@@ -195,10 +208,17 @@ function buildCreatePayload(values: CreateUserFormValues) {
 }
 
 function buildUpdatePayload(values: EditUserFormValues) {
+  const firstName = values.firstName?.trim();
+  const middleName = values.middleName?.trim();
+  const lastName = values.lastName?.trim();
+  const suffix = values.suffix?.trim();
+
   return {
-    name: values.name.trim(),
     email: values.email.trim(),
     role: values.role,
+    ...(firstName || middleName || lastName || suffix
+      ? { firstName, middleName, lastName, suffix }
+      : {}),
     ...(values.password?.trim() ? { password: values.password.trim() } : {}),
     ...(values.jurisdictionType && values.jurisdictionId
       ? {
@@ -207,6 +227,31 @@ function buildUpdatePayload(values: EditUserFormValues) {
         }
       : {}),
   };
+}
+
+function hasNameValue(value?: string): boolean {
+  return Boolean(value?.trim());
+}
+
+function validateSplitNamePair(
+  currentValue: string | undefined,
+  pairedValue: string | undefined,
+  currentLabel: string,
+): Promise<void> {
+  const hasCurrentValue = hasNameValue(currentValue);
+  const hasPairedValue = hasNameValue(pairedValue);
+
+  if (!hasCurrentValue && !hasPairedValue) {
+    return Promise.resolve();
+  }
+
+  if (!hasCurrentValue) {
+    return Promise.reject(
+      new Error(`${currentLabel} is required when editing a split name.`),
+    );
+  }
+
+  return Promise.resolve();
 }
 
 function applyInlineUserFormMessage(
@@ -900,7 +945,12 @@ export default function UsersPage() {
 
   const columns: Array<SharedTableColumn<UserTableRow>> = [
     { key: "email", title: "Email", filterKind: "text" },
-    { key: "name", title: "Name", filterKind: "text" },
+    {
+      key: "name",
+      title: "Name",
+      filterKind: "text",
+      render: (_value, row) => getPreferredDisplayName(row),
+    },
     {
       key: "role",
       title: "Role",
@@ -1044,7 +1094,10 @@ export default function UsersPage() {
     setEditingUser(normalizedRow);
     setIsEditOpen(true);
     editForm.setFieldsValue({
-      name: normalizedRow.name ?? "",
+      firstName: normalizedRow.firstName ?? undefined,
+      middleName: normalizedRow.middleName ?? undefined,
+      lastName: normalizedRow.lastName ?? undefined,
+      suffix: normalizedRow.suffix ?? undefined,
       email: normalizedRow.email ?? "",
       role: (normalizeRole(normalizedRow.role)
         ? normalizeRole(normalizedRow.role)
@@ -1357,10 +1410,23 @@ export default function UsersPage() {
           requiredMark={false}
         >
           <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: "Name is required" }]}
+            name="firstName"
+            label="First Name"
+            rules={[{ required: true, message: "First name is required" }]}
           >
+            <Input />
+          </Form.Item>
+          <Form.Item name="middleName" label="Middle Name">
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="lastName"
+            label="Last Name"
+            rules={[{ required: true, message: "Last name is required" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item name="suffix" label="Suffix">
             <Input />
           </Form.Item>
           <Form.Item
@@ -1413,10 +1479,43 @@ export default function UsersPage() {
           requiredMark={false}
         >
           <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: "Name is required" }]}
+            name="firstName"
+            label="First Name"
+            dependencies={["lastName"]}
+            rules={[
+              ({ getFieldValue }) => ({
+                validator: async (_, value) =>
+                  validateSplitNamePair(
+                    value,
+                    getFieldValue("lastName"),
+                    "First name",
+                  ),
+              }),
+            ]}
           >
+            <Input />
+          </Form.Item>
+          <Form.Item name="middleName" label="Middle Name">
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="lastName"
+            label="Last Name"
+            dependencies={["firstName"]}
+            rules={[
+              ({ getFieldValue }) => ({
+                validator: async (_, value) =>
+                  validateSplitNamePair(
+                    value,
+                    getFieldValue("firstName"),
+                    "Last name",
+                  ),
+              }),
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item name="suffix" label="Suffix">
             <Input />
           </Form.Item>
           <Form.Item

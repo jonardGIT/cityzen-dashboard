@@ -97,7 +97,24 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
     },
   ],
   users: [
-    { name: "name", label: "Name", type: "text", required: true },
+    {
+      name: "firstName",
+      label: "First Name",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "middleName",
+      label: "Middle Name",
+      type: "text",
+    },
+    {
+      name: "lastName",
+      label: "Last Name",
+      type: "text",
+      required: true,
+    },
+    { name: "suffix", label: "Suffix", type: "text" },
     { name: "email", label: "Email", type: "email", required: true },
     { name: "password", label: "Password", type: "password", required: true },
     {
@@ -111,7 +128,24 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
     },
   ],
   citizens: [
-    { name: "name", label: "Name", type: "text", required: true },
+    {
+      name: "firstName",
+      label: "First Name",
+      type: "text",
+      required: true,
+    },
+    {
+      name: "middleName",
+      label: "Middle Name",
+      type: "text",
+    },
+    {
+      name: "lastName",
+      label: "Last Name",
+      type: "text",
+      required: true,
+    },
+    { name: "suffix", label: "Suffix", type: "text" },
     { name: "contactInfo", label: "Contact Info", type: "text" },
     { name: "preferredChannel", label: "Preferred Channel", type: "text" },
   ],
@@ -261,8 +295,8 @@ const CREATE_REQUIRED_FIELDS: Partial<Record<string, string[]>> = {
   provinces: ["code", "name", "regionId"],
   "cities-municipalities": ["code", "name", "type", "provinceId"],
   barangays: ["code", "name", "cityMunicipalityId"],
-  users: ["name", "email", "password"],
-  citizens: ["name", "contactInfo", "preferredChannel"],
+  users: ["firstName", "lastName", "email", "password"],
+  citizens: ["firstName", "lastName", "contactInfo", "preferredChannel"],
   responders: ["name", "agencyId", "role", "contactInfo"],
   agencies: ["name"],
   statuses: ["name"],
@@ -334,7 +368,10 @@ export function getResourceFieldsForOperation(
   if (resourceName === "citizens" && operation === "linkMe") {
     return withRequiredFields(
       base.filter(
-        (field) => field.name === "name" || field.name === "preferredChannel",
+        (field) =>
+          field.name === "firstName" ||
+          field.name === "lastName" ||
+          field.name === "preferredChannel",
       ),
       OPERATION_REQUIRED_FIELDS.linkMe?.citizens,
     );

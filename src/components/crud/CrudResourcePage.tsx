@@ -43,6 +43,7 @@ import { extractListQueryValidation } from "@/components/crud/list-query-validat
 import { adaptPaginatedResponse } from "@/lib/api/pagination";
 import {
   formatDisplayValue,
+  getPreferredDisplayName,
   humanizeKey,
   isDateLikeFieldName,
 } from "@/lib/format/display";
@@ -323,6 +324,51 @@ function mergeOptionSource(
   };
 }
 
+function resolveOptionLabel(
+  item: Record<string, unknown>,
+  optionSource?: CrudFieldOptionSource,
+): string {
+  const labelField = optionSource?.labelField;
+
+  if (labelField) {
+    const explicitLabel = item[labelField];
+
+    if (
+      typeof explicitLabel === "string" &&
+      explicitLabel.trim().length > 0
+    ) {
+      return explicitLabel;
+    }
+
+    if (typeof explicitLabel === "number") {
+      return String(explicitLabel);
+    }
+  }
+
+  const splitNameLabel = getPreferredDisplayName(item);
+
+  if (splitNameLabel !== "N/A") {
+    return splitNameLabel;
+  }
+
+  if (typeof item.name === "string" && item.name.trim().length > 0) {
+    return item.name;
+  }
+
+  if (
+    typeof item.description === "string" &&
+    item.description.trim().length > 0
+  ) {
+    return item.description;
+  }
+
+  if (typeof item.id === "string" && item.id.trim().length > 0) {
+    return item.id;
+  }
+
+  return "Unknown";
+}
+
 export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   const { message } = App.useApp();
   const { user, capabilities, isAuthenticated } = useAuth();
@@ -568,17 +614,10 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
         }
 
         const valueField = optionSource?.valueField ?? "id";
-        const labelField = optionSource?.labelField ?? "name";
 
         return items.map((item) => ({
           value: String(item[valueField] ?? item.id ?? ""),
-          label: String(
-            item[labelField] ??
-              item.name ??
-              item.description ??
-              item.id ??
-              "Unknown",
-          ),
+          label: resolveOptionLabel(item, optionSource),
           description:
             typeof item.definition === "string"
               ? item.definition
@@ -846,7 +885,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       const parsed = extractErrorDetails(error);
 
       if (
-        parsed.status === 422 &&
+        (parsed.status === 400 || parsed.status === 422) &&
         applyValidationErrors(createForm, parsed.details)
       ) {
         message.error("Please correct the highlighted fields.");
@@ -875,7 +914,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       const parsed = extractErrorDetails(error);
 
       if (
-        parsed.status === 422 &&
+        (parsed.status === 400 || parsed.status === 422) &&
         applyValidationErrors(editForm, parsed.details)
       ) {
         message.error("Please correct the highlighted fields.");
@@ -942,7 +981,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
       const parsed = extractErrorDetails(error);
 
       if (
-        parsed.status === 422 &&
+        (parsed.status === 400 || parsed.status === 422) &&
         applyValidationErrors(form, parsed.details)
       ) {
         message.error("Please correct the highlighted fields.");

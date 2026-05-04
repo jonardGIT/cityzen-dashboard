@@ -21,7 +21,10 @@ export interface BaseEntity {
 }
 
 export interface Citizen extends BaseEntity {
-  name?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
   contactInfo?: string;
   preferredChannel?: string;
 }
@@ -127,7 +130,10 @@ export type UserJurisdictionType = JurisdictionType | "municipality";
 
 export interface User extends BaseEntity {
   email?: string;
-  name?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  suffix?: string;
   mobileNumber?: string | null;
   mobileNumberVerifiedAt?: string | null;
   citizenId?: string | null;

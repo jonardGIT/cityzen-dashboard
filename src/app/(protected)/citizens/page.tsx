@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCitizensQuery } from "@/features/reference-data/api";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { canAccessCrudResource } from "@/lib/auth/navigation";
+import { getPreferredDisplayName } from "@/lib/format/display";
 
 export default function CitizensPage() {
   const { user, capabilities, isAuthenticated } = useAuth();
@@ -43,11 +44,15 @@ export default function CitizensPage() {
           title: "Name",
           dataIndex: "name",
           key: "name",
-          render: (value: string | undefined, record: { id: string }) => (
+          render: (_value: string | undefined, record: { id: string }) => {
+            const displayName = getPreferredDisplayName(record);
+
+            return (
             <Link href={`/citizens/${record.id}`}>
-              {value || `Citizen ${record.id}`}
+                {displayName !== "N/A" ? displayName : `Citizen ${record.id}`}
             </Link>
-          ),
+            );
+          },
         },
         {
           title: "Contact",

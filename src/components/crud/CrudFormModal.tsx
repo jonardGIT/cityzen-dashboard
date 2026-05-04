@@ -673,7 +673,13 @@ export function toInitialFormValues(
   values: Record<string, unknown>,
   fields: CrudFieldConfig[],
 ) {
-  const normalized: Record<string, unknown> = { ...values };
+  const normalized: Record<string, unknown> = {};
+
+  for (const field of fields) {
+    if (values[field.name] !== undefined) {
+      normalized[field.name] = values[field.name];
+    }
+  }
 
   for (const field of fields) {
     if (field.type === "select") {
