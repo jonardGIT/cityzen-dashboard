@@ -2,126 +2,140 @@
 
 ## Purpose
 
-This document explains which endpoints are called when users log in, restore session, and perform CRUD operations in the dashboard.
+This document describes the dashboard's current pilot-boundary auth flow, capability hydration, and resource access behavior after syncing to the API-generated contract artifact.
 
 ## Base URLs and Clients
 
 - Backend API base: `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:3000/api/v1`)
-- Frontend API proxy base: `/api` (Next.js route handlers)
+- Frontend proxy base: `/api` (Next.js route handlers)
 
 Client behavior:
 
-- `publicClient`: sends `x-api-key` only, used for login/public endpoints.
-- `authClient`: sends `x-api-key` + `Authorization: Bearer <token>`.
-- Any `401` response clears auth storage and redirects to `/login`.
+- `publicClient`: used for public auth entrypoints through the frontend proxy.
+- `authClient`: used for authenticated backend calls and attaches `Authorization: Bearer <token>`.
+- Both clients preserve `x-api-key` behavior.
+- Any `401` response clears local auth state and redirects to `/login`.
 
 ## 1. Login Flow
 
 1. User submits credentials on `/login`.
-2. Frontend calls:
-   - `POST /auth/login` (via `publicClient`, backend `/api/v1/auth/login`)
-3. Token is stored in local storage.
-4. Frontend restores user profile by calling:
-   - `GET /auth/me` (via `authClient`, backend `/api/v1/auth/me`)
-5. User context is set and protected UI is enabled.
+2. Frontend calls `POST /api/auth/login` through `publicClient`.
+3. The auth proxy forwards to backend `POST /api/v1/auth/login`.
+4. The returned token/session payload is normalized and stored locally.
+5. Frontend restores the authenticated user with `GET /api/auth/me`.
+6. Frontend then hydrates capabilities with `GET /api/users/capabilities`.
+7. Protected navigation and action visibility are derived from both normalized role and capability payloads.
 
 ## 2. Session Restore Flow
 
-1. On app boot, token/user is read from local storage.
-2. If token exists, frontend calls:
-   - `GET /auth/me`
-3. Success keeps user authenticated.
-4. Failure clears storage and sends user to `/login`.
+1. On app boot, the dashboard reads the stored auth session and user snapshot.
+2. If a session exists, frontend calls `GET /api/auth/me`.
+3. On success, frontend refreshes `GET /api/users/capabilities`.
+4. On failure, local auth storage is cleared and the user is redirected to `/login`.
 
-## 3. Generic CRUD Operation Flow (/dashboard/[resource])
-
-The resource pages use endpoint metadata from `dashboard-crud-config.flat.json`.
-
-For each operation:
-
-1. Frontend resolves endpoint definition by `resource + operation`.
-2. Chooses client:
-   - `authRequired: true` -> `authClient`
-   - `authRequired: false` -> `publicClient`
-3. Calls method/path from config (examples):
-   - `GET /incidents`
-   - `POST /incidents`
-   - `PATCH /incidents/{id}`
-   - `DELETE /incidents/{id}`
-4. On success, React Query list cache is invalidated and table refreshes.
-
-## 4. Users Module Flow (Proxy-based)
-
-Users page is wired to Next.js API routes under `/api`.
-
-### List users
-
-- Frontend: `GET /api/users`
-- Next API route forwards to backend with fallback:
-  - `/admin/users`, then `/users`
-
-### Create user
-
-- Frontend: `POST /api/users`
-- Next API route forwards to backend with fallback:
-  - `/admin/users`, then `/users`
-
-### Capabilities check
+## 3. Capabilities Flow
 
 - Frontend: `GET /api/users/capabilities`
-- Current proxy implementation checks backend OpenAPI and infers booleans for:
+- Frontend proxy: forwards directly to backend `GET /api/v1/users/capabilities`
+- The dashboard consumes the upstream payload as the source of truth and normalizes:
+  - `role`
+  - `label`
+  - `permissions`
+  - `scope`
+  - `canManageUsers`
+  - `canCreateUser`
   - `canUpdateUser`
   - `canDeleteUser`
 
-## 5. Backend Direct vs Frontend Proxy for Capabilities
+The proxy no longer infers management booleans from OpenAPI. It forwards the backend capability payload directly.
 
-Two different paths can exist during testing:
+## 4. Contract-Driven Resource Flow
 
-- Backend direct: `GET /api/v1/users/capabilities`
-- Frontend proxy: `GET /api/users/capabilities`
+The dashboard loads endpoint metadata from `dashboard-crud-config.flat.json`, which is synced from the API copy at `xypes-cirs-api/docs/dashboard-crud-config.flat.json`.
 
-If backend implements direct endpoint first, proxy and direct can temporarily differ.
-Always validate both in QA when debugging capability mismatches.
+For contract-driven operations:
 
-## 6. Typical Endpoint Sequence by User Action
+1. Frontend resolves the endpoint by `resource + operation`.
+2. It chooses `authClient` or `publicClient` based on `authRequired`.
+3. It calls the configured method/path from the synced artifact.
+4. On mutation success, React Query invalidates the relevant list caches.
 
-### Open app (already logged in)
+Current pilot-boundary contract resources include:
 
-- `GET /auth/me`
-- resource list endpoints (based on current page)
+- `citizens`
+- `agencies`
+- `responders`
+- `statuses`
+- `categories`
+- `severities`
+- `incidents`
+- `assignments`
+- `users`
+- `adminUsers`
+- `adminUserMfaCompliance`
+- `adminUserAccessReview`
+- `adminSecurityDataGovernance`
+- `auditLogs`
 
-### Create incident (allowed roles)
+## 5. Custom Protected Surfaces vs Generic CRUD
 
-- optional option loads: `GET /statuses`, `GET /citizens`, `GET /categories`, `GET /severities`
-- submit: `POST /incidents`
-- refresh list: `GET /incidents`
+The contract artifact is broader than the dashboard's current generic CRUD navigation.
 
-### Viewer self-report incident
+- `assignments` remains a custom protected workflow surface at `/assignments`.
+- `audit-logs` remains a custom protected review surface at `/audit-logs`.
+- The dashboard should not reintroduce removed pilot routes such as geography or `mobile-content` navigation when they are absent from the synced contract artifact.
 
-- optional profile link: `POST /citizens/link-me`
-- submit report: `POST /incidents/report`
-- list refresh (viewer-scoped): `GET /incidents`
+## 6. Users Module Flow
 
-### Manage users (admin roles)
+### Users list and mutations
 
-- `GET /api/users`
+- Frontend: `GET /api/users`, `POST /api/users`, `PATCH /api/users/{id}`, `DELETE /api/users/{id}`
+- The Next.js proxy forwards to the backend users/admin-users endpoints using the existing fallback strategy.
+
+### Capability-aware access
+
+- Page and nav visibility require both a management role family and backend capability approval.
+- `canManageUsers`, `canCreateUser`, `canUpdateUser`, and `canDeleteUser` must all be honored when the backend provides them.
+- Role membership alone is not sufficient for create/update/delete UI.
+
+## 7. Typical Endpoint Sequence by User Action
+
+### Open app with an existing session
+
+- `GET /api/auth/me`
 - `GET /api/users/capabilities`
-- `POST /api/users` or `PATCH /api/users/{id}` or `DELETE /api/users/{id}`
+- current page data requests
 
-## 7. Error Handling Summary
+### Open assignments board
 
-- `401`: session cleared; user redirected to `/login`.
-- `403`: action forbidden by role/guard.
-- `422`: validation issue; frontend maps field errors when available.
-- `429`: rate-limit response, surfaced by API error handling.
-- `500`: unexpected backend/proxy error; should be investigated with server logs.
+- `GET /assignments`
+- assignment option sources as needed for the custom page
+
+### Create assignment from the custom assignments surface
+
+- option loads: `GET /incidents`, `GET /responders`
+- submit: `POST /assignments`
+- refresh: `GET /assignments`
+
+### Review audit logs
+
+- `GET /api/dashboard/audit-logs`
+- optional detail requests when the custom page opens a record detail view
+
+## 8. Error Handling Summary
+
+- `401`: session cleared, user redirected to `/login`.
+- `403`: authenticated but outside role or capability boundary.
+- `422`: validation issue, surfaced to forms when structured errors are present.
+- `429`: rate-limit response, surfaced through centralized API handling.
+- `503`: upstream service unavailable or backend schema drift state.
 
 ## Reference Files
 
-- `src/lib/api/clients.ts`
+- `src/features/auth/api.ts`
 - `src/context/AuthContext.tsx`
-- `src/features/dynamic-crud/api-client.ts`
-- `src/features/dynamic-crud/config.ts`
-- `src/app/api/users/route.ts`
+- `src/app/api/auth/[...path]/route.ts`
 - `src/app/api/users/capabilities/route.ts`
+- `src/lib/auth/navigation.ts`
+- `src/features/dynamic-crud/config.ts`
 - `dashboard-crud-config.flat.json`

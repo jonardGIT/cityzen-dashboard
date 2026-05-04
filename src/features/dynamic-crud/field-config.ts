@@ -237,24 +237,6 @@ const RESOURCE_FIELD_CONFIG: Record<string, CrudFieldConfig[]> = {
     { name: "outcome", label: "Outcome", type: "text" },
     { name: "notes", label: "Notes", type: "textarea" },
   ],
-  "mobile-content": [
-    { name: "slug", label: "Slug", type: "text", required: true },
-    { name: "title", label: "Title", type: "text", required: true },
-    { name: "summary", label: "Summary", type: "textarea" },
-    { name: "body", label: "Body", type: "textarea", required: true },
-    { name: "contentType", label: "Content Type", type: "text" },
-    { name: "placement", label: "Placement", type: "text" },
-    { name: "audience", label: "Audience", type: "text" },
-    { name: "imageUrl", label: "Image URL", type: "text" },
-    { name: "ctaLabel", label: "CTA Label", type: "text" },
-    { name: "ctaUrl", label: "CTA URL", type: "text" },
-    { name: "sortOrder", label: "Sort Order", type: "integer" },
-    { name: "isPublished", label: "Published", type: "boolean" },
-    { name: "publishedAt", label: "Published At", type: "datetime" },
-    { name: "startsAt", label: "Starts At", type: "datetime" },
-    { name: "endsAt", label: "Ends At", type: "datetime" },
-    { name: "metadata", label: "Metadata", type: "json" },
-  ],
 };
 
 const ROLE_OPTION_VALUES: Role[] = [
@@ -294,7 +276,6 @@ const CREATE_REQUIRED_FIELDS: Partial<Record<string, string[]>> = {
     "severityId",
   ],
   assignments: ["incidentId", "responderId"],
-  "mobile-content": ["slug", "title", "body"],
 };
 
 const OPERATION_REQUIRED_FIELDS: Partial<
@@ -321,7 +302,6 @@ const OPERATION_REQUIRED_FIELDS: Partial<
     severities: [],
     incidents: [],
     assignments: [],
-    "mobile-content": [],
   },
 };
 

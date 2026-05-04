@@ -37,10 +37,8 @@ import {
   useSeveritiesQuery,
   useStatusesQuery,
 } from "@/features/reference-data/api";
-import {
-  CAN_CREATE_ASSIGNMENT,
-  CAN_CREATE_INCIDENT,
-} from "@/lib/auth/permissions";
+import { canManageAssignments } from "@/lib/auth/navigation";
+import { CAN_CREATE_INCIDENT } from "@/lib/auth/permissions";
 import {
   formatDisplayDateTime as formatDateTime,
   formatDisplayRelativeTime as formatRelativeTime,
@@ -88,12 +86,16 @@ function buildIncidentListUrl(incidentId: string): string {
 
 export default function IncidentWorkspacePage() {
   const { message } = App.useApp();
-  const { hasRole } = useAuth();
+  const { user, capabilities, isAuthenticated, hasRole } = useAuth();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const incidentId = params.id;
   const isCitizenReporter = hasRole(Role.CITIZEN_REPORTER);
-  const canAssign = hasRole(...CAN_CREATE_ASSIGNMENT);
+  const canAssign = canManageAssignments({
+    role: user?.role,
+    capabilities,
+    isAuthenticated,
+  });
   const canManageIncident = hasRole(...CAN_CREATE_INCIDENT);
   const incidentQuery = useIncidentQuery(incidentId);
   const createAssignmentMutation = useCreateAssignmentMutation();
@@ -329,15 +331,11 @@ export default function IncidentWorkspacePage() {
                   Change status
                 </Button>
               </RoleGuard>
-              <RoleGuard allowedRoles={CAN_CREATE_ASSIGNMENT} disableOnly>
-                <Button
-                  type="primary"
-                  onClick={() => setAssignModalOpen(true)}
-                  disabled={!canAssign}
-                >
+              {canAssign ? (
+                <Button type="primary" onClick={() => setAssignModalOpen(true)}>
                   Assign responder
                 </Button>
-              </RoleGuard>
+              ) : null}
             </div>
           </div>
 
@@ -592,15 +590,11 @@ export default function IncidentWorkspacePage() {
                   Change status
                 </Button>
               </RoleGuard>
-              <RoleGuard allowedRoles={CAN_CREATE_ASSIGNMENT} disableOnly>
-                <Button
-                  type="primary"
-                  onClick={() => setAssignModalOpen(true)}
-                  disabled={!canAssign}
-                >
+              {canAssign ? (
+                <Button type="primary" onClick={() => setAssignModalOpen(true)}>
                   Assign responder
                 </Button>
-              </RoleGuard>
+              ) : null}
               {isCitizenReporter ? null : (
                 <Button onClick={() => router.push("/assignments")}>
                   Open assignments board

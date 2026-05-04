@@ -70,6 +70,11 @@ const ASSIGNMENT_PERMISSION_HINTS = [
   "assignment:read:own",
 ];
 
+const ASSIGNMENT_MANAGEMENT_PERMISSION_HINTS = [
+  "assignment:create:city",
+  "assignment:update:city",
+];
+
 const AGENCY_PERMISSION_HINTS = [
   "agency:manage:city",
   "agency:manage:province",
@@ -77,14 +82,6 @@ const AGENCY_PERMISSION_HINTS = [
 ];
 
 const REFERENCE_DATA_PERMISSION_HINTS = ["reference:manage:city"];
-
-const MOBILE_CONTENT_PERMISSION_HINTS = [
-  "mobile_content:create:city",
-  "mobile_content:read:city",
-  "mobile_content:update:city",
-  "mobile_content:publish:city",
-  "mobile_content:archive:city",
-];
 
 const CRUD_RESOURCE_PERMISSION_HINTS: Partial<
   Record<string, readonly string[]>
@@ -95,7 +92,6 @@ const CRUD_RESOURCE_PERMISSION_HINTS: Partial<
   statuses: REFERENCE_DATA_PERMISSION_HINTS,
   categories: REFERENCE_DATA_PERMISSION_HINTS,
   severities: REFERENCE_DATA_PERMISSION_HINTS,
-  "mobile-content": MOBILE_CONTENT_PERMISSION_HINTS,
 };
 
 const CITIZEN_SELF_SERVICE_PERMISSION_HINTS = [
@@ -143,6 +139,17 @@ export function canAccessCrudResource(
   }
 
   return permissionsAllow(context.capabilities, hints);
+}
+
+export function canManageAssignments(context: NavigationContext): boolean {
+  if (!canAccessCrudResource(context, "assignments")) {
+    return false;
+  }
+
+  return permissionsAllow(
+    context.capabilities,
+    ASSIGNMENT_MANAGEMENT_PERMISSION_HINTS,
+  );
 }
 
 function canAccessCitizenSelfService(context: NavigationContext): boolean {
@@ -288,45 +295,10 @@ export function getNavigationItems(context: NavigationContext) {
       visible: () => canAccessCrudResource(context, "severities"),
     },
     {
-      key: "/dashboard/regions",
-      label: "Regions",
-      href: "/dashboard/regions",
-      resource: "regions",
-      visible: () => canAccessCrudResource(context, "regions"),
-    },
-    {
-      key: "/dashboard/provinces",
-      label: "Provinces",
-      href: "/dashboard/provinces",
-      resource: "provinces",
-      visible: () => canAccessCrudResource(context, "provinces"),
-    },
-    {
-      key: "/dashboard/cities-municipalities",
-      label: "Cities / Municipalities",
-      href: "/dashboard/cities-municipalities",
-      resource: "cities-municipalities",
-      visible: () => canAccessCrudResource(context, "cities-municipalities"),
-    },
-    {
-      key: "/dashboard/barangays",
-      label: "Barangays",
-      href: "/dashboard/barangays",
-      resource: "barangays",
-      visible: () => canAccessCrudResource(context, "barangays"),
-    },
-    {
       key: "/users",
       label: "Users",
       href: "/users",
       visible: () => canAccessUserManagement(context),
-    },
-    {
-      key: "/dashboard/mobile-content",
-      label: "Mobile Content",
-      href: "/dashboard/mobile-content",
-      resource: "mobile-content",
-      visible: () => canAccessCrudResource(context, "mobile-content"),
     },
     {
       key: "/audit-logs",

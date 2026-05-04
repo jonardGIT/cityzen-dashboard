@@ -1,152 +1,185 @@
 # User Capabilities Testing Guide
 
 ## Purpose
-Use this guide to validate role-based access for each seeded QA user in the dashboard.
+
+Use this guide to validate dashboard access against the current API pilot boundary. The contract source of truth is the synced `dashboard-crud-config.flat.json` copy from the API repo, plus the live `/users/capabilities` payload returned for the authenticated user.
 
 ## Developer Setup
+
 Before testing user capabilities, complete environment setup in:
+
 - `docs/developer-testing-setup.md`
 
-## Test Accounts
-- SYSTEM_ADMIN: admin@xypes.local / Password123!
-- DEPARTMENT_MANAGER: ops.lead@xypes.local / Password123!
-- DISPATCHER: dispatcher@xypes.local / Password123!
-- RESPONDER: supervisor@xypes.local / Password123!
-- CITIZEN_REPORTER: analyst@xypes.local / Password123!
-- AUDITOR: auditor@xypes.local / Password123!
+## Pilot Role Model
 
-## Best-Fit Role Assignment (Who Should Hold Each Role)
-- SYSTEM_ADMIN: Platform owner, system architect, or lead DevOps engineer responsible for global configuration, emergency access, and account governance.
-- DEPARTMENT_MANAGER: Operations lead, incident command center head, or city emergency coordinator managing day-to-day records and team workflows.
-- SUPERVISOR: Shift lead or operations supervisor overseeing dispatchers and responders, with broader operational write access but not top-level governance.
-- DISPATCHER: Dispatch desk staff, radio/communications operator, or duty officer coordinating incident triage and assignments.
-- RESPONDER: On-ground responders who need to read and update assigned operational work but should not manage users.
-- CITIZEN_REPORTER: Public or partner users who need self-service incident reporting and profile linking tied to their own scope.
-- AUDITOR: Compliance or review staff who need audit-log visibility without operational write access.
+The dashboard should validate against the current pilot role family, not the older `SYSTEM_ADMIN` / `DEPARTMENT_MANAGER` naming:
 
-## Role Skill and Risk Matrix
-| Role | Required Skills | Primary Responsibilities | Blast Radius |
-| --- | --- | --- | --- |
-| SYSTEM_ADMIN | Advanced platform administration, access control, incident governance, rollback planning | Global configuration, privileged user management, emergency recovery actions | High |
-| DEPARTMENT_MANAGER | Operations management, workflow validation, data quality oversight | Manage operational master data and users, ensure process continuity | High |
-| SUPERVISOR | Command oversight, dispatch workflow review, incident coordination | Manage incident and assignment operations across a wider team scope | Medium |
-| DISPATCHER | Incident triage, communication coordination, assignment handling | Create/update incidents, coordinate and manage assignments | Medium |
-| RESPONDER | Field operations, incident reporting discipline, status updates | Update assigned operational work and provide on-ground updates | Medium |
-| CITIZEN_REPORTER | Basic self-service reporting, evidence submission | Report own incidents, link citizen profile, review own-scope records | Low |
-| AUDITOR | Audit review, controls verification, evidence handling | Review audit trails and request histories without operational mutation access | Low |
+- `NATIONAL_ADMIN`
+- `REGIONAL_DIRECTOR`
+- `PROVINCIAL_ADMIN`
+- `CITY_ADMIN`
+- `CITY_CONTENT_EDITOR`
+- `DISPATCHER`
+- `RESPONDER`
+- `CITIZEN_REPORTER`
+- `AUDITOR`
+
+Legacy aliases may still be normalized in frontend code for backward compatibility, but QA expectations should use the pilot role names above.
+
+## Seeded QA Baseline Accounts
+
+The local pilot seed commonly includes these baseline accounts:
+
+- `NATIONAL_ADMIN`: `admin@xypes.local` / `Password123!`
+- `CITY_ADMIN`: `ops.lead@xypes.local` / `Password123!`
+- `DISPATCHER`: `dispatcher@xypes.local` / `Password123!`
+- `RESPONDER`: `supervisor@xypes.local` / `Password123!`
+- `CITIZEN_REPORTER`: `analyst@xypes.local` / `Password123!`
+- `AUDITOR`: `auditor@xypes.local` / `Password123!`
+
+`REGIONAL_DIRECTOR`, `PROVINCIAL_ADMIN`, and `CITY_CONTENT_EDITOR` should be validated when those fixtures are seeded in the active environment.
 
 ## Global Rules
-- Authentication required for protected pages and protected API endpoints.
-- User management is explicit, not based on a universal role ladder.
-- `SYSTEM_ADMIN` can assign or manage `DEPARTMENT_MANAGER`, `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, and `CITIZEN_REPORTER`.
-- `DEPARTMENT_MANAGER` can assign or manage `SUPERVISOR`, `DISPATCHER`, `RESPONDER`, and `CITIZEN_REPORTER`.
-- `AUDITOR` is read-oriented and is not an assignable subordinate role in dashboard user-management flows.
-- `GET /users/capabilities` is available to any authenticated user and returns role, label, permissions, scope, `canUpdateUser`, and `canDeleteUser`.
-- Dashboard route and navigation checks should rely on scoped capability keys such as `incident:read:department`, `assignment:read:assigned`, `audit:read:global`, and `citizen:link:self`.
-- CITIZEN_REPORTER incident access is restricted to their own records or explicit self-service flows.
-- `401` indicates missing or invalid token or API key forwarding. `403` indicates authenticated role mismatch.
 
-## Capability Matrix (Expected)
-Legend:
-- Y = allowed
-- N = not allowed
-- R = restricted (owner/self or backend-filtered)
+- Authentication is required for protected pages and protected API endpoints.
+- Navigation and protected-route checks should be capability-aware, not role-only.
+- `/api/users/capabilities` is available to any authenticated user and is the dashboard's source of truth for scoped permission flags.
+- User-management UI must honor backend booleans such as `canManageUsers`, `canCreateUser`, `canUpdateUser`, and `canDeleteUser` when they are present.
+- `assignments` remains a custom workflow page; create/respond actions should only appear when assignment-management capabilities are present.
+- `audit-logs` remains a custom protected review surface.
+- Geography and `mobile-content` navigation are not part of the current pilot-boundary dashboard contract.
+- `401` indicates missing or invalid auth. `403` indicates an authenticated role or capability mismatch.
 
-| Capability | SYSTEM_ADMIN | DEPARTMENT_MANAGER | SUPERVISOR | DISPATCHER | RESPONDER | CITIZEN_REPORTER | AUDITOR |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Dashboard access | Y | Y | Y | Y | Y | R | Y |
-| Citizens list/get/create | Y | Y | N | N | N | N | N |
-| Citizens update/delete | Y | Y | N | N | N | N | N |
-| Citizens link profile (`/citizens/link-me`) | N | N | N | N | N | Y | N |
-| Agencies create/update/delete | Y | Y | N | N | N | N | N |
-| Responders create/update/delete | Y | Y | N | N | N | N | N |
-| Statuses create/update/delete | Y | Y | N | N | N | N | N |
-| Categories create/update/delete | Y | Y | N | N | N | N | N |
-| Severities create/update/delete | Y | Y | N | N | N | N | N |
-| Incidents list/get | Y | Y | Y | Y | Y | R | Y |
-| Incidents create/update/delete | Y | Y | Y | Y | Y | N | N |
-| Incidents report (`/incidents/report`) | N | N | N | N | N | Y | N |
-| Assignments list/get | Y | Y | Y | Y | Y | N | N |
-| Assignments create/update/delete | Y | Y | Y | Y | N | N | N |
-| Audit logs list/get | Y | N | N | N | N | N | Y |
-| Users list/get/create | Y | Y | N | N | N | N | N |
-| Users update/delete | Y | R | N | N | N | N | N |
-| Users capabilities | Y | Y | Y | Y | Y | Y | Y |
+## Capability Guidance
 
-## Live Validation Snapshot (March 30, 2026)
-Verified directly against `http://localhost:3000/api/v1` with `x-api-key: local-dev-key`:
+The dashboard should prefer the scoped capability keys returned by the backend. Important examples in the current pilot flow include:
 
-| Account | `/auth/me role` | `/users/capabilities` | `/citizens` | `/incidents` | `/incidents/report` | `/citizens/link-me` | `/audit-logs` | `/users` |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| admin@xypes.local | SYSTEM_ADMIN | 200 | 200 | 200 | 403 | 403 | 200 | 200 |
-| ops.lead@xypes.local | DEPARTMENT_MANAGER | 200 | 200 | 200 | 403 | 403 | 403 | 200 |
-| dispatcher@xypes.local | DISPATCHER | 200 | 403 | 200 | 403 | 403 | 403 | 403 |
-| supervisor@xypes.local | RESPONDER | 200 | 403 | 200 | 403 | 403 | 403 | 403 |
-| analyst@xypes.local | CITIZEN_REPORTER | 200 | 403 | 422 | 400 | 201 | 403 | 403 |
-| auditor@xypes.local | AUDITOR | 200 | 403 | 200 | 403 | 403 | 200 | 403 |
+- `incident:read:self`
+- `incident:read:assigned`
+- `incident:read:city`
+- `incident:read:province`
+- `incident:read:region`
+- `incident:read:global`
+- `assignment:create:city`
+- `assignment:update:city`
+- `assignment:read:own`
+- `citizen:link:self`
+- `audit:read:global`
+- `audit:export:global`
+- `user:create:city`
+- `user:update:city`
+- `user:delete:city`
+- `user:manage:city`
 
-Notes from live validation:
-- The backend already emits the new role names in login and `/auth/me` payloads.
-- `DEPARTMENT_MANAGER` currently receives `canDeleteUser: false` from `/users/capabilities`, so the frontend must honor capability flags in addition to role checks.
-- `CITIZEN_REPORTER` currently has `scope: "own"` and a successful `citizens/link-me` flow.
-- The dashboard contract expects scoped capability keys for read access, for example `incident:read:global` and `audit:read:global`, even if an older environment still emits transitional broad keys.
-- The local frontend proxy at `http://localhost:3001/api/users/capabilities` was not reachable during this smoke test, so proxy behavior still requires a live frontend dev server for manual validation.
+When backend booleans are present for the Users module, the dashboard must treat them as authoritative over looser role assumptions.
 
-## Users Module Expected Behavior
-### SYSTEM_ADMIN
-- Can create DEPARTMENT_MANAGER, SUPERVISOR, DISPATCHER, RESPONDER, and CITIZEN_REPORTER.
-- Can edit/delete only the explicit manageable roles listed above, subject to capability flags.
-- `GET /api/users/capabilities` should indicate user management is enabled.
+## Pilot Boundary Summary
 
-### DEPARTMENT_MANAGER
-- Can create SUPERVISOR, DISPATCHER, RESPONDER, CITIZEN_REPORTER.
-- Cannot create SYSTEM_ADMIN, AUDITOR, or peer DEPARTMENT_MANAGER users.
-- Backend currently reports update enabled and delete disabled in the local seed environment.
+This is the current dashboard-facing pilot resource boundary reflected by the synced contract artifact:
 
-### DISPATCHER
-- No Users module access.
+- Core operational/custom surfaces: `incidents`, `assignments`, `audit-logs`, `users`
+- Generic or shared CRUD-backed resources: `citizens`, `agencies`, `responders`, `statuses`, `categories`, `severities`
+- Contract-backed admin/audit resources present in the artifact: `adminUsers`, `adminUserMfaCompliance`, `adminUserAccessReview`, `adminSecurityDataGovernance`, `auditLogs`
 
-### RESPONDER
-- No Users module access.
+The dashboard should not assume removed pilot resources such as geography management or `mobile-content` are still available just because older code paths or docs mention them.
 
-### CITIZEN_REPORTER
-- No Users module access.
+## Expected Access Patterns
 
-### AUDITOR
-- Audit log UI access and incident read access.
-- No Users module access.
+### `NATIONAL_ADMIN`
+
+- Full access to protected operational surfaces.
+- User-management access remains capability-aware, not unconditional.
+- Can access national-only admin resources such as `adminUsers` when the synced contract exposes them.
+
+### `REGIONAL_DIRECTOR`, `PROVINCIAL_ADMIN`, `CITY_ADMIN`
+
+- Operational management access is bounded by scoped capabilities.
+- `users/list` is allowed by the current pilot contract for this LGU admin family.
+- Create, update, and delete actions must still follow the backend capability payload.
+
+### `CITY_CONTENT_EDITOR`
+
+- Included in current pilot MFA optional endpoints and read access to configured reference-data resources.
+- Should not be treated as a general user-management or assignments-management role without explicit capabilities.
+
+### `DISPATCHER`
+
+- Operational incident and assignment access.
+- No Users module navigation unless backend capability data explicitly allows it.
+
+### `RESPONDER`
+
+- Incident read/update behavior remains scoped.
+- No assignment-create UI unless the backend actually emits assignment-management capabilities.
+
+### `CITIZEN_REPORTER`
+
+- Self-service routing only.
+- Incident reporting and citizen profile linking are scoped to self-service capabilities.
+- Should not receive operational navigation such as assignments or audit logs.
+
+### `AUDITOR`
+
+- Audit review access.
+- Incident read access where the backend emits the required audit-safe incident permissions.
+- No user-management or assignment-management UI unless explicitly granted by backend capabilities.
+
+## Live Validation Snapshot
+
+Latest local smoke observations should be recorded against:
+
+- `GET /api/v1/auth/me`
+- `GET /api/v1/users/capabilities`
+- the relevant protected dashboard page
+
+At minimum, verify that:
+
+- the backend emits pilot role names
+- the dashboard normalizes legacy aliases without showing legacy labels in QA guidance
+- protected navigation matches both role family and capabilities
+- user-management buttons honor backend booleans when provided
+- assignment create actions are hidden when only assignment read access is present
 
 ## Test Checklist Per User
-For each account:
-1. Login succeeds and lands on dashboard.
-2. Sidebar and landing route reflect capability scope, including self-service routing for citizen users.
-3. For each visible module, verify create/edit/delete button visibility and behavior matches matrix.
-4. Attempt direct navigation to forbidden pages (for example `/users`) and verify forbidden behavior.
-5. Verify API rejects disallowed actions with `403` and UI surfaces clear unauthorized state.
-6. Verify `401` states clearly indicate missing auth or API-key forwarding problems.
-6. Verify allowed actions succeed and list refreshes.
 
-## Focused API Checks (Optional)
-Use token from each user and test:
+For each account under test:
+
+1. Login succeeds and the landing route matches the user's capability scope.
+2. Sidebar navigation reflects the current pilot boundary only.
+3. Direct navigation to a forbidden protected route returns a forbidden state or equivalent denial UI.
+4. Visible create/update/delete actions align with both role family and backend capability payload.
+5. `assignments` create actions appear only when assignment-management capability keys are present.
+6. Users module actions honor `canManageUsers`, `canCreateUser`, `canUpdateUser`, and `canDeleteUser` when returned.
+7. Citizen self-service users are routed to self-service pages, not operator pages.
+8. Audit-only users can reach audit views without receiving operator mutation UI.
+
+## Focused API Checks
+
+Use a token for the active user and validate the contract directly where needed:
+
+- `GET /api/v1/auth/me`
+- `GET /api/v1/users/capabilities`
 - `GET /api/v1/incidents`
 - `POST /api/v1/incidents`
-- `POST /api/v1/incidents/report`
-- `POST /api/v1/citizens/link-me`
+- `GET /api/v1/assignments`
+- `POST /api/v1/assignments`
 - `GET /api/v1/audit-logs`
 - `GET /api/v1/users`
-- `POST /api/v1/users`
-- `GET /api/v1/users/capabilities`
+- `GET /api/v1/admin/users`
 
 Expected:
-- Disallowed operations return `403`.
-- Citizen Reporter records are filtered to owner records or self-service flows.
-- User management follows the explicit assignable-role contract plus capability flags.
+
+- unauthenticated requests fail with `401`
+- authenticated but out-of-scope requests fail with `403`
+- self-service flows remain scoped to the authenticated citizen reporter
+- assignment creation and user-management behavior match the backend capability payload, not just the frontend role family
 
 ## Source of Truth
+
 - `dashboard-crud-config.flat.json`
-- `src/lib/auth/permissions.ts`
+- `/home/nhad/xypes/xypes-cirs-api/docs/dashboard-crud-config.flat.json`
 - `src/lib/auth/navigation.ts`
+- `src/lib/auth/permissions.ts`
 - `src/lib/auth/roles.ts`
-- `src/features/dynamic-crud/permissions.ts`
-- `src/features/users/api.ts`
-- `README.md` (seeded QA accounts)
+- `src/features/auth/api.ts`
+- `src/features/dynamic-crud/config.ts`

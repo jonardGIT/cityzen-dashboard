@@ -81,9 +81,9 @@ To compare the dashboard CRUD config against a live backend OpenAPI document, us
 npm run check:openapi-drift
 ```
 
-By default this uses `NEXT_PUBLIC_API_BASE_URL` from `.env.local` and requests `/openapi.json`. You can override that with `OPENAPI_URL`. Do not point this at production-like environments where OpenAPI is intentionally disabled.
+By default this uses `NEXT_PUBLIC_API_BASE_URL` from `.env.local` and requests `/openapi.json`. If that fetch fails, or if the target only exposes the local-only placeholder document, the script falls back to a checked-in OpenAPI document derived from `dashboard-crud-config.flat.json`. You can override the live URL with `OPENAPI_URL`. Do not point this at production-like environments where full OpenAPI is intentionally disabled.
 
-When the backend is offline, or when the target environment runs with `NODE_ENV=production`, validate against a saved spec file instead:
+When you want drift checking against a specific saved backend artifact instead of the checked-in fallback, validate against a saved spec file:
 
 ```bash
 npm run check:openapi-drift -- --spec-file /tmp/xypes-openapi.json

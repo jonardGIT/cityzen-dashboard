@@ -28,8 +28,10 @@ import {
 } from "@/features/assignments/api";
 import { useIncidentsQuery } from "@/features/incidents/api";
 import { useRespondersQuery } from "@/features/reference-data/api";
-import { canAccessCrudResource } from "@/lib/auth/navigation";
-import { CAN_CREATE_ASSIGNMENT } from "@/lib/auth/permissions";
+import {
+  canAccessCrudResource,
+  canManageAssignments,
+} from "@/lib/auth/navigation";
 import { mapValidationErrorsToForm } from "@/lib/forms/mapValidationErrors";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import {
@@ -57,14 +59,15 @@ interface AssignmentFormValues {
 
 export default function AssignmentsPage() {
   const { message } = App.useApp();
-  const { user, capabilities, isAuthenticated, hasRole } = useAuth();
+  const { user, capabilities, isAuthenticated } = useAuth();
   const router = useRouter();
+  const authNavigationContext = {
+    role: user?.role,
+    capabilities,
+    isAuthenticated,
+  };
   const canAccessPage = canAccessCrudResource(
-    {
-      role: user?.role,
-      capabilities,
-      isAuthenticated,
-    },
+    authNavigationContext,
     "assignments",
   );
   const listQuery = useListQueryParams();
@@ -248,7 +251,7 @@ export default function AssignmentsPage() {
     return <ErrorState message={String(assignmentsQuery.error)} />;
   }
 
-  const canCreate = hasRole(...CAN_CREATE_ASSIGNMENT);
+  const canCreate = canManageAssignments(authNavigationContext);
   const linkedIncidentCount = visibleRows.filter((item) =>
     Boolean(item.incidentId),
   ).length;

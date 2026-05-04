@@ -48,9 +48,7 @@
   composes: metricLabel from "../../../components/layout/ProtectedPage.module.css";
 }
 
-.controlCard,
-.tableCard,
-.sidebarCard {
+.controlCard {
   composes: surfaceCard from "../../../components/layout/ProtectedPage.module.css";
 }
 
@@ -72,56 +70,68 @@
   gap: 16px;
 }
 
+.tableCard {
+  composes: surfaceCard from "../../../components/layout/ProtectedPage.module.css";
+}
+
+.compactTable :global(.ant-card-body) {
+  padding-top: 16px;
+}
+
+.compactTable :global(.ant-table) {
+  border-radius: 12px;
+}
+
 .sectionHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
+  composes: sectionHeader from "../../../components/layout/ProtectedPage.module.css";
 }
 
 .sectionTitle {
-  composes: sectionHeader from "../../../components/layout/ProtectedPage.module.css";
-  color: rgba(16, 36, 63, 0.64);
+  composes: sectionTitle from "../../../components/layout/ProtectedPage.module.css";
 }
 
-  composes: sectionTitle from "../../../components/layout/ProtectedPage.module.css";
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.sectionDescription {
   composes: sectionDescription from "../../../components/layout/ProtectedPage.module.css";
+}
+
+.sidebarCard {
+  composes: surfaceCard from "../../../components/layout/ProtectedPage.module.css";
+}
+
+.sidebarList {
+  composes: sidebarList from "../../../components/layout/ProtectedPage.module.css";
+}
 
 .sidebarItem {
-  padding-bottom: 12px;
-  composes: sidebarList from "../../../components/layout/ProtectedPage.module.css";
-.sidebarItem:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
   composes: sidebarItem from "../../../components/layout/ProtectedPage.module.css";
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+}
+
+.sidebarLabel {
   composes: sidebarLabel from "../../../components/layout/ProtectedPage.module.css";
+}
+
+.cellStack {
+  composes: cellStack from "../../../components/layout/ProtectedPage.module.css";
+}
 
 .cellMeta {
-  color: rgba(16, 36, 63, 0.56);
-  composes: cellStack from "../../../components/layout/ProtectedPage.module.css";
-  border-bottom: 0;
-  padding-bottom: 0;
-}
   composes: cellMeta from "../../../components/layout/ProtectedPage.module.css";
 }
 
 @media (max-width: 1100px) {
-  .contentGrid {
+  .heroMetrics {
     grid-template-columns: 1fr 1fr;
   }
 
-@media (max-width: 1100px) {
-  .heroMetrics,
   .contentGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
+}
 
+@media (max-width: 768px) {
+  .heroHeader,
+  .controlHeader {
+    flex-direction: column;
     align-items: flex-start;
   }
 

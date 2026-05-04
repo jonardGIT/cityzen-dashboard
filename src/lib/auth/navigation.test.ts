@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canAccessAuditLogs,
+  canManageAssignments,
   canAccessUserManagement,
   getNavigationItems,
 } from "@/lib/auth/navigation";
@@ -166,21 +167,8 @@ describe("auth navigation", () => {
       true,
     );
     expect(items.some((item) => item.href === "/dashboard")).toBe(false);
-    expect(
-      items.some((item) => item.href === "/dashboard/mobile-content"),
-    ).toBe(false);
-    expect(items.some((item) => item.href === "/dashboard/regions")).toBe(
-      false,
-    );
-    expect(items.some((item) => item.href === "/dashboard/provinces")).toBe(
-      false,
-    );
-    expect(
-      items.some((item) => item.href === "/dashboard/cities-municipalities"),
-    ).toBe(false);
-    expect(items.some((item) => item.href === "/dashboard/barangays")).toBe(
-      false,
-    );
+    expect(items.some((item) => item.href === "/assignments")).toBe(false);
+    expect(items.some((item) => item.href === "/audit-logs")).toBe(false);
   });
 
   it("hides capability-scoped resource tabs for a national admin with no matching permissions", () => {
@@ -207,23 +195,10 @@ describe("auth navigation", () => {
     expect(items.some((item) => item.href === "/statuses")).toBe(false);
     expect(items.some((item) => item.href === "/categories")).toBe(false);
     expect(items.some((item) => item.href === "/severities")).toBe(false);
-    expect(
-      items.some((item) => item.href === "/dashboard/mobile-content"),
-    ).toBe(false);
-    expect(items.some((item) => item.href === "/dashboard/regions")).toBe(true);
-    expect(items.some((item) => item.href === "/dashboard/provinces")).toBe(
-      true,
-    );
-    expect(
-      items.some((item) => item.href === "/dashboard/cities-municipalities"),
-    ).toBe(true);
-    expect(items.some((item) => item.href === "/dashboard/barangays")).toBe(
-      true,
-    );
     expect(items.some((item) => item.href === "/users")).toBe(true);
   });
 
-  it("shows geography navigation for read-allowed operational roles", () => {
+  it("keeps dispatch-tier navigation focused on the current pilot resource set", () => {
     const dispatcherCaps = capabilities({
       role: Role.DISPATCHER,
       label: "Dispatcher",
@@ -237,28 +212,38 @@ describe("auth navigation", () => {
       isAuthenticated: true,
     });
 
-    expect(items.some((item) => item.href === "/dashboard/regions")).toBe(true);
+    expect(items.some((item) => item.href === "/assignments")).toBe(false);
+    expect(items.some((item) => item.href === "/dashboard/agencies")).toBe(
+      false,
+    );
+    expect(items.some((item) => item.href === "/statuses")).toBe(false);
   });
 
-  it("hides geography management navigation for roles without geography access", () => {
-    const citizenCaps = capabilities({
-      role: Role.CITIZEN_REPORTER,
-      label: "Citizen Reporter",
-      permissions: ["incident:create:self", "incident:read:self"],
-      scope: ["own"],
-    });
-
-    const items = getNavigationItems({
-      role: Role.CITIZEN_REPORTER,
-      capabilities: citizenCaps,
-      isAuthenticated: true,
-    });
-
-    expect(items.some((item) => item.resource === "regions")).toBe(false);
-    expect(items.some((item) => item.resource === "provinces")).toBe(false);
+  it("requires assignment management capabilities before showing create actions", () => {
     expect(
-      items.some((item) => item.resource === "cities-municipalities"),
+      canManageAssignments({
+        role: Role.CITY_ADMIN,
+        capabilities: capabilities({
+          role: Role.CITY_ADMIN,
+          label: "City Admin",
+          permissions: ["assignment:read:own"],
+          scope: ["city:city-1"],
+        }),
+        isAuthenticated: true,
+      }),
     ).toBe(false);
-    expect(items.some((item) => item.resource === "barangays")).toBe(false);
+
+    expect(
+      canManageAssignments({
+        role: Role.CITY_ADMIN,
+        capabilities: capabilities({
+          role: Role.CITY_ADMIN,
+          label: "City Admin",
+          permissions: ["assignment:create:city"],
+          scope: ["city:city-1"],
+        }),
+        isAuthenticated: true,
+      }),
+    ).toBe(true);
   });
 });

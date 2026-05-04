@@ -14,7 +14,6 @@ import {
   SafetyOutlined,
   ProfileOutlined,
   ApartmentOutlined,
-  NotificationOutlined,
 } from "@ant-design/icons";
 import {
   Avatar,
@@ -74,8 +73,6 @@ function iconForResource(resource: string) {
       return <TeamOutlined />;
     case "users":
       return <UserOutlined />;
-    case "mobile-content":
-      return <NotificationOutlined />;
     case "audit-logs":
       return <FileSearchOutlined />;
     case "profile":

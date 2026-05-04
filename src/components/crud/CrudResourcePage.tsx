@@ -77,6 +77,16 @@ import { Role } from "@/types/auth";
 
 const { Title } = Typography;
 
+const CUSTOM_ONLY_CRUD_RESOURCES = new Set([
+  "assignments",
+  "users",
+  "adminUsers",
+  "adminUserMfaCompliance",
+  "adminUserAccessReview",
+  "adminSecurityDataGovernance",
+  "auditLogs",
+]);
+
 function discoverTableKeys(rows: BaseEntity[]): string[] {
   const maxColumns = 6;
   const dateColumnReserve = 2;
@@ -317,6 +327,7 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
   const { message } = App.useApp();
   const { user, capabilities, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const isCustomOnlyResource = CUSTOM_ONLY_CRUD_RESOURCES.has(resourceName);
   const [createOpen, setCreateOpen] = useState(false);
   const [linkMeOpen, setLinkMeOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -417,7 +428,8 @@ export function CrudResourcePage({ resourceName }: { resourceName: string }) {
     isAuthenticated,
   );
   const canUseSelfService = canLinkMe || canReport;
-  const canAccessPage = hasDirectResourceAccess || canUseSelfService;
+  const canAccessPage =
+    !isCustomOnlyResource && (hasDirectResourceAccess || canUseSelfService);
   const isSelfServiceUser = isCitizenSelfServiceUser(user?.role, capabilities);
 
   const specialMutation = useMutation({

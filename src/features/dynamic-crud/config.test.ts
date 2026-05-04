@@ -1,8 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { getCrudEndpoint } from "@/features/dynamic-crud/config";
+import {
+  getCrudConfig,
+  getCrudEndpoint,
+  getCrudResource,
+} from "@/features/dynamic-crud/config";
 import { Role } from "@/types/auth";
 
 describe("dynamic crud config", () => {
+  it("keeps pilot metadata synced from the API contract", () => {
+    expect(getCrudConfig().pilot).toEqual({
+      scope: "tuguegarao-first",
+      partnerLguExpansion: "planned",
+      governanceBaselineDoc: "docs/tuguegarao-pilot-governance-baseline.md",
+      notes:
+        "CIRS pilot is Tuguegarao-first. City and barangay operations are the canonical scope; partner-LGU expansion is planned. National roles and surfaces are deferred until formal regional governance is enabled. Dashboard and mobile clients should treat this contract as the source of truth for canonical vs compatibility-only routes.",
+    });
+  });
+
   it("requires auth for protected resource reads", () => {
     const protectedReads = [
       ["agencies", "list"],
@@ -15,17 +29,12 @@ describe("dynamic crud config", () => {
       ["categories", "get"],
       ["severities", "list"],
       ["severities", "get"],
-      ["regions", "list"],
-      ["regions", "get"],
-      ["provinces", "list"],
-      ["provinces", "get"],
-      ["cities-municipalities", "list"],
-      ["cities-municipalities", "get"],
-      ["barangays", "list"],
-      ["barangays", "get"],
       ["assignments", "list"],
       ["assignments", "get"],
+      ["users", "list"],
       ["users", "capabilities"],
+      ["adminUsers", "list"],
+      ["auditLogs", "list"],
     ] as const;
 
     for (const [resource, operation] of protectedReads) {
@@ -70,6 +79,7 @@ describe("dynamic crud config", () => {
       Role.REGIONAL_DIRECTOR,
       Role.PROVINCIAL_ADMIN,
       Role.CITY_ADMIN,
+      Role.CITY_CONTENT_EDITOR,
       Role.DISPATCHER,
       Role.RESPONDER,
       Role.CITIZEN_REPORTER,
@@ -98,49 +108,28 @@ describe("dynamic crud config", () => {
     ]);
   });
 
-  it("keeps geography reads open to configured operational roles and splits writes by level", () => {
-    const geographyReadRoles = [
+  it("keeps pilot admin and audit resources aligned to the API contract", () => {
+    expect(getCrudEndpoint("adminUsers", "list")?.allowedRoles).toEqual([
       Role.NATIONAL_ADMIN,
-      Role.REGIONAL_DIRECTOR,
-      Role.PROVINCIAL_ADMIN,
-      Role.CITY_ADMIN,
-      Role.DISPATCHER,
-      Role.AUDITOR,
-    ];
-
-    expect(getCrudEndpoint("regions", "list")?.allowedRoles).toEqual(
-      geographyReadRoles,
-    );
-    expect(getCrudEndpoint("provinces", "get")?.allowedRoles).toEqual(
-      geographyReadRoles,
-    );
-    expect(
-      getCrudEndpoint("cities-municipalities", "list")?.allowedRoles,
-    ).toEqual(geographyReadRoles);
-    expect(getCrudEndpoint("barangays", "get")?.allowedRoles).toEqual(
-      geographyReadRoles,
-    );
-
-    expect(getCrudEndpoint("regions", "create")?.allowedRoles).toEqual([
-      Role.NATIONAL_ADMIN,
-      Role.REGIONAL_DIRECTOR,
-    ]);
-    expect(getCrudEndpoint("provinces", "update")?.allowedRoles).toEqual([
-      Role.NATIONAL_ADMIN,
-      Role.REGIONAL_DIRECTOR,
     ]);
     expect(
-      getCrudEndpoint("cities-municipalities", "create")?.allowedRoles,
+      getCrudEndpoint("adminUserMfaCompliance", "list")?.allowedRoles,
+    ).toEqual([Role.NATIONAL_ADMIN]);
+    expect(
+      getCrudEndpoint("adminUserAccessReview", "list")?.allowedRoles,
+    ).toEqual([Role.NATIONAL_ADMIN]);
+    expect(
+      getCrudEndpoint("adminSecurityDataGovernance", "get")?.allowedRoles,
     ).toEqual([
       Role.NATIONAL_ADMIN,
       Role.REGIONAL_DIRECTOR,
       Role.PROVINCIAL_ADMIN,
-    ]);
-    expect(getCrudEndpoint("barangays", "update")?.allowedRoles).toEqual([
-      Role.NATIONAL_ADMIN,
-      Role.REGIONAL_DIRECTOR,
-      Role.PROVINCIAL_ADMIN,
       Role.CITY_ADMIN,
+      Role.AUDITOR,
+    ]);
+    expect(getCrudEndpoint("auditLogs", "list")?.allowedRoles).toEqual([
+      Role.NATIONAL_ADMIN,
+      Role.AUDITOR,
     ]);
   });
 
@@ -151,27 +140,20 @@ describe("dynamic crud config", () => {
     expect(getCrudEndpoint("statuses", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("categories", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("severities", "restore")?.method).toBe("POST");
-    expect(getCrudEndpoint("regions", "restore")?.method).toBe("POST");
-    expect(getCrudEndpoint("provinces", "restore")?.method).toBe("POST");
-    expect(getCrudEndpoint("cities-municipalities", "restore")?.method).toBe(
-      "POST",
-    );
-    expect(getCrudEndpoint("barangays", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("incidents", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("assignments", "restore")?.method).toBe("POST");
     expect(getCrudEndpoint("users", "restore")?.method).toBe("POST");
-    expect(getCrudEndpoint("mobile-content", "restore")?.method).toBe("POST");
   });
 
   it("keeps incident reads on standard operational roles and preserves write restrictions", () => {
     expect(getCrudEndpoint("incidents", "list")?.allowedRoles).toEqual([
+      Role.CITIZEN_REPORTER,
       Role.NATIONAL_ADMIN,
       Role.REGIONAL_DIRECTOR,
       Role.PROVINCIAL_ADMIN,
       Role.CITY_ADMIN,
       Role.DISPATCHER,
       Role.RESPONDER,
-      Role.CITIZEN_REPORTER,
     ]);
     expect(getCrudEndpoint("incidents", "create")?.allowedRoles).toEqual([
       Role.NATIONAL_ADMIN,
@@ -182,18 +164,29 @@ describe("dynamic crud config", () => {
     ]);
   });
 
-  it("exposes mobile-content CRUD to admin roles", () => {
-    expect(getCrudEndpoint("mobile-content", "list")?.allowedRoles).toEqual([
+  it("keeps dashboard user reads at the LGU admin boundary", () => {
+    expect(getCrudEndpoint("users", "list")?.allowedRoles).toEqual([
       Role.NATIONAL_ADMIN,
       Role.REGIONAL_DIRECTOR,
       Role.PROVINCIAL_ADMIN,
       Role.CITY_ADMIN,
     ]);
-    expect(getCrudEndpoint("mobile-content", "create")?.allowedRoles).toEqual([
+    expect(getCrudEndpoint("users", "capabilities")?.allowedRoles).toEqual([
       Role.NATIONAL_ADMIN,
       Role.REGIONAL_DIRECTOR,
       Role.PROVINCIAL_ADMIN,
       Role.CITY_ADMIN,
+      Role.CITY_CONTENT_EDITOR,
+      Role.DISPATCHER,
+      Role.RESPONDER,
+      Role.CITIZEN_REPORTER,
+      Role.AUDITOR,
     ]);
+  });
+
+  it("does not expose mobile citizen endpoints as dashboard CRUD resources", () => {
+    expect(getCrudResource("mobileCitizen")).toBeUndefined();
+    expect(getCrudEndpoint("mobileCitizen", "reportIncident")).toBeUndefined();
+    expect(getCrudEndpoint("mobileCitizen", "linkMeAlias")).toBeUndefined();
   });
 });

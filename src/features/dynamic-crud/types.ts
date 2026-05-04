@@ -27,6 +27,19 @@ export interface CrudFeatureGate {
   requiresAnyOf?: string[];
 }
 
+export interface CrudPilotConfig {
+  scope: string;
+  partnerLguExpansion: string;
+  governanceBaselineDoc?: string;
+  notes?: string;
+}
+
+export interface CrudMobileCitizenSurfaceConfig {
+  label?: string;
+  notes?: string;
+  compatibilityOnlyNotes?: string;
+}
+
 export interface CrudAuthOptionalEndpoint {
   operation: string;
   method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -49,10 +62,13 @@ export interface CrudEndpoint {
   allowedRoles: Role[];
   featureGate?: CrudFeatureGate;
   notes?: string;
+  surface?: "dashboard" | "mobile-citizen" | "mobile-citizen-compatibility";
 }
 
 export interface CrudConfigFlat {
   apiBasePath: string;
+  pilot?: CrudPilotConfig;
+  mobileCitizenSurface?: CrudMobileCitizenSurfaceConfig;
   auth: CrudAuthConfig;
   endpoints: CrudEndpoint[];
 }

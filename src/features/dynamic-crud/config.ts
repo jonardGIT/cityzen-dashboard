@@ -10,6 +10,10 @@ import type {
 
 const parsedConfig = flatConfig as CrudConfigFlat;
 
+function isDashboardCrudEndpoint(endpoint: CrudEndpoint): boolean {
+  return (endpoint.surface ?? "dashboard") === "dashboard";
+}
+
 function ensureEndpointOperationShape(endpoint: CrudEndpoint): CrudEndpoint {
   return {
     ...endpoint,
@@ -29,6 +33,8 @@ function ensureOptionalAuthEndpointShape(
 export function getCrudConfig(): CrudConfigFlat {
   return {
     ...parsedConfig,
+    pilot: parsedConfig.pilot,
+    mobileCitizenSurface: parsedConfig.mobileCitizenSurface,
     auth: {
       ...parsedConfig.auth,
       optionalEndpoints: (parsedConfig.auth.optionalEndpoints ?? []).map(
@@ -43,7 +49,7 @@ export function getAllCrudResources(): ParsedCrudResource[] {
   const config = getCrudConfig();
   const resources = new Map<string, ParsedCrudResource>();
 
-  for (const endpoint of config.endpoints) {
+  for (const endpoint of config.endpoints.filter(isDashboardCrudEndpoint)) {
     const existing = resources.get(endpoint.resource);
 
     if (!existing) {
@@ -75,7 +81,13 @@ export function getCrudEndpoint(
   resourceName: string,
   operation: CrudOperation,
 ): CrudEndpoint | undefined {
-  return getCrudResource(resourceName)?.endpoints[operation];
+  const endpoint = getCrudResource(resourceName)?.endpoints[operation];
+
+  if (!endpoint || !isDashboardCrudEndpoint(endpoint)) {
+    return undefined;
+  }
+
+  return endpoint;
 }
 
 export function getAuthOptionalEndpoint(
