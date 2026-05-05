@@ -43,6 +43,7 @@ import {
   formatDisplayDateTime as formatDateTime,
   formatDisplayRelativeTime as formatRelativeTime,
 } from "@/lib/format/date-time";
+import { getPreferredDisplayName } from "@/lib/format/display";
 import {
   buildIncidentAddressLabel,
   buildIncidentCoordinatesLabel,
@@ -412,7 +413,9 @@ export default function IncidentWorkspacePage() {
                 {category?.name ?? "N/A"}
               </Descriptions.Item>
               <Descriptions.Item label="Citizen">
-                {citizen?.name ?? String(incident.citizenId ?? "N/A")}
+                {citizen && getPreferredDisplayName(citizen) !== "N/A"
+                  ? getPreferredDisplayName(citizen)
+                  : String(incident.citizenId ?? "N/A")}
               </Descriptions.Item>
               <Descriptions.Item label="Reported">
                 {formatDateTime(incident.dateReported)}

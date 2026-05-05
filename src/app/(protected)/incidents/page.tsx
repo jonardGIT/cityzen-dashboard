@@ -60,6 +60,7 @@ import {
   formatDisplayDateTime,
   formatDisplayRelativeTime,
 } from "@/lib/format/date-time";
+import { getPreferredDisplayName } from "@/lib/format/display";
 import {
   buildIncidentAddressLabel,
   getStatusColor,
@@ -299,7 +300,10 @@ export default function IncidentsPage() {
     () =>
       (citizensQuery.data?.data ?? []).map((item) => ({
         value: String(item.id),
-        label: item.name ?? `Citizen ${item.id}`,
+        label:
+          getPreferredDisplayName(item) !== "N/A"
+            ? getPreferredDisplayName(item)
+            : `Citizen ${item.id}`,
       })),
     [citizensQuery.data],
   );
@@ -313,8 +317,11 @@ export default function IncidentsPage() {
     [statusesQuery.data],
   );
 
-  const citizenLabels = useMemo(
-    () => new Map(citizenOptions.map((item) => [item.value, item.label])),
+  const citizenLabels = useMemo<Map<string, string>>(
+    () =>
+      new Map<string, string>(
+        citizenOptions.map((item) => [item.value, item.label]),
+      ),
     [citizenOptions],
   );
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  hasAuthenticatedRequest,
+  getRequestAccessToken,
   requestUpstream,
   requestUpstreamWithFallback,
   toJsonResponse,
@@ -10,19 +10,23 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function hasAuthenticatedSession(request: NextRequest) {
+  return Boolean(getRequestAccessToken(request));
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!hasAuthenticatedRequest(request)) {
+    if (!hasAuthenticatedSession(request)) {
       return unauthorizedResponse();
     }
 
     const { id } = await context.params;
     const upstream = await requestUpstreamWithFallback(
       request,
-      [`/users/${id}`],
+      [`/users/${id}`, `/admin/users/${id}`],
       {
         method: "GET",
       },
@@ -42,7 +46,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!hasAuthenticatedRequest(request)) {
+    if (!hasAuthenticatedSession(request)) {
       return unauthorizedResponse();
     }
 
@@ -50,12 +54,31 @@ export async function PATCH(
     const payload = await request.json();
 
     const primaryPath = `/users/${id}`;
+    const fallbackPath = `/admin/users/${id}`;
     const primaryPatch = await requestUpstream(request, primaryPath, {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
 
+    if (primaryPatch.status === 404) {
+      const fallbackPatch = await requestUpstream(request, fallbackPath, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+
+      return toJsonResponse(fallbackPatch);
+    }
+
     if (primaryPatch.status === 405) {
+      const fallbackPatch = await requestUpstream(request, fallbackPath, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+
+      if (fallbackPatch.status !== 404 && fallbackPatch.status !== 405) {
+        return toJsonResponse(fallbackPatch);
+      }
+
       const primaryPut = await requestUpstream(request, primaryPath, {
         method: "PUT",
         body: JSON.stringify(payload),
@@ -78,14 +101,14 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!hasAuthenticatedRequest(request)) {
+    if (!hasAuthenticatedSession(request)) {
       return unauthorizedResponse();
     }
 
     const { id } = await context.params;
     const upstream = await requestUpstreamWithFallback(
       request,
-      [`/users/${id}`],
+      [`/users/${id}`, `/admin/users/${id}`],
       {
         method: "DELETE",
       },

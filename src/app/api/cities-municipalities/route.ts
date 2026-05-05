@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  hasAuthenticatedRequest,
+  getRequestAccessToken,
   requestUpstream,
   toJsonResponse,
   unauthorizedResponse,
@@ -9,9 +9,13 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function hasAuthenticatedSession(request: NextRequest) {
+  return Boolean(getRequestAccessToken(request));
+}
+
 export async function GET(request: NextRequest) {
   try {
-    if (!hasAuthenticatedRequest(request)) {
+    if (!hasAuthenticatedSession(request)) {
       return unauthorizedResponse();
     }
 

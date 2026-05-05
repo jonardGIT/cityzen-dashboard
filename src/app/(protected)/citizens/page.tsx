@@ -8,6 +8,7 @@ import { useCitizensQuery } from "@/features/reference-data/api";
 import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { canAccessCrudResource } from "@/lib/auth/navigation";
 import { getPreferredDisplayName } from "@/lib/format/display";
+import type { Citizen } from "@/types/api";
 
 export default function CitizensPage() {
   const { user, capabilities, isAuthenticated } = useAuth();
@@ -44,7 +45,7 @@ export default function CitizensPage() {
           title: "Name",
           dataIndex: "name",
           key: "name",
-          render: (_value: string | undefined, record: { id: string }) => {
+          render: (_value: string | undefined, record: Citizen) => {
             const displayName = getPreferredDisplayName(record);
 
             return (

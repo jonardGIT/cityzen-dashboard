@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  hasAuthenticatedRequest,
+  getRequestAccessToken,
   requestUpstreamWithFallback,
   toJsonResponse,
   unauthorizedResponse,
@@ -9,19 +9,23 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function hasAuthenticatedSession(request: NextRequest) {
+  return Boolean(getRequestAccessToken(request));
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    if (!hasAuthenticatedRequest(request)) {
+    if (!hasAuthenticatedSession(request)) {
       return unauthorizedResponse();
     }
 
     const { id } = await context.params;
     const upstream = await requestUpstreamWithFallback(
       request,
-      [`/users/${id}/restore`],
+      [`/users/${id}/restore`, `/admin/users/${id}/restore`],
       {
         method: "POST",
       },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  hasAuthenticatedRequest,
+  getRequestAccessToken,
   requestUpstreamWithFallback,
   toJsonResponse,
   unauthorizedResponse,
@@ -9,16 +9,20 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function hasAuthenticatedSession(request: NextRequest) {
+  return Boolean(getRequestAccessToken(request));
+}
+
 export async function GET(request: NextRequest) {
   try {
-    if (!hasAuthenticatedRequest(request)) {
+    if (!hasAuthenticatedSession(request)) {
       return unauthorizedResponse();
     }
 
     const search = request.nextUrl.search;
     const upstream = await requestUpstreamWithFallback(
       request,
-      [`/users${search}`],
+      [`/users${search}`, `/admin/users${search}`],
       {
         method: "GET",
       },
@@ -35,15 +39,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!hasAuthenticatedRequest(request)) {
+    if (!hasAuthenticatedSession(request)) {
       return unauthorizedResponse();
     }
 
     const payload = await request.json();
-    const upstream = await requestUpstreamWithFallback(request, ["/users"], {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    const upstream = await requestUpstreamWithFallback(
+      request,
+      ["/users", "/admin/users"],
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
 
     return toJsonResponse(upstream);
   } catch {
