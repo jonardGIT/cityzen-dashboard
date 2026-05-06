@@ -38,7 +38,7 @@ Notes:
 - `API_KEY` is used by server-side proxy routes and may reuse the same backend API key when your API requires `x-api-key`.
 - Do not expose backend API keys through `NEXT_PUBLIC_*` variables. The dashboard proxies browser traffic through server routes instead.
 - Production builds now fail closed when `NEXT_PUBLIC_API_BASE_URL`, `API_KEY`, `CIRS_API_BASE_URL`, or `CIRS_API_KEY` are missing.
-- `NEXT_PUBLIC_OPENAPI_SOURCE=config` keeps runtime CRUD behavior on the checked-in contract instead of requiring live OpenAPI on Vercel.
+- `NEXT_PUBLIC_OPENAPI_SOURCE=config` keeps runtime CRUD behavior on the checked-in contract instead of requiring live OpenAPI on Vercel. `checked-in` is also accepted as a backward-compatible alias.
 
 ## Stack
 

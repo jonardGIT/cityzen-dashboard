@@ -240,6 +240,61 @@ describe("auth api clients", () => {
     );
   });
 
+  it("uses proxy base URLs in browser production even when NEXT_PUBLIC_API_BASE_URL is absent", async () => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+    vi.stubEnv("NODE_ENV", "production");
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+
+    const axiosModule = await import("axios");
+    const createMock = vi.mocked(axiosModule.default.create);
+    createMock.mockReset();
+
+    createMock
+      .mockReturnValueOnce({
+        post: vi.fn(),
+        interceptors: {
+          request: { use: vi.fn() },
+          response: { use: vi.fn() },
+        },
+      } as never)
+      .mockReturnValueOnce({
+        interceptors: {
+          request: { use: vi.fn() },
+          response: { use: vi.fn() },
+        },
+      } as never)
+      .mockReturnValueOnce(
+        Object.assign(vi.fn(), {
+          interceptors: {
+            request: { use: vi.fn() },
+            response: { use: vi.fn() },
+          },
+        }) as never,
+      );
+
+    await expect(import("@/lib/api/clients")).resolves.toBeDefined();
+
+    expect(createMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        baseURL: "/api",
+      }),
+    );
+    expect(createMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        baseURL: "/api/cirs",
+      }),
+    );
+    expect(createMock).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        baseURL: "/api/cirs",
+      }),
+    );
+  });
+
   it("refreshes the session and retries a protected request once on 401", async () => {
     getRefreshTokenMock.mockReturnValue("refresh-token");
     refreshPostMock.mockResolvedValueOnce({

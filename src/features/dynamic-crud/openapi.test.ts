@@ -151,6 +151,15 @@ describe("dynamic crud OpenAPI helpers", () => {
     expect(result).toEqual(getCheckedInOpenApiOperationKeys());
   });
 
+  it("accepts config as the checked-in contract source alias", async () => {
+    process.env.NEXT_PUBLIC_OPENAPI_SOURCE = "config";
+
+    const result = await fetchOpenApiOperationKeys();
+
+    expect(publicClientGetMock).not.toHaveBeenCalled();
+    expect(result).toEqual(getCheckedInOpenApiOperationKeys());
+  });
+
   it("reports active config operations that are missing from the active spec", () => {
     expect(collectContractDriftIssues(["GET /citizens"])).toEqual(
       expect.arrayContaining([

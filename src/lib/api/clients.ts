@@ -9,7 +9,6 @@ import { resolveDashboardApiBaseUrl } from "@/lib/config/runtime-env";
 import type { ApiErrorPayload } from "@/types/api";
 import type { AuthResponse, LoginReason } from "@/types/auth";
 
-const API_BASE_URL = resolveDashboardApiBaseUrl();
 const PROXY_AUTH_BASE_URL = "/api";
 const PROXY_API_BASE_URL = "/api/cirs";
 
@@ -18,14 +17,16 @@ function isBrowserRuntime() {
 }
 
 function resolveDefaultBaseUrl() {
-  return isBrowserRuntime() ? PROXY_API_BASE_URL : API_BASE_URL;
+  return isBrowserRuntime() ? PROXY_API_BASE_URL : resolveDashboardApiBaseUrl();
 }
 
 function resolveRefreshBaseUrl() {
-  return isBrowserRuntime() ? PROXY_AUTH_BASE_URL : API_BASE_URL;
+  return isBrowserRuntime()
+    ? PROXY_AUTH_BASE_URL
+    : resolveDashboardApiBaseUrl();
 }
 
-function resolveApiKey(): string {
+function resolveApiKey(baseURL: string): string {
   const configuredKey = process.env.API_KEY?.trim();
   if (configuredKey) {
     return configuredKey;
@@ -33,16 +34,13 @@ function resolveApiKey(): string {
 
   if (
     process.env.NODE_ENV !== "production" &&
-    API_BASE_URL.startsWith("http://localhost:3000/api/v1")
+    baseURL.startsWith("http://localhost:3000/api/v1")
   ) {
     return "local-dev-key";
   }
 
   return "";
 }
-
-const API_KEY = resolveApiKey();
-const DEFAULT_API_BASE_URL = resolveDefaultBaseUrl();
 
 type UnauthorizedHandler = (reason: LoginReason) => void;
 const unauthorizedHandlers = new Set<UnauthorizedHandler>();
@@ -87,17 +85,18 @@ function notifyUnauthorized(reason: LoginReason) {
 }
 
 function createBaseConfig() {
-  return createBaseConfigFor(DEFAULT_API_BASE_URL);
+  return createBaseConfigFor(resolveDefaultBaseUrl());
 }
 
 function createBaseConfigFor(baseURL: string) {
   const shouldAttachApiKey = !baseURL.startsWith("/api");
+  const apiKey = shouldAttachApiKey ? resolveApiKey(baseURL) : "";
 
   return {
     baseURL,
     headers: {
       "Content-Type": "application/json",
-      ...(shouldAttachApiKey && API_KEY ? { "x-api-key": API_KEY } : {}),
+      ...(apiKey ? { "x-api-key": apiKey } : {}),
     },
   };
 }
@@ -224,12 +223,12 @@ refreshClient.interceptors.response.use(
   },
 );
 
-export function createPublicClient(baseURL = DEFAULT_API_BASE_URL) {
-  return buildClient(baseURL, false);
+export function createPublicClient(baseURL?: string) {
+  return buildClient(baseURL ?? resolveDefaultBaseUrl(), false);
 }
 
-export function createAuthenticatedClient(baseURL = DEFAULT_API_BASE_URL) {
-  return buildClient(baseURL, true);
+export function createAuthenticatedClient(baseURL?: string) {
+  return buildClient(baseURL ?? resolveDefaultBaseUrl(), true);
 }
 
 export const publicClient = createPublicClient();
