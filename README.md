@@ -40,6 +40,37 @@ Notes:
 - Production builds now fail closed when `NEXT_PUBLIC_API_BASE_URL`, `API_KEY`, `CIRS_API_BASE_URL`, or `CIRS_API_KEY` are missing.
 - `NEXT_PUBLIC_OPENAPI_SOURCE=config` keeps runtime CRUD behavior on the checked-in contract instead of requiring live OpenAPI on Vercel. `checked-in` is also accepted as a backward-compatible alias.
 
+Environment variable behavior summary:
+
+- `NEXT_PUBLIC_API_BASE_URL`: required in production, optional in local dev. Falls back to `http://localhost:3000/api/v1` outside production.
+- `API_KEY`: required for production dashboard proxy requests. Falls back to `local-dev-key` only in local dev when the dashboard API base is the localhost default.
+- `CIRS_API_BASE_URL`: required in production, optional in local dev. Falls back to `http://localhost:3000` outside production.
+- `CIRS_API_BASE_PATH`: optional in all environments. Falls back to `/api/v1` when unset.
+- `CIRS_API_KEY`: optional only when `API_KEY` is already set, because direct server-side CIRS requests fall back from `CIRS_API_KEY` to `API_KEY`.
+- `NEXT_PUBLIC_OPENAPI_SOURCE`: optional. `config` and `checked-in` force the checked-in contract, while an unset value prefers live `/openapi.json` and falls back to the checked-in contract if the request fails.
+
+Production mapping example for a backend hosted at `https://x1.dev.xypes.com/api/v1`:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://x1.dev.xypes.com/api/v1
+API_KEY=your-server-side-api-key
+CIRS_API_BASE_URL=https://x1.dev.xypes.com
+CIRS_API_BASE_PATH=/api/v1
+CIRS_API_KEY=your-server-side-api-key
+NEXT_PUBLIC_OPENAPI_SOURCE=config
+```
+
+Minimal production set when one shared backend key is used:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://x1.dev.xypes.com/api/v1
+API_KEY=your-server-side-api-key
+CIRS_API_BASE_URL=https://x1.dev.xypes.com
+NEXT_PUBLIC_OPENAPI_SOURCE=config
+```
+
+In that minimal setup, `CIRS_API_BASE_PATH` falls back to `/api/v1` and `CIRS_API_KEY` falls back to `API_KEY`.
+
 ## Stack
 
 - Next.js App Router + TypeScript (strict)
@@ -103,6 +134,8 @@ Create `.env.local`:
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api/v1
 API_KEY=local-dev-key
 ```
+
+You can also copy from `.env.example` and adjust values per environment.
 
 ## API Client Architecture
 

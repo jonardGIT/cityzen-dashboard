@@ -84,10 +84,6 @@ function notifyUnauthorized(reason: LoginReason) {
   unauthorizedHandlers.forEach((handler) => handler(reason));
 }
 
-function createBaseConfig() {
-  return createBaseConfigFor(resolveDefaultBaseUrl());
-}
-
 function createBaseConfigFor(baseURL: string) {
   const shouldAttachApiKey = !baseURL.startsWith("/api");
   const apiKey = shouldAttachApiKey ? resolveApiKey(baseURL) : "";

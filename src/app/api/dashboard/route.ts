@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
       severities: severities.data,
       users: users.data,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         message: "Unable to load CIRS dashboard data.",

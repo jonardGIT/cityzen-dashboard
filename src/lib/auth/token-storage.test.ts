@@ -5,8 +5,6 @@ import {
   getRefreshToken,
   getStoredAuthSession,
   getStoredUser,
-  setAccessToken,
-  setRefreshToken,
   setStoredAuthSession,
   setStoredUser,
   storeAuthResponse,

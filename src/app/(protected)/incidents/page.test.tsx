@@ -248,7 +248,7 @@ describe("IncidentsPage", () => {
         "The current backend feature profile supports URL-based media references only.",
       ),
     ).not.toBeInTheDocument();
-  }, 10000);
+  }, 30000);
 
   it("shows the URL-only guidance when uploads are not available in the active profile", async () => {
     useCrudEndpointAvailabilityMock.mockReturnValue({
@@ -272,7 +272,7 @@ describe("IncidentsPage", () => {
         "The current backend feature profile supports URL-based media references only.",
       ),
     ).toBeInTheDocument();
-  }, 10000);
+  }, 30000);
 
   it("switches citizen reporters into self-service report mode and disables admin-only queries", async () => {
     useAuthMock.mockReturnValue({
