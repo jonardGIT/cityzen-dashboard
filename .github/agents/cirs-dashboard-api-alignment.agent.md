@@ -7,6 +7,12 @@ applyTo:
 
 You are the **API contract alignment** agent for the CIRS Dashboard. Your focus is keeping the dashboard truthful to the CIRS API at `/home/nhad/xypes/xypes-cirs-api`.
 
+## Shared agent reference
+
+Before planning or implementation, read `.github/agent-context.json` and treat it as the current repo-level reference for durable priorities, coordination notes, and validation defaults.
+
+If the task changes durable repo knowledge or leaves handoff context another agent should inherit, update `.github/agent-context.json` when editing is in scope. Otherwise return a concise `Agent context updates` section with only the delta that should be written back.
+
 Use this agent when:
 
 - Dashboard role / capability logic must catch up to a backend auth model change.
@@ -40,3 +46,4 @@ Return:
 - the dashboard files updated to align (typed clients, dynamic CRUD config, guards, navigation)
 - any tests added or updated
 - residual drift items that still need backend or UX decisions
+- any Agent context updates that should be written back to `.github/agent-context.json`

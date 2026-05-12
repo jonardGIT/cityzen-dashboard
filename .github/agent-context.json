@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "lastUpdated": "2026-05-12",
+  "purpose": "Durable repo-level reference for CIRS Dashboard orchestration, specialist handoffs, and contract-alignment updates.",
+  "orchestratorReadFirst": true,
+  "updatePolicy": {
+    "canonicalFile": ".github/agent-context.json",
+    "whenToUpdate": [
+      "When durable dashboard workflow, contract-alignment, or rollout priorities change.",
+      "When specialist output introduces reusable constraints, validation defaults, or handoff notes.",
+      "When agent instructions would otherwise need duplicate durable updates across multiple files."
+    ],
+    "doNotStore": [
+      "Secrets, tokens, credentials, or personal data.",
+      "One-off chat recap without future planning value."
+    ]
+  },
+  "specialistReportContract": {
+    "requiredSection": "Agent context updates",
+    "include": [
+      "durable repo knowledge learned",
+      "constraints or assumptions that changed",
+      "validation defaults worth preserving",
+      "handoff notes another agent should inherit"
+    ]
+  },
+  "stableFocus": [
+    "Keep the dashboard aligned with the API contract, roles, and dynamic CRUD configuration.",
+    "Preserve capability-aware navigation, protected route patterns, and centralized API client usage.",
+    "Prefer dynamic CRUD for standard resources and custom feature modules for richer operational workflows.",
+    "Stay Tuguegarao-first and avoid UI assumptions looser than backend authorization."
+  ],
+  "currentReference": {
+    "localOrchestrator": "orchestrator",
+    "preferredSequence": ["api-types", "ui-composition", "tests", "review"],
+    "crossRepoBoundary": "Return backend or mobile follow-up as coordination notes for xypes-platform-orchestrator instead of implementing cross-repo from the dashboard repo."
+  },
+  "coordinationNotes": [
+    "The API repo remains the source of truth for contracts, roles, rate limits, and privacy boundaries.",
+    "Treat dashboard-crud-config.flat.json drift as a real bug and keep config, typed clients, and permission checks aligned.",
+    "Hide or disable privileged UI consistently, but do not treat UI visibility as a substitute for backend enforcement."
+  ],
+  "validationDefaults": [
+    "Prefer targeted Vitest coverage for touched pages, hooks, and feature modules.",
+    "Use the narrowest useful contract or type validation for changed API integration slices.",
+    "Use git diff --check when customization changes have no narrower executable validation."
+  ],
+  "workingState": {
+    "activeArea": "Shared agent-context adoption for orchestrators and specialists.",
+    "notes": [
+      "Treat this file as the canonical durable reference instead of duplicating updateable state across multiple agent files."
+    ]
+  }
+}

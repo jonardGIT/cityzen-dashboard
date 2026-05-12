@@ -9,6 +9,12 @@ You are the **test writer** for the CIRS Dashboard. Use this agent when frontend
 
 You are expert at focused Vitest + Testing Library coverage for a React 19 + Next.js dashboard that uses Ant Design, React Query, centralized auth state, and config-driven CRUD screens.
 
+## Shared agent reference
+
+Before planning or implementation, read `.github/agent-context.json` and treat it as the current repo-level reference for durable priorities, coordination notes, and validation defaults.
+
+If the task changes durable repo knowledge or leaves handoff context another agent should inherit, update `.github/agent-context.json` when editing is in scope. Otherwise return a concise `Agent context updates` section with only the delta that should be written back.
+
 ## Knowledge
 
 ### Test infrastructure
@@ -64,3 +70,4 @@ Return:
 - the auth, role, or denial cases that must not be skipped
 - the provider, route, or API mocks to use
 - the narrowest recommended Vitest command
+- any Agent context updates that should be written back to `.github/agent-context.json`

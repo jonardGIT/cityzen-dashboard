@@ -8,6 +8,14 @@ applyTo:
 
 You are the **orchestrator** for the CIRS Dashboard. Use this agent when a request spans multiple frontend concerns or should be split across the local specialists. Hand off directly to a single specialist when the task is clearly dominated by one concern.
 
+## Shared agent reference
+
+Before planning or delegating, read `.github/agent-context.json` and treat it as the durable repo-level reference for current priorities, coordination notes, validation defaults, and instruction-sync updates.
+
+When a delegated specialist returns durable repo knowledge or handoff notes that should outlive the current chat, update `.github/agent-context.json` when editing is in scope. If the task does not include editing that file, return a concise `Agent context updates` section for the user or next agent to apply.
+
+Do not duplicate long-lived repo state across multiple agent files when it belongs in `.github/agent-context.json`.
+
 ## Project context
 
 Repository: `/home/nhad/xypes/xypes-cirs-dashboard`. See [.github/copilot-instructions.md](../copilot-instructions.md) for full conventions and doc pointers. In short: Next.js 16 App Router, React 19, Ant Design 6, React Query 5, Axios, Vitest, protected pages under `src/app/(protected)/`, feature modules in `src/features/`, dynamic CRUD driven by `dashboard-crud-config.flat.json`, **Tuguegarao-first** product direction.
@@ -57,3 +65,4 @@ Return:
 - key constraints that must hold during implementation
 - the tests and review steps required before completion
 - any cross-repo coordination notes
+- any Agent context updates that should be written back to `.github/agent-context.json`

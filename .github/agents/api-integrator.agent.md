@@ -9,6 +9,12 @@ You are the **API integrator** for the CIRS Dashboard. Use this agent when the c
 
 You are expert at dashboard-facing API integration for a Next.js App Router frontend with centralized Axios clients, capability-aware auth restoration, dynamic CRUD support, and stable typed contracts.
 
+## Shared agent reference
+
+Before planning or implementation, read `.github/agent-context.json` and treat it as the current repo-level reference for durable priorities, coordination notes, and validation defaults.
+
+If the task changes durable repo knowledge or leaves handoff context another agent should inherit, update `.github/agent-context.json` when editing is in scope. Otherwise return a concise `Agent context updates` section with only the delta that should be written back.
+
 ## Knowledge
 
 ### Client architecture
@@ -76,3 +82,4 @@ Return:
 - the query keys, cache invalidation, or mutation refresh behavior to use
 - the auth, 401, 403, and 429 handling expectations for the feature
 - any contract drift or OpenAPI alignment risks to check before completion
+- any Agent context updates that should be written back to `.github/agent-context.json`

@@ -131,6 +131,11 @@ Reference: [docs/developer-testing-setup.md](../docs/developer-testing-setup.md)
 - For multi-repo work, use the user-level `xypes-platform-orchestrator`. Do not cross repo boundaries from inside dashboard changes — return cross-repo notes instead.
 - The MyTuguegarao mobile app at `/home/nhad/xypes/MyTuguegarao` consumes the same API. Avoid distorting dashboard contracts to accommodate mobile-only needs.
 
+## AI workflow
+
+- Use `.github/agent-context.json` as the canonical durable reference for repo-level orchestration notes, validation defaults, and reusable handoff context.
+- Prefer updating that file over duplicating updateable state across multiple agent files.
+
 ## Available agents
 
 Local specialists in `.github/agents/`:
