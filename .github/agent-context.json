@@ -38,12 +38,14 @@
   "coordinationNotes": [
     "The API repo remains the source of truth for contracts, roles, rate limits, and privacy boundaries.",
     "Treat dashboard-crud-config.flat.json drift as a real bug and keep config, typed clients, and permission checks aligned.",
-    "Hide or disable privileged UI consistently, but do not treat UI visibility as a substitute for backend enforcement."
+    "Hide or disable privileged UI consistently, but do not treat UI visibility as a substitute for backend enforcement.",
+    "Geography resources remain contract-backed in the dashboard but intentionally hidden from primary navigation for the current Tuguegarao-first pilot."
   ],
   "validationDefaults": [
     "Prefer targeted Vitest coverage for touched pages, hooks, and feature modules.",
     "Use the narrowest useful contract or type validation for changed API integration slices.",
-    "Use git diff --check when customization changes have no narrower executable validation."
+    "Use git diff --check when customization changes have no narrower executable validation.",
+    "Do not treat npm run check:openapi-drift without a staging OPENAPI_URL or --spec-file as sufficient for release sign-off."
   ],
   "workingState": {
     "activeArea": "Shared agent-context adoption for orchestrators and specialists.",

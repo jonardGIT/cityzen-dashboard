@@ -47,7 +47,7 @@ The local pilot seed commonly includes these baseline accounts:
 - User-management UI must honor backend booleans such as `canManageUsers`, `canCreateUser`, `canUpdateUser`, and `canDeleteUser` when they are present.
 - `assignments` remains a custom workflow page; create/respond actions should only appear when assignment-management capabilities are present.
 - `audit-logs` remains a custom protected review surface.
-- Geography and `mobile-content` navigation are not part of the current pilot-boundary dashboard contract.
+- Geography resources remain contract-backed in `dashboard-crud-config.flat.json`, but geography and `mobile-content` navigation are intentionally outside the current pilot-visible primary navigation boundary.
 - `401` indicates missing or invalid auth. `403` indicates an authenticated role or capability mismatch.
 
 ## Capability Guidance
@@ -81,7 +81,9 @@ This is the current dashboard-facing pilot resource boundary reflected by the sy
 - Generic or shared CRUD-backed resources: `citizens`, `agencies`, `responders`, `statuses`, `categories`, `severities`
 - Contract-backed admin/audit resources present in the artifact: `adminUsers`, `adminUserMfaCompliance`, `adminUserAccessReview`, `adminSecurityDataGovernance`, `auditLogs`
 
-The dashboard should not assume removed pilot resources such as geography management or `mobile-content` are still available just because older code paths or docs mention them.
+The synced contract artifact also still contains geography resources. For the current Tuguegarao-first pilot, those resources should be treated as contract-supported but intentionally hidden from primary navigation unless the pilot-visible workflow is explicitly expanded.
+
+The dashboard should not assume removed or hidden pilot resources such as `mobile-content` are still available just because older code paths or docs mention them.
 
 ## Expected Access Patterns
 
@@ -137,6 +139,7 @@ At minimum, verify that:
 - the backend emits pilot role names
 - the dashboard normalizes legacy aliases without showing legacy labels in QA guidance
 - protected navigation matches both role family and capabilities
+- geography resources stay absent from primary navigation unless the current pilot boundary changes
 - user-management buttons honor backend booleans when provided
 - assignment create actions are hidden when only assignment read access is present
 

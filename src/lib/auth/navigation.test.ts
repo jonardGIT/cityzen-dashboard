@@ -217,6 +217,55 @@ describe("auth navigation", () => {
       false,
     );
     expect(items.some((item) => item.href === "/statuses")).toBe(false);
+    expect(items.some((item) => item.href === "/dashboard/regions")).toBe(
+      false,
+    );
+    expect(items.some((item) => item.href === "/dashboard/provinces")).toBe(
+      false,
+    );
+    expect(
+      items.some((item) => item.href === "/dashboard/cities-municipalities"),
+    ).toBe(false);
+    expect(items.some((item) => item.href === "/dashboard/barangays")).toBe(
+      false,
+    );
+  });
+
+  it("keeps geography hidden from primary navigation for city-admin pilot operators", () => {
+    const cityAdminCaps = capabilities({
+      role: Role.CITY_ADMIN,
+      label: "City Admin",
+      permissions: [
+        "incident:read:city",
+        "assignment:create:city",
+        "user:manage:city",
+      ],
+      scope: ["city:city-1"],
+      canManageUsers: true,
+    });
+
+    const items = getNavigationItems({
+      role: Role.CITY_ADMIN,
+      capabilities: cityAdminCaps,
+      isAuthenticated: true,
+    });
+
+    expect(items.some((item) => item.href === "/dashboard")).toBe(true);
+    expect(items.some((item) => item.href === "/incidents")).toBe(true);
+    expect(items.some((item) => item.href === "/assignments")).toBe(true);
+    expect(items.some((item) => item.href === "/users")).toBe(true);
+    expect(items.some((item) => item.href === "/dashboard/regions")).toBe(
+      false,
+    );
+    expect(items.some((item) => item.href === "/dashboard/provinces")).toBe(
+      false,
+    );
+    expect(
+      items.some((item) => item.href === "/dashboard/cities-municipalities"),
+    ).toBe(false);
+    expect(items.some((item) => item.href === "/dashboard/barangays")).toBe(
+      false,
+    );
   });
 
   it("requires assignment management capabilities before showing create actions", () => {
