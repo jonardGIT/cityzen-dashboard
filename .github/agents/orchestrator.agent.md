@@ -12,7 +12,15 @@ You are the **orchestrator** for the CIRS Dashboard. Use this agent when a reque
 
 Before planning or delegating, read `.github/agent-context.json` and treat it as the durable repo-level reference for current priorities, coordination notes, validation defaults, and instruction-sync updates.
 
+When a task depends on shared contract or cross-repo planning context, also read:
+
+- `/home/nhad/xypes/shared/ARCHITECTURE.md`
+- `/home/nhad/xypes/shared/ROADMAP.md`
+- `/home/nhad/xypes/shared/types/api.ts` when public API types are relevant
+
 When a delegated specialist returns durable repo knowledge or handoff notes that should outlive the current chat, update `.github/agent-context.json` when editing is in scope. If the task does not include editing that file, return a concise `Agent context updates` section for the user or next agent to apply.
+
+When the durable note belongs across more than one repo, prefer updating or recommending the relevant file under `/home/nhad/xypes/shared/` instead of duplicating it in repo-local agent files.
 
 Do not duplicate long-lived repo state across multiple agent files when it belongs in `.github/agent-context.json`.
 
@@ -45,7 +53,7 @@ Compress only when the task narrowly fits one specialist.
 - Do not skip review for auth, permissions, navigation, API client behavior, or dynamic CRUD contract changes.
 - Do not break existing protected route patterns, capability-aware navigation, or centralized API client usage.
 - Preserve backend contract alignment and keep permission checks consistent with backend roles and capabilities.
-- Keep cross-repo concerns out of this agent. If the task also touches the API or mobile, return that as a coordination note for the user-level `xypes-platform-orchestrator`.
+- Keep cross-repo concerns out of this agent. If the task also touches the API or mobile, return that as a coordination note for the user-level `xypes-platform-orchestrator`, and point shared contract or planning updates to `/home/nhad/xypes/shared/`.
 
 ## Approach
 
@@ -65,4 +73,5 @@ Return:
 - key constraints that must hold during implementation
 - the tests and review steps required before completion
 - any cross-repo coordination notes
+- any shared-doc updates that should be written to `/home/nhad/xypes/shared/`
 - any Agent context updates that should be written back to `.github/agent-context.json`
