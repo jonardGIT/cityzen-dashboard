@@ -231,9 +231,55 @@ describe("ProfilePage", () => {
     renderProfilePage();
 
     expect(screen.getByText("Session rows: 1")).toBeInTheDocument();
+    expect(screen.getByText("Chrome on Linux")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (content) =>
+          content.includes("Current device") && content.includes("127.0.0.1"),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Session ID: session-1/)).toBeInTheDocument();
     expect(
       screen.getByText(
         "Session revocation is unavailable for the current backend feature profile.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("prefers backend device metadata when rendering session identity", () => {
+    useCrudEndpointAvailabilityMock.mockImplementation(
+      (endpoint: { path: string }) => ({
+        isAvailable: endpoint.path === "/auth/sessions",
+        isLoading: false,
+      }),
+    );
+    useAuthSessionsQueryMock.mockReturnValue({
+      data: [
+        buildSession({
+          userAgent:
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36",
+          browserFamily: "Chrome",
+          osFamily: "Linux",
+          deviceLabel: "Chrome on Linux Workstation",
+        }),
+      ],
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderProfilePage();
+
+    expect(screen.getByText("Chrome on Linux Workstation")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (content) =>
+          content.includes("Chrome") &&
+          content.includes("Linux") &&
+          content.includes("127.0.0.1") &&
+          content.includes("Last used"),
       ),
     ).toBeInTheDocument();
   });

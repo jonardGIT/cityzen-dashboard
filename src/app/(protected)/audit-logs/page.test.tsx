@@ -9,11 +9,13 @@ const {
   useAuditLogsQueryMock,
   useAuditLogQueryMock,
   useListQueryParamsMock,
+  auditLogTableMock,
 } = vi.hoisted(() => ({
   useAuthMock: vi.fn(),
   useAuditLogsQueryMock: vi.fn(),
   useAuditLogQueryMock: vi.fn(),
   useListQueryParamsMock: vi.fn(),
+  auditLogTableMock: vi.fn(),
 }));
 
 vi.mock("@/context/AuthContext", () => ({
@@ -64,7 +66,14 @@ vi.mock("@/components/audit/AuditLogFilters", () => ({
 }));
 
 vi.mock("@/components/audit/AuditLogTable", () => ({
-  AuditLogTable: () => <div>Audit table</div>,
+  AuditLogTable: ({
+    rows,
+  }: {
+    rows: Array<{ id: string; summary?: string }>;
+  }) => {
+    auditLogTableMock(rows);
+    return <div>Audit table</div>;
+  },
 }));
 
 vi.mock("@/components/audit/AuditLogDetailSheet", () => ({
@@ -105,6 +114,7 @@ function buildListQueryState() {
 
 describe("AuditLogsPage", () => {
   beforeEach(() => {
+    auditLogTableMock.mockReset();
     useListQueryParamsMock.mockReturnValue(buildListQueryState());
     useAuditLogsQueryMock.mockReturnValue({
       data: { data: [], pagination: undefined },
@@ -154,6 +164,46 @@ describe("AuditLogsPage", () => {
     expect(screen.getByText("Sensitive")).toBeInTheDocument();
     expect(screen.getByText("Audit filters")).toBeInTheDocument();
     expect(useAuditLogsQueryMock).toHaveBeenCalledWith(expect.anything(), true);
+  });
+
+  it("passes newest audit rows first to the table", () => {
+    useAuthMock.mockReturnValue({
+      user: { role: Role.AUDITOR },
+      capabilities: {
+        permissions: ["audit:read:global"],
+        role: Role.AUDITOR,
+      },
+      isAuthenticated: true,
+    });
+    useAuditLogsQueryMock.mockReturnValue({
+      data: {
+        data: [
+          {
+            id: "audit-older",
+            summary: "Older entry",
+            timestamp: "2026-05-01T09:00:00.000Z",
+          },
+          {
+            id: "audit-newer",
+            summary: "Newer entry",
+            timestamp: "2026-05-01T10:00:00.000Z",
+          },
+        ],
+        pagination: undefined,
+      },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<AuditLogsPage />);
+
+    expect(auditLogTableMock).toHaveBeenCalledTimes(1);
+    expect(auditLogTableMock.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({ id: "audit-newer" }),
+      expect.objectContaining({ id: "audit-older" }),
+    ]);
   });
 
   it("shows a forbidden state for authorized users when the backend returns 403", () => {

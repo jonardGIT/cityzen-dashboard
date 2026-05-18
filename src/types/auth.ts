@@ -104,6 +104,9 @@ export interface AuthSessionSummary {
   lastUsedAt: string | null;
   userAgent: string | null;
   ipAddress: string | null;
+  browserFamily?: string | null;
+  osFamily?: string | null;
+  deviceLabel?: string | null;
   isCurrent: boolean;
 }
 

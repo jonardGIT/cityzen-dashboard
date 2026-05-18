@@ -15,10 +15,28 @@ import {
   extractAuditLogListValidation,
   getAuditLogErrorMessage,
 } from "@/lib/api/auditLogs";
+import type { AuditLog } from "@/types/api";
 import { Role } from "@/types/auth";
 
 const { Text, Title } = Typography;
 const AUDIT_LOG_ALLOWED_ROLES = [Role.NATIONAL_ADMIN, Role.AUDITOR];
+
+function getAuditLogTimestamp(log: AuditLog): number {
+  const candidates = [log.timestamp, log.createdAt, log.updatedAt];
+
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+
+    const parsed = Date.parse(candidate);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return Number.NEGATIVE_INFINITY;
+}
 
 export default function AuditLogsPage() {
   const { user, capabilities, isAuthenticated } = useAuth();
@@ -46,7 +64,11 @@ export default function AuditLogsPage() {
   );
 
   const rows = useMemo(
-    () => auditLogsQuery.data?.data ?? [],
+    () =>
+      [...(auditLogsQuery.data?.data ?? [])].sort(
+        (left, right) =>
+          getAuditLogTimestamp(right) - getAuditLogTimestamp(left),
+      ),
     [auditLogsQuery.data],
   );
   const paginationMeta = auditLogsQuery.data?.pagination;

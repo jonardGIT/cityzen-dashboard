@@ -181,6 +181,17 @@ function getSessionBrowserLabel(userAgent?: string | null) {
 }
 
 function getSessionDisplayLabel(session: AuthSessionSummary) {
+  const deviceLabel = session.deviceLabel?.trim();
+  if (deviceLabel) {
+    return deviceLabel;
+  }
+
+  const browserFamily = session.browserFamily?.trim();
+  const osFamily = session.osFamily?.trim();
+  if (browserFamily && osFamily) {
+    return `${browserFamily} on ${osFamily}`;
+  }
+
   const browser = getSessionBrowserLabel(session.userAgent);
   const platform = getSessionPlatformLabel(session.userAgent);
   const rawUserAgent = session.userAgent?.trim();
@@ -195,10 +206,15 @@ function getSessionDisplayLabel(session: AuthSessionSummary) {
 function getSessionMetaLabel(session: AuthSessionSummary) {
   const details = [
     session.isCurrent ? "Current device" : null,
+    session.browserFamily?.trim() || null,
+    session.osFamily?.trim() || null,
     session.ipAddress?.trim() || null,
+    session.lastUsedAt
+      ? `Last used ${formatDateTime(session.lastUsedAt)}`
+      : null,
   ].filter((value): value is string => Boolean(value));
 
-  return details.join(" • ");
+  return Array.from(new Set(details)).join(" • ");
 }
 
 function getSessionTitle(session: AuthSessionSummary) {
@@ -825,7 +841,10 @@ export default function ProfilePage() {
           {getSessionMetaLabel(session) ? (
             <Text type="secondary">{getSessionMetaLabel(session)}</Text>
           ) : null}
-          <Text type="secondary">{session.id}</Text>
+          {session.userAgent?.trim() ? (
+            <Text type="secondary">{session.userAgent.trim()}</Text>
+          ) : null}
+          <Text type="secondary">Session ID: {session.id}</Text>
         </Space>
       ),
     },
