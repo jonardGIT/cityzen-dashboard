@@ -70,6 +70,18 @@ export default function CitizensPage() {
           key: "contactInfo",
         },
         {
+          title: "Address Line 1",
+          dataIndex: "addressLine1",
+          key: "addressLine1",
+          render: (value: string | null | undefined) => value ?? "N/A",
+        },
+        {
+          title: "Address Line 2",
+          dataIndex: "addressLine2",
+          key: "addressLine2",
+          render: (value: string | null | undefined) => value ?? "N/A",
+        },
+        {
           title: "Locality",
           dataIndex: ["locality", "name"],
           key: "locality",
