@@ -18,7 +18,10 @@
         "authRequired": true,
         "featureGate": {
           "feature": "tokenMode",
-          "requiresAnyOf": ["app-jwt", "supabase-jwt"]
+          "requiresAnyOf": [
+            "app-jwt",
+            "supabase-jwt"
+          ]
         },
         "notes": "Available when tokenMode is app-jwt or supabase-jwt. Feature-aware OpenAPI output omits session inventory endpoints for other token modes.",
         "fullPath": "/api/v1/auth/sessions"
@@ -30,7 +33,10 @@
         "authRequired": true,
         "featureGate": {
           "feature": "tokenMode",
-          "requiresAnyOf": ["app-jwt", "supabase-jwt"]
+          "requiresAnyOf": [
+            "app-jwt",
+            "supabase-jwt"
+          ]
         },
         "notes": "Available when tokenMode is app-jwt or supabase-jwt.",
         "fullPath": "/api/v1/auth/sessions/{id}"
@@ -51,7 +57,10 @@
         ],
         "featureGate": {
           "feature": "mfaMode",
-          "requiresAnyOf": ["local-totp", "supabase-totp"]
+          "requiresAnyOf": [
+            "local-totp",
+            "supabase-totp"
+          ]
         },
         "notes": "Available only when MFA is enabled in the selected feature profile.",
         "fullPath": "/api/v1/auth/mfa/setup"
@@ -72,7 +81,10 @@
         ],
         "featureGate": {
           "feature": "mfaMode",
-          "requiresAnyOf": ["local-totp", "supabase-totp"]
+          "requiresAnyOf": [
+            "local-totp",
+            "supabase-totp"
+          ]
         },
         "notes": "Available only when MFA is enabled in the selected feature profile.",
         "fullPath": "/api/v1/auth/mfa/enable"
@@ -93,7 +105,10 @@
         ],
         "featureGate": {
           "feature": "mfaMode",
-          "requiresAnyOf": ["local-totp", "supabase-totp"]
+          "requiresAnyOf": [
+            "local-totp",
+            "supabase-totp"
+          ]
         },
         "notes": "Available only when MFA is enabled in the selected feature profile.",
         "fullPath": "/api/v1/auth/mfa/disable"
@@ -101,362 +116,6 @@
     ]
   },
   "endpoints": [
-    {
-      "resource": "regions",
-      "label": "Regions",
-      "operation": "list",
-      "method": "GET",
-      "path": "/regions",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/regions",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "regions",
-      "label": "Regions",
-      "operation": "get",
-      "method": "GET",
-      "path": "/regions/{id}",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/regions/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "regions",
-      "label": "Regions",
-      "operation": "create",
-      "method": "POST",
-      "path": "/regions",
-      "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "REGIONAL_DIRECTOR"],
-      "fullPath": "/api/v1/regions",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "regions",
-      "label": "Regions",
-      "operation": "update",
-      "method": "PATCH",
-      "path": "/regions/{id}",
-      "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "REGIONAL_DIRECTOR"],
-      "fullPath": "/api/v1/regions/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "regions",
-      "label": "Regions",
-      "operation": "delete",
-      "method": "DELETE",
-      "path": "/regions/{id}",
-      "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "REGIONAL_DIRECTOR"],
-      "fullPath": "/api/v1/regions/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "regions",
-      "label": "Regions",
-      "operation": "restore",
-      "method": "POST",
-      "path": "/regions/{id}/restore",
-      "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "REGIONAL_DIRECTOR"],
-      "featureGate": {
-        "feature": "recordDeletion",
-        "requires": "archive"
-      },
-      "fullPath": "/api/v1/regions/{id}/restore",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "provinces",
-      "label": "Provinces",
-      "operation": "list",
-      "method": "GET",
-      "path": "/provinces",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/provinces",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "provinces",
-      "label": "Provinces",
-      "operation": "get",
-      "method": "GET",
-      "path": "/provinces/{id}",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/provinces/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "provinces",
-      "label": "Provinces",
-      "operation": "create",
-      "method": "POST",
-      "path": "/provinces",
-      "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "REGIONAL_DIRECTOR"],
-      "fullPath": "/api/v1/provinces",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "provinces",
-      "label": "Provinces",
-      "operation": "update",
-      "method": "PATCH",
-      "path": "/provinces/{id}",
-      "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "REGIONAL_DIRECTOR"],
-      "fullPath": "/api/v1/provinces/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "provinces",
-      "label": "Provinces",
-      "operation": "delete",
-      "method": "DELETE",
-      "path": "/provinces/{id}",
-      "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "REGIONAL_DIRECTOR"],
-      "fullPath": "/api/v1/provinces/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "provinces",
-      "label": "Provinces",
-      "operation": "restore",
-      "method": "POST",
-      "path": "/provinces/{id}/restore",
-      "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "REGIONAL_DIRECTOR"],
-      "featureGate": {
-        "feature": "recordDeletion",
-        "requires": "archive"
-      },
-      "fullPath": "/api/v1/provinces/{id}/restore",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "cities-municipalities",
-      "label": "Cities / Municipalities",
-      "operation": "list",
-      "method": "GET",
-      "path": "/cities-municipalities",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/cities-municipalities",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "cities-municipalities",
-      "label": "Cities / Municipalities",
-      "operation": "get",
-      "method": "GET",
-      "path": "/cities-municipalities/{id}",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/cities-municipalities/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "cities-municipalities",
-      "label": "Cities / Municipalities",
-      "operation": "create",
-      "method": "POST",
-      "path": "/cities-municipalities",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN"
-      ],
-      "fullPath": "/api/v1/cities-municipalities",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "cities-municipalities",
-      "label": "Cities / Municipalities",
-      "operation": "update",
-      "method": "PATCH",
-      "path": "/cities-municipalities/{id}",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN"
-      ],
-      "fullPath": "/api/v1/cities-municipalities/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "cities-municipalities",
-      "label": "Cities / Municipalities",
-      "operation": "delete",
-      "method": "DELETE",
-      "path": "/cities-municipalities/{id}",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN"
-      ],
-      "fullPath": "/api/v1/cities-municipalities/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "cities-municipalities",
-      "label": "Cities / Municipalities",
-      "operation": "restore",
-      "method": "POST",
-      "path": "/cities-municipalities/{id}/restore",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN"
-      ],
-      "featureGate": {
-        "feature": "recordDeletion",
-        "requires": "archive"
-      },
-      "fullPath": "/api/v1/cities-municipalities/{id}/restore",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "barangays",
-      "label": "Barangays",
-      "operation": "list",
-      "method": "GET",
-      "path": "/barangays",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/barangays",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "barangays",
-      "label": "Barangays",
-      "operation": "get",
-      "method": "GET",
-      "path": "/barangays/{id}",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/barangays/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "barangays",
-      "label": "Barangays",
-      "operation": "create",
-      "method": "POST",
-      "path": "/barangays",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/barangays",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "barangays",
-      "label": "Barangays",
-      "operation": "update",
-      "method": "PATCH",
-      "path": "/barangays/{id}",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/barangays/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "barangays",
-      "label": "Barangays",
-      "operation": "delete",
-      "method": "DELETE",
-      "path": "/barangays/{id}",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "fullPath": "/api/v1/barangays/{id}",
-      "surface": "dashboard"
-    },
-    {
-      "resource": "barangays",
-      "label": "Barangays",
-      "operation": "restore",
-      "method": "POST",
-      "path": "/barangays/{id}/restore",
-      "authRequired": true,
-      "allowedRoles": [
-        "NATIONAL_ADMIN",
-        "REGIONAL_DIRECTOR",
-        "PROVINCIAL_ADMIN",
-        "CITY_ADMIN"
-      ],
-      "featureGate": {
-        "feature": "recordDeletion",
-        "requires": "archive"
-      },
-      "fullPath": "/api/v1/barangays/{id}/restore",
-      "surface": "dashboard"
-    },
     {
       "resource": "citizens",
       "label": "Citizens",
@@ -564,7 +223,9 @@
       "method": "POST",
       "path": "/citizens/link-me",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "notes": "Creates or updates the authenticated citizen reporter's linked citizen profile. contactInfo is inferred from the authenticated email.",
       "fullPath": "/api/v1/citizens/link-me",
       "surface": "dashboard"
@@ -1167,7 +828,9 @@
       "method": "POST",
       "path": "/incidents/report",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "notes": "Citizen self-report endpoint. citizenId is inferred from the authenticated user context.",
       "fullPath": "/api/v1/incidents/report",
       "surface": "dashboard"
@@ -1506,7 +1169,9 @@
       "method": "GET",
       "path": "/admin/users",
       "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN"],
+      "allowedRoles": [
+        "NATIONAL_ADMIN"
+      ],
       "notes": "National-admin-only administrative user inventory endpoint exposed under the admin route surface.",
       "fullPath": "/api/v1/admin/users",
       "surface": "dashboard"
@@ -1518,7 +1183,9 @@
       "method": "GET",
       "path": "/admin/users/mfa-compliance",
       "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN"],
+      "allowedRoles": [
+        "NATIONAL_ADMIN"
+      ],
       "notes": "Privileged MFA compliance report for national administrators. Use for security review dashboards rather than generic CRUD.",
       "fullPath": "/api/v1/admin/users/mfa-compliance",
       "surface": "dashboard"
@@ -1530,7 +1197,9 @@
       "method": "GET",
       "path": "/admin/users/access-review",
       "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN"],
+      "allowedRoles": [
+        "NATIONAL_ADMIN"
+      ],
       "notes": "Privileged access-review report for national administrators. Use for governance and stale-access review dashboards.",
       "fullPath": "/api/v1/admin/users/access-review",
       "surface": "dashboard"
@@ -1542,7 +1211,10 @@
       "method": "GET",
       "path": "/admin/session-inventory",
       "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "AUDITOR"],
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "AUDITOR"
+      ],
       "notes": "Redacted administrative session inventory for National Admin and Auditor review workflows. Use the dedicated page rather than the self-service account security card.",
       "fullPath": "/api/v1/admin/session-inventory",
       "surface": "dashboard"
@@ -1554,7 +1226,9 @@
       "method": "DELETE",
       "path": "/admin/session-inventory/{id}",
       "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN"],
+      "allowedRoles": [
+        "NATIONAL_ADMIN"
+      ],
       "notes": "Administrative session revocation route for National Admin only. Revocations are audited separately from self-service session sign-outs.",
       "fullPath": "/api/v1/admin/session-inventory/{id}",
       "surface": "dashboard"
@@ -1584,7 +1258,10 @@
       "method": "GET",
       "path": "/audit-logs",
       "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "AUDITOR"],
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "AUDITOR"
+      ],
       "notes": "Sensitive server-side audit log list surface. Requests remain read-only and should be handled as a dedicated review experience.",
       "fullPath": "/api/v1/audit-logs",
       "surface": "dashboard"
@@ -1596,7 +1273,10 @@
       "method": "GET",
       "path": "/audit-logs/{id}",
       "authRequired": true,
-      "allowedRoles": ["NATIONAL_ADMIN", "AUDITOR"],
+      "allowedRoles": [
+        "NATIONAL_ADMIN",
+        "AUDITOR"
+      ],
       "notes": "Sensitive server-side audit log detail surface. Requests remain read-only and should be handled as a dedicated review experience.",
       "fullPath": "/api/v1/audit-logs/{id}",
       "surface": "dashboard"
@@ -1619,11 +1299,58 @@
     {
       "resource": "mobileCitizen",
       "label": "Mobile Citizen (Canonical Pilot Surface)",
+      "operation": "geographyReferenceMeta",
+      "method": "GET",
+      "path": "/mobile/reference-data/geography/meta",
+      "authRequired": false,
+      "pilotScope": "tuguegarao-first",
+      "compatibility": {
+        "status": "canonical"
+      },
+      "notes": "Public Cagayan-wide mobile geography metadata for offline-first cache validation. Returns the overall Tuguegarao-first pilot scope alongside the active Cagayan province code and an opaque geographyVersion derived from the latest active province, locality, and barangay update timestamp.",
+      "fullPath": "/api/v1/mobile/reference-data/geography/meta",
+      "surface": "mobile-citizen"
+    },
+    {
+      "resource": "mobileCitizen",
+      "label": "Mobile Citizen (Canonical Pilot Surface)",
+      "operation": "cagayanLocalitiesReference",
+      "method": "GET",
+      "path": "/mobile/cagayan/localities",
+      "authRequired": false,
+      "pilotScope": "tuguegarao-first",
+      "compatibility": {
+        "status": "canonical"
+      },
+      "notes": "Public Cagayan-wide mobile reference data for locality selection flows. Returns active Cagayan province metadata plus active child cities and municipalities with minimal fields (id, code, name, type). This reference dataset is broader than the current Tuguegarao-first rollout scope.",
+      "fullPath": "/api/v1/mobile/cagayan/localities",
+      "surface": "mobile-citizen"
+    },
+    {
+      "resource": "mobileCitizen",
+      "label": "Mobile Citizen (Canonical Pilot Surface)",
+      "operation": "cagayanLocalityBarangaysReference",
+      "method": "GET",
+      "path": "/mobile/cagayan/localities/{localityId}/barangays",
+      "authRequired": false,
+      "pilotScope": "tuguegarao-first",
+      "compatibility": {
+        "status": "canonical"
+      },
+      "notes": "Public Cagayan-wide mobile reference data for barangay selection flows. Returns only active barangays for the selected active Cagayan locality with minimal fields (id, code, name). This reference dataset is broader than the current Tuguegarao-first rollout scope.",
+      "fullPath": "/api/v1/mobile/cagayan/localities/{localityId}/barangays",
+      "surface": "mobile-citizen"
+    },
+    {
+      "resource": "mobileCitizen",
+      "label": "Mobile Citizen (Canonical Pilot Surface)",
       "operation": "getProfile",
       "method": "GET",
       "path": "/mobile/profile",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "pilotScope": "tuguegarao-first",
       "compatibility": {
         "status": "canonical"
@@ -1639,7 +1366,9 @@
       "method": "PATCH",
       "path": "/mobile/profile",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "pilotScope": "tuguegarao-first",
       "compatibility": {
         "status": "canonical"
@@ -1655,7 +1384,9 @@
       "method": "GET",
       "path": "/mobile/incidents",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "pilotScope": "tuguegarao-first",
       "compatibility": {
         "status": "canonical"
@@ -1671,7 +1402,9 @@
       "method": "GET",
       "path": "/mobile/incidents/{id}",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "pilotScope": "tuguegarao-first",
       "compatibility": {
         "status": "canonical"
@@ -1687,7 +1420,9 @@
       "method": "GET",
       "path": "/mobile/incidents/{id}/timeline",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "pilotScope": "tuguegarao-first",
       "compatibility": {
         "status": "canonical"
@@ -1703,7 +1438,9 @@
       "method": "POST",
       "path": "/mobile/incidents/report",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "pilotScope": "tuguegarao-first",
       "compatibility": {
         "status": "canonical"
@@ -1719,7 +1456,9 @@
       "method": "POST",
       "path": "/citizens/link-me",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "pilotScope": "tuguegarao-first",
       "compatibility": {
         "status": "compatibility-only",
@@ -1737,7 +1476,9 @@
       "method": "POST",
       "path": "/incidents/report",
       "authRequired": true,
-      "allowedRoles": ["CITIZEN_REPORTER"],
+      "allowedRoles": [
+        "CITIZEN_REPORTER"
+      ],
       "pilotScope": "tuguegarao-first",
       "compatibility": {
         "status": "compatibility-only",
