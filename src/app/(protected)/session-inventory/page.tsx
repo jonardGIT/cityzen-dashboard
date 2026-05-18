@@ -42,6 +42,18 @@ function formatDateTime(value?: string | null) {
   }).format(new Date(timestamp));
 }
 
+function formatSessionExpiry(session: AdminSessionInventoryRecord) {
+  if (session.expiresAt) {
+    return formatDateTime(session.expiresAt);
+  }
+
+  if (session.authProvider === "supabase-jwt") {
+    return "Not exposed by Supabase";
+  }
+
+  return "N/A";
+}
+
 function getSessionTitle(session: AdminSessionInventoryRecord) {
   if (session.deviceLabel?.trim()) {
     return session.deviceLabel;
@@ -187,7 +199,8 @@ export default function AdminSessionInventoryPage() {
         title: "Expires",
         dataIndex: "expiresAt",
         key: "expiresAt",
-        render: (value: string | null) => formatDateTime(value),
+        render: (_value: string | null, session) =>
+          formatSessionExpiry(session),
       },
       {
         title: "Status",
