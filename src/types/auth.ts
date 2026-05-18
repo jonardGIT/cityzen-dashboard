@@ -97,8 +97,8 @@ export interface AuthSessionSummary {
   id: string;
   createdAt: string;
   updatedAt: string;
-  expiresAt: string;
-  refreshExpiresAt: string;
+  expiresAt: string | null;
+  refreshExpiresAt: string | null;
   refreshUsedAt: string | null;
   revokedAt: string | null;
   lastUsedAt: string | null;

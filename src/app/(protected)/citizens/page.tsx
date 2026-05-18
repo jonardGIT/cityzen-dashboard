@@ -70,6 +70,20 @@ export default function CitizensPage() {
           key: "contactInfo",
         },
         {
+          title: "Locality",
+          dataIndex: ["locality", "name"],
+          key: "locality",
+          render: (_value: string | undefined, record: Citizen) =>
+            record.locality?.name ?? "N/A",
+        },
+        {
+          title: "Barangay",
+          dataIndex: ["barangay", "name"],
+          key: "barangay",
+          render: (_value: string | undefined, record: Citizen) =>
+            record.barangay?.name ?? "N/A",
+        },
+        {
           title: "Preferred Channel",
           dataIndex: "preferredChannel",
           key: "preferredChannel",
