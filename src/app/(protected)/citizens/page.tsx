@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Result } from "antd";
+import { Result, Tag } from "antd";
 import { SimpleResourcePage } from "@/components/common/SimpleResourcePage";
 import { useAuth } from "@/context/AuthContext";
 import { useCitizensQuery } from "@/features/reference-data/api";
@@ -9,6 +9,15 @@ import { useListQueryParams } from "@/hooks/useListQueryParams";
 import { canAccessCrudResource } from "@/lib/auth/navigation";
 import { getPreferredDisplayName } from "@/lib/format/display";
 import type { Citizen } from "@/types/api";
+
+function isCitizenProfileComplete(record: Citizen): boolean {
+  return Boolean(
+    record.firstName &&
+    record.lastName &&
+    record.addressLine1 &&
+    record.barangayId,
+  );
+}
 
 export default function CitizensPage() {
   const { user, capabilities, isAuthenticated } = useAuth();
@@ -49,9 +58,9 @@ export default function CitizensPage() {
             const displayName = getPreferredDisplayName(record);
 
             return (
-            <Link href={`/citizens/${record.id}`}>
+              <Link href={`/citizens/${record.id}`}>
                 {displayName !== "N/A" ? displayName : `Citizen ${record.id}`}
-            </Link>
+              </Link>
             );
           },
         },
@@ -64,6 +73,17 @@ export default function CitizensPage() {
           title: "Preferred Channel",
           dataIndex: "preferredChannel",
           key: "preferredChannel",
+        },
+        {
+          title: "Profile",
+          dataIndex: "barangayId",
+          key: "profileComplete",
+          render: (_value: unknown, record: Citizen) =>
+            isCitizenProfileComplete(record) ? (
+              <Tag color="success">Complete</Tag>
+            ) : (
+              <Tag color="default">Incomplete</Tag>
+            ),
         },
       ]}
     />

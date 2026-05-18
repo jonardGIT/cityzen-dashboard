@@ -20,6 +20,19 @@ export interface BaseEntity {
   [key: string]: unknown;
 }
 
+export interface CitizenLocality {
+  id: string;
+  code: string;
+  name: string;
+  type?: string;
+}
+
+export interface CitizenBarangay {
+  id: string;
+  code: string;
+  name: string;
+}
+
 export interface Citizen extends BaseEntity {
   firstName?: string;
   middleName?: string;
@@ -27,6 +40,13 @@ export interface Citizen extends BaseEntity {
   suffix?: string;
   contactInfo?: string;
   preferredChannel?: string;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  cityMunicipalityId?: string | null;
+  barangayId?: string | null;
+  locality?: CitizenLocality | null;
+  barangay?: CitizenBarangay | null;
+  privacyNoticeAcceptedAt?: string | null;
 }
 
 export interface Agency extends BaseEntity {
