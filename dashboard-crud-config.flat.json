@@ -1536,6 +1536,30 @@
       "surface": "dashboard"
     },
     {
+      "resource": "adminSessionInventory",
+      "label": "Session Inventory",
+      "operation": "list",
+      "method": "GET",
+      "path": "/admin/session-inventory",
+      "authRequired": true,
+      "allowedRoles": ["NATIONAL_ADMIN", "AUDITOR"],
+      "notes": "Redacted administrative session inventory for National Admin and Auditor review workflows. Use the dedicated page rather than the self-service account security card.",
+      "fullPath": "/api/v1/admin/session-inventory",
+      "surface": "dashboard"
+    },
+    {
+      "resource": "adminSessionInventory",
+      "label": "Session Inventory",
+      "operation": "delete",
+      "method": "DELETE",
+      "path": "/admin/session-inventory/{id}",
+      "authRequired": true,
+      "allowedRoles": ["NATIONAL_ADMIN"],
+      "notes": "Administrative session revocation route for National Admin only. Revocations are audited separately from self-service session sign-outs.",
+      "fullPath": "/api/v1/admin/session-inventory/{id}",
+      "surface": "dashboard"
+    },
+    {
       "resource": "adminSecurityDataGovernance",
       "label": "Security Data Governance",
       "operation": "get",

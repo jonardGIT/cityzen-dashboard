@@ -175,6 +175,12 @@ export function canAccessAuditLogs(context: NavigationContext): boolean {
   return permissionsAllow(context.capabilities, AUDIT_PERMISSION_HINTS);
 }
 
+export function canAccessAdminSessionInventory(
+  context: NavigationContext,
+): boolean {
+  return canAccessAuditLogs(context);
+}
+
 export function canAccessUserManagement(context: NavigationContext): boolean {
   if (!context.role || !CAN_MANAGE_USERS.includes(context.role)) {
     return false;
@@ -305,6 +311,12 @@ export function getNavigationItems(context: NavigationContext) {
       label: "Audit Logs",
       href: "/audit-logs",
       visible: () => canAccessAuditLogs(context),
+    },
+    {
+      key: "/session-inventory",
+      label: "Session Inventory",
+      href: "/session-inventory",
+      visible: () => canAccessAdminSessionInventory(context),
     },
     {
       key: "/profile",

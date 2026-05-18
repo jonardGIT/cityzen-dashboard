@@ -110,6 +110,26 @@ export interface AuthSessionSummary {
   isCurrent: boolean;
 }
 
+export interface AdminSessionInventoryRecord {
+  id: string;
+  userId: string | null;
+  userEmail: string | null;
+  userRole: string | null;
+  userDisplayName: string | null;
+  authProvider: "app-jwt" | "supabase-jwt";
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  status: "active" | "expired" | "revoked";
+  browserFamily: string | null;
+  osFamily: string | null;
+  deviceLabel: string | null;
+  ipAddressMasked: string | null;
+  isCurrentActorSession: boolean;
+}
+
 export interface MfaSetupResponse {
   secret: string;
   otpauthUrl: string;
