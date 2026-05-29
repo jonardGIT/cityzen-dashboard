@@ -156,6 +156,47 @@ For each account under test:
 7. Citizen self-service users are routed to self-service pages, not operator pages.
 8. Audit-only users can reach audit views without receiving operator mutation UI.
 
+## Release Signoff Worksheet
+
+Use this worksheet to close the pilot readiness item for real operator accounts and capabilities in the paired API environment.
+
+Environment and operator record:
+
+- Environment checked: `<fill-environment>`
+- Checked at: `<fill-time>`
+- Checked by: `Jonard M. Delos Santos`
+- Business acknowledgment: `Dennis M. Tobias`
+
+Account roster under test:
+
+| Account label      | Real account identifier | Expected role | Expected landing route | Result | Notes |
+| ------------------ | ----------------------- | ------------- | ---------------------- | ------ | ----- |
+| Primary operator   |                         |               |                        |        |       |
+| Secondary operator |                         |               |                        |        |       |
+| Auditor reviewer   |                         |               |                        |        |       |
+
+Capability verification record:
+
+| Account label      | `/api/auth/me` ok | `/api/users/capabilities` ok | Navigation scope correct | Mutation visibility correct | Direct forbidden route denied | Final result | Notes |
+| ------------------ | ----------------- | ---------------------------- | ------------------------ | --------------------------- | ----------------------------- | ------------ | ----- |
+| Primary operator   |                   |                              |                          |                             |                               |              |       |
+| Secondary operator |                   |                              |                          |                             |                               |              |       |
+| Auditor reviewer   |                   |                              |                          |                             |                               |              |       |
+
+Minimum signoff rules:
+
+1. The backend must emit the intended pilot role names for the tested accounts.
+2. `/api/users/capabilities` must match the expected operator scope for each tested account.
+3. The sidebar and protected routes must stay within the current pilot-visible boundary.
+4. Forbidden protected routes must deny correctly.
+5. Mutation UI must follow backend capabilities, not looser role assumptions.
+
+Outcome:
+
+- Operator-account verification status: `<pass-fail>`
+- Follow-up actions: `<fill-actions-or-none>`
+- Evidence location: `<fill-ticket-or-release-log-location>`
+
 ## Focused API Checks
 
 Use a token for the active user and validate the contract directly where needed:
