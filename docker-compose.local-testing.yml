@@ -1,0 +1,136 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: xypes_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d xypes_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api-seed:
+    image: postgres:16
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: postgres
+    volumes:
+      - ../xypes-cirs-api:/workspace/api:ro
+    command:
+      - sh
+      - -lc
+      - >-
+        psql -h db -U postgres -d xypes_test -f /workspace/api/prisma/reset-prisma-schema.sql
+        && psql -h db -U postgres -d xypes_test -f /workspace/api/prisma/seed-data.sql
+
+  api:
+    image: node:20-bullseye
+    working_dir: /workspace/api
+    depends_on:
+      db:
+        condition: service_healthy
+      api-seed:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: development
+      PORT: "3000"
+      HOST: 0.0.0.0
+      API_BASE_PATH: /api/v1
+      CORS_ORIGIN: http://dashboard:3001
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/xypes_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@db:5432/xypes_test?schema=public
+      JWT_SECRET: local-dev-jwt-secret-please-change-1234567890
+      API_KEY: local-dev-key
+      RATE_LIMIT_ENABLED: "false"
+      TRUST_PROXY: "false"
+      MFA_ENCRYPTION_KEY: docker-local-mfa-key
+      FEATURE_PROFILE_NAME: docker-local-testing
+      FEATURE_AUTH_PROVIDER: local
+      FEATURE_TOKEN_MODE: app-jwt
+      FEATURE_MFA_MODE: local-totp
+      FEATURE_MEDIA_STORAGE: disabled
+      FEATURE_RECORD_DELETION: archive
+    volumes:
+      - ../xypes-cirs-api:/workspace/api
+      - api_node_modules:/workspace/api/node_modules
+    command:
+      - sh
+      - -lc
+      - npm install && npx tsx src/server.ts
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:3000/api/v1/health'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  dashboard:
+    image: node:20-bullseye
+    working_dir: /workspace/dashboard
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_BASE_URL: http://api:3000/api/v1
+      API_KEY: local-dev-key
+      CIRS_API_BASE_URL: http://api:3000
+      CIRS_API_BASE_PATH: /api/v1
+      CIRS_API_KEY: local-dev-key
+      NEXT_PUBLIC_OPENAPI_SOURCE: config
+    volumes:
+      - ../xypes-cirs-dashboard:/workspace/dashboard
+      - dashboard_node_modules:/workspace/dashboard/node_modules
+    command:
+      - sh
+      - -lc
+      - npm install && npx next dev -H 0.0.0.0 -p 3001
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:3001/login'').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  local-testing:
+    image: node:20-bullseye
+    working_dir: /workspace
+    depends_on:
+      api:
+        condition: service_healthy
+      dashboard:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/xypes_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@db:5432/xypes_test?schema=public
+      API_KEY: local-dev-key
+      LOCAL_SMOKE_EMAIL: admin@xypes.local
+      LOCAL_SMOKE_PASSWORD: Password123!
+      DASHBOARD_BASE_URL: http://dashboard:3001
+      DASHBOARD_SMOKE_ADMIN_EMAIL: admin@xypes.local
+      DASHBOARD_SMOKE_ADMIN_PASSWORD: Password123!
+    volumes:
+      - ../xypes-cirs-api:/workspace/api
+      - api_node_modules:/workspace/api/node_modules
+      - ../xypes-cirs-dashboard:/workspace/dashboard
+      - dashboard_node_modules:/workspace/dashboard/node_modules
+    command:
+      - sh
+      - -lc
+      - >-
+        cd /workspace/api && npm run smoke:local
+        && cd /workspace/dashboard && node scripts/smoke-dashboard.mjs
+
+volumes:
+  api_node_modules:
+  dashboard_node_modules:

@@ -104,6 +104,18 @@ DASHBOARD_SMOKE_ADMIN_PASSWORD='your-password' \
 npm run smoke:dashboard
 ```
 
+Containerized local smoke stack:
+
+```bash
+npm run test:local:docker
+```
+
+That compose flow starts a seeded Postgres test database, boots the sibling API in local app-JWT mode, starts the dashboard against that API, and then runs both the API local smoke and dashboard smoke from inside containers.
+
+- The stack lives in [docker-compose.local-testing.yml](docker-compose.local-testing.yml).
+- It uses the seeded local admin account `admin@xypes.local` / `Password123!` inside the isolated test stack.
+- Tear the stack down with `npm run test:local:docker:down`.
+
 The dashboard runtime derives a checked-in contract from `dashboard-crud-config.flat.json` by default so production deployments do not depend on `/api/v1/openapi.json` existing.
 
 To compare the dashboard CRUD config against a live backend OpenAPI document, use a non-production API instance:

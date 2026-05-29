@@ -11,6 +11,8 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint",
+    "test:local:docker": "docker compose -f docker-compose.local-testing.yml up --abort-on-container-exit --exit-code-from local-testing local-testing",
+    "test:local:docker:down": "docker compose -f docker-compose.local-testing.yml down -v --remove-orphans",
     "check:openapi-drift": "node scripts/check-openapi-drift.mjs",
     "smoke:dashboard": "node scripts/smoke-dashboard.mjs",
     "test": "vitest run",
